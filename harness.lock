@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "harness_version": "0.4.0",
+  "harness_version": "0.4.1",
   "upstream": {
     "repository": "stauntonjr/agentic-project-template",
-    "release": "v0.4.0",
+    "release": "v0.4.1",
     "commit": "UNPUBLISHED"
   },
   "files": {
@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "ccdd6d3a7353cdf90ee98fd107e99e2a5b300abd4ef0b959732e384d1aad8e08",
+      "sha256": "ed3f9425d90f12a8d5bef2928982cc656ae3c73eb64e586ff8eab0cc5dd578e1",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -256,7 +256,7 @@
       "ownership": "project-owned"
     },
     "docs/project/charter.md": {
-      "sha256": "ee9ffff688d8b7a8a27964196aae16e06accf6ce29a0f69111f43d83fed1dd6c",
+      "sha256": "ee74e45e7102c1b211c89d6b815546d41e1fd398c7a3c00814b3ccfde784740d",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
@@ -264,7 +264,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "8dfc90674f3ea041d652b59090873c70ae1fb62f7e7ccd9f7bd74b595541d09c",
+      "sha256": "04f28d2e13b823136ef343ec4edc0251754998f46d393c7f9b14f8297f5827d0",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -332,7 +332,7 @@
       "ownership": "upstream-owned"
     },
     "harness/project.yaml": {
-      "sha256": "3cdad6336baffadfe806a23c40a868cdd34783a49288a401674108fe74fed27c",
+      "sha256": "efb570f77e1df7d32132f54de06ba781de795710502710c11131970933b4982a",
       "ownership": "project-owned"
     },
     "harness/roles/explorer.md": {
@@ -404,11 +404,11 @@
       "ownership": "upstream-owned"
     },
     "harness/version.json": {
-      "sha256": "dbab159c64303bd6522027fa2dd8d69c4cbfb1a670be006b98238c33802a661b",
+      "sha256": "c5f25a1b22aecd3ca8689d800b9d579e43e51701bbb33cea9f2bf3053ebf9ed2",
       "ownership": "upstream-owned"
     },
     "pyproject.toml": {
-      "sha256": "1a417625a49a85228454b96a32c1f433343793710be16871465f74cf1229f51a",
+      "sha256": "a063a73cb2acf7fd0c3a0a49467dd44779f9f047cdbd1fddce989657882305d8",
       "ownership": "merge-required"
     },
     "tests/test_actions_supply_chain.py": {
@@ -512,7 +512,7 @@
       "ownership": "upstream-owned"
     },
     "uv.lock": {
-      "sha256": "bbc5c44253a0602284b243bca8370b4440090d6c4133554b6748ac8ae7571c88",
+      "sha256": "46af44e70d976cad1e6739d6257d8aea98042546903feda190e248452352c381",
       "ownership": "merge-required"
     }
   }

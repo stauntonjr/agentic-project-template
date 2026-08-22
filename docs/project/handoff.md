@@ -12,7 +12,7 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 ## Current state
 
-- Harness version: 0.4.0.
+- Harness version: 0.4.1.
 - Project status: template; project intake not yet accepted.
 - Active engineering loop: none.
 - Release state: not applicable.
