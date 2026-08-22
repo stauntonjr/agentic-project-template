@@ -11,7 +11,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 try:
     from .common import git, load_json, repository_root, utc_now, write_json
@@ -23,8 +23,9 @@ RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 CRITERION_ID = re.compile(r"^[A-Za-z][A-Za-z0-9._-]{0,63}$")
 CHECK_STATUSES = ("passed", "failed", "skipped", "not-run")
 VERDICTS = ("approve", "revise", "reject")
+RELEASE_IMPACTS = ("none", "patch", "minor", "major")
 FINAL_STATES = ("reported", "blocked", "abandoned")
-RUN_SCHEMA_VERSION = "1.1"
+RUN_SCHEMA_VERSION = "1.2"
 
 
 def git_text(root: Path, *args: str) -> str:
@@ -144,9 +145,7 @@ def index_fingerprint(root: Path, relative: str) -> list[dict[str, str]]:
         if not separator or len(parts) != 3:
             raise ValueError(f"unexpected Git index entry: {token!r}")
         mode, object_id, stage = parts
-        entries.append(
-            {"mode": mode, "object_id": object_id, "stage": stage, "path": path}
-        )
+        entries.append({"mode": mode, "object_id": object_id, "stage": stage, "path": path})
     return entries
 
 
@@ -184,7 +183,9 @@ def hidden_index_paths(root: Path) -> dict[str, list[str]]:
     ):
         result = git(root, "ls-files", option, "-z", check=False)
         if result.returncode != 0:
-            raise RuntimeError(result.stderr.strip() or f"could not inspect index flags with {option}")
+            raise RuntimeError(
+                result.stderr.strip() or f"could not inspect index flags with {option}"
+            )
         for token in result.stdout.split("\0"):
             if not token:
                 continue
@@ -279,9 +280,7 @@ def capture_worktree_snapshot(root: Path, run_id: str | None = None) -> list[dic
     for relative, index_flags in flags_by_path.items():
         if relative in seen_paths or _excluded_from_snapshot(relative, run_id):
             continue
-        entries.append(
-            snapshot_entry(root, relative, "index-hidden", index_flags=index_flags)
-        )
+        entries.append(snapshot_entry(root, relative, "index-hidden", index_flags=index_flags))
     return sorted(entries, key=lambda item: (item["path"], item["status"]))
 
 
@@ -376,11 +375,16 @@ def candidate_identity(root: Path, record: dict[str, Any]) -> dict[str, str]:
         "attempt_id": record["attempt_id"],
         "commit": current_commit(root),
         "delta": scope["delta"],
+        "release_impact": record.get("release_impact"),
     }
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    impact = json.dumps(payload["release_impact"], sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return {
         "commit": payload["commit"],
         "tree_digest": f"sha256:{hashlib.sha256(serialized).hexdigest()}",
+        "release_impact_digest": f"sha256:{hashlib.sha256(impact).hexdigest()}",
     }
 
 
@@ -437,6 +441,7 @@ def start_run(
         "state": "intake",
         "checks": [],
         "verdicts": [],
+        "release_impact": None,
         "revision_history": [],
         "attempt_history": [],
         "agent_handoffs": [],
@@ -456,8 +461,7 @@ def active_criterion_ids(record: dict[str, Any]) -> set[str]:
     return {
         item["id"]
         for item in record.get("acceptance_criteria", [])
-        if not item.get("waiver")
-        or item["waiver"].get("revision") != record.get("revision")
+        if not item.get("waiver") or item["waiver"].get("revision") != record.get("revision")
     }
 
 
@@ -509,6 +513,31 @@ def record_check(
     return record
 
 
+def record_release_impact(
+    root: Path,
+    run_id: str,
+    *,
+    level: str,
+    reason: str,
+    public_contract_changes: Iterable[str] = (),
+) -> dict[str, Any]:
+    if level not in RELEASE_IMPACTS:
+        raise ValueError(f"invalid release impact: {level}")
+    if not reason.strip():
+        raise ValueError("release impact reason is required")
+    path, record = load_run(root, run_id)
+    record["release_impact"] = {
+        "revision": record["revision"],
+        "attempt_id": record["attempt_id"],
+        "level": level,
+        "reason": reason,
+        "public_contract_changes": list(dict.fromkeys(public_contract_changes)),
+        "recorded_at": utc_now(),
+    }
+    write_json(path, record)
+    return record
+
+
 def record_verdict(
     root: Path,
     run_id: str,
@@ -527,7 +556,9 @@ def record_verdict(
         raise ValueError("verifier evidence is required")
     path, record = load_run(root, run_id)
     if record.get("schema_version") != RUN_SCHEMA_VERSION:
-        raise ValueError("verifier verdicts require a loop run created with schema 1.1")
+        raise ValueError(
+            f"verifier verdicts require a loop run created with schema {RUN_SCHEMA_VERSION}"
+        )
     if reviewer in record.get("implementers", []):
         raise ValueError(f"reviewer {reviewer!r} is recorded as an implementer")
     covered = set(criteria)
@@ -672,7 +703,9 @@ def collect_git_evidence(root: Path, record: dict[str, Any]) -> dict[str, Any]:
         "scope": scope,
     }
     if record["start_commit"] != "UNBORN":
-        commit_log = git_text(root, "log", "--format=%H%x09%s", f"{record['start_commit']}..{end_commit}")
+        commit_log = git_text(
+            root, "log", "--format=%H%x09%s", f"{record['start_commit']}..{end_commit}"
+        )
         evidence["commits"] = commit_log.splitlines() if commit_log else []
         evidence["diff_stat"] = git_text(root, "diff", "--stat", record["start_commit"])
     return evidence
@@ -690,6 +723,13 @@ def completion_errors(root: Path, record: dict[str, Any]) -> list[str]:
     scope = scope_evidence(root, record)
     if scope["violations"]:
         errors.append(f"writes outside declared scope: {', '.join(scope['violations'])}")
+    release_impact = record.get("release_impact")
+    if not release_impact:
+        errors.append("product release impact is not assessed")
+    elif release_impact.get("revision") != record.get("revision") or release_impact.get(
+        "attempt_id"
+    ) != record.get("attempt_id"):
+        errors.append("product release impact is stale for the current revision and attempt")
     current_verdicts = [
         item
         for item in record.get("verdicts", [])
@@ -718,30 +758,37 @@ def markdown_report(record: dict[str, Any], evidence: dict[str, Any]) -> str:
     status = evidence.get("working_tree_status", [])
     current_passed = current_passed_criteria(record)
 
-    def list_or_none(values: list[Any], formatter=str) -> str:
+    def list_or_none(values: list[Any], formatter: Callable[[Any], str] = str) -> str:
         if not values:
             return "- None recorded."
         return "\n".join(f"- {formatter(value)}" for value in values)
 
-    check_rows = "\n".join(
-        f"| {item.get('check_id', '')} | {item.get('name', '')} | {item.get('status', '')} | "
-        f"{', '.join(item.get('criterion_ids', [])) or 'None'} | {item.get('command', '')} | "
-        f"{item.get('evidence', '')} |"
-        for item in checks
-    ) or "| None | None recorded | not-run | None |  | No check boundary recorded |"
-    criterion_rows = "\n".join(
-        f"| {item['id']} | "
-        f"{'waived' if item.get('waiver') and item['waiver'].get('revision') == record.get('revision') else ('check-passed' if item['id'] in current_passed else 'missing')} | "
-        f"{item['text']} | "
-        f"{item.get('waiver', {}).get('reason', '') if item.get('waiver') else ''} |"
-        for item in record.get("acceptance_criteria", [])
-    ) or "| None | missing | No acceptance criteria recorded | |"
+    check_rows = (
+        "\n".join(
+            f"| {item.get('check_id', '')} | {item.get('name', '')} | {item.get('status', '')} | "
+            f"{', '.join(item.get('criterion_ids', [])) or 'None'} | {item.get('command', '')} | "
+            f"{item.get('evidence', '')} |"
+            for item in checks
+        )
+        or "| None | None recorded | not-run | None |  | No check boundary recorded |"
+    )
+    criterion_rows = (
+        "\n".join(
+            f"| {item['id']} | "
+            f"{'waived' if item.get('waiver') and item['waiver'].get('revision') == record.get('revision') else ('check-passed' if item['id'] in current_passed else 'missing')} | "
+            f"{item['text']} | "
+            f"{item.get('waiver', {}).get('reason', '') if item.get('waiver') else ''} |"
+            for item in record.get("acceptance_criteria", [])
+        )
+        or "| None | missing | No acceptance criteria recorded | |"
+    )
     latest_verdict = record.get("verdicts", [])[-1] if record.get("verdicts") else None
     verdict_text = (
         f"{latest_verdict['decision']} by {latest_verdict['reviewer']} "
         f"for revision {latest_verdict['revision']}, attempt {latest_verdict['attempt_id']}, "
         f"candidate `{latest_verdict['candidate']['commit']}` / "
-        f"`{latest_verdict['candidate']['tree_digest']}`"
+        f"`{latest_verdict['candidate']['tree_digest']}` / "
+        f"impact `{latest_verdict['candidate']['release_impact_digest']}`"
         if latest_verdict
         else "None recorded"
     )
@@ -759,20 +806,29 @@ def markdown_report(record: dict[str, Any], evidence: dict[str, Any]) -> str:
         lambda item: f"{item['mode']}: {item['path']}",
     )
     issue = record.get("issue") or "None"
+    release_impact = record.get("release_impact")
+    release_impact_text = (
+        f"{release_impact['level']}: {release_impact['reason']}"
+        if release_impact
+        else "not assessed"
+    )
+    contract_changes = list_or_none(
+        release_impact.get("public_contract_changes", []) if release_impact else []
+    )
 
-    return f"""# Engineering loop report: {record['run_id']}
+    return f"""# Engineering loop report: {record["run_id"]}
 
 ## Outcome and why it matters
 
-- VERIFIED: Collected repository evidence from `{evidence['start_commit']}` to `{evidence['end_commit']}`.
-- REPORTED: Objective was: {record['objective']}
+- VERIFIED: Collected repository evidence from `{evidence["start_commit"]}` to `{evidence["end_commit"]}`.
+- REPORTED: Objective was: {record["objective"]}
 - VERIFIED: {len(changed)} baseline-relative changed paths, {passed} passed checks, and {failed} failed checks were recorded.
 
 ## Planned versus completed
 
 - REPORTED: Governing Issue: {issue}.
-- VERIFIED: Final loop state: {record['state']}.
-- VERIFIED: Run revision {record.get('revision', 'legacy')}, attempt {record.get('attempt_id', 'legacy')}.
+- VERIFIED: Final loop state: {record["state"]}.
+- VERIFIED: Run revision {record.get("revision", "legacy")}, attempt {record.get("attempt_id", "legacy")}.
 - INFERRED: Completion is limited to the repository and check boundaries listed below.
 
 ## Acceptance evidence matrix
@@ -784,6 +840,12 @@ def markdown_report(record: dict[str, Any], evidence: dict[str, Any]) -> str:
 ## User-visible and semantic changes
 
 No user-visible claim is generated automatically. Add one only after inspecting the changed behavior and acceptance evidence.
+
+- VERIFIED: Recommended product release impact: {release_impact_text}
+
+Declared public-contract changes:
+
+{contract_changes}
 
 ## Architecture, schema, dependency, data, and interface changes
 
@@ -826,17 +888,17 @@ Review failed or missing criteria, stale or absent verification, scope violation
 
 ## Exact revision and scope
 
-- Start commit: `{evidence['start_commit']}`
-- End commit: `{evidence['end_commit']}`
-- Branch: `{evidence['branch']}`
-- Dirty-baseline entries: {len(evidence.get('scope', {}).get('baseline', []))}
+- Start commit: `{evidence["start_commit"]}`
+- End commit: `{evidence["end_commit"]}`
+- Branch: `{evidence["branch"]}`
+- Dirty-baseline entries: {len(evidence.get("scope", {}).get("baseline", []))}
 
 Declared write set:
 
 {declared_scope_text}
 
 ```text
-{evidence.get('diff_stat') or 'No tracked diff statistics available.'}
+{evidence.get("diff_stat") or "No tracked diff statistics available."}
 ```
 
 ## Agent handoffs
@@ -877,6 +939,7 @@ def finish_run(root: Path, run_id: str, state: str) -> tuple[Path, Path, dict[st
             ],
             "checks": record["checks"],
             "verdicts": record.get("verdicts", []),
+            "release_impact": record.get("release_impact"),
             "risks": record["risks"],
         },
     )
@@ -905,6 +968,12 @@ def main() -> int:
     check.add_argument("--status", choices=CHECK_STATUSES, required=True)
     check.add_argument("--evidence", required=True)
     check.add_argument("--criterion", action="append", default=[])
+
+    release_impact = subparsers.add_parser("record-release-impact")
+    release_impact.add_argument("--run", required=True)
+    release_impact.add_argument("--level", choices=RELEASE_IMPACTS, required=True)
+    release_impact.add_argument("--reason", required=True)
+    release_impact.add_argument("--public-contract-change", action="append", default=[])
 
     verdict = subparsers.add_parser("record-verdict")
     verdict.add_argument("--run", required=True)
@@ -973,6 +1042,15 @@ def main() -> int:
                 criteria=args.criterion,
             )
             print(f"recorded check for {args.run}")
+        elif args.action == "record-release-impact":
+            record_release_impact(
+                root,
+                args.run,
+                level=args.level,
+                reason=args.reason,
+                public_contract_changes=args.public_contract_change,
+            )
+            print(f"recorded release impact for {args.run}")
         elif args.action == "record-verdict":
             record_verdict(
                 root,

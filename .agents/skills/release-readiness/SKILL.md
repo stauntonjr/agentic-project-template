@@ -15,7 +15,8 @@ Read `harness/roles/release-steward.md` and `references/checklist.md`.
 4. Validate the built artifact and real public entrypoint, not only the source checkout.
 5. Confirm dependency, secret, static-analysis, provenance, license, and supply-chain evidence appropriate to risk.
 6. Inspect migrations, compatibility, observability, rollback, backup, recovery, and operator documentation.
-7. Reconcile changelog, version, Issues, Project state, and release notes.
+7. Reconcile the harness version separately from the product version. Validate the canonical product-version source, public compatibility contract, loop release-impact assessments, changelog, migrations, Issues, Project state, and release notes.
+   Use `python3 tools/product_version.py --tag TAG` when the product has a release tag.
 8. Return `ready`, `conditional`, or `not-ready` with exact missing evidence, residual risk, and required human authorization.
 
 Do not tag, publish, deploy, migrate, or create a release unless a separate user request explicitly authorizes that external action.

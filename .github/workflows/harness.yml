@@ -16,9 +16,10 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
-      - name: Validate harness
-        run: python3 tools/harness_check.py
-      - name: Run deterministic tests
-        run: python3 -m unittest discover -s tests -v
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          enable-cache: true
+      - name: Run authoritative harness and selected-project checks
+        run: make smoke
       - name: Check latest commit whitespace
         run: git show --check --format= HEAD

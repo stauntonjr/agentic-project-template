@@ -37,8 +37,18 @@ Ask only questions that repository or GitHub evidence cannot answer. Use small b
 - Which constraints are settled and which need ADRs?
 - What environments, deployment model, observability, migration, and rollback exist?
 - What commands prove build, test, package, integration, and release boundaries?
+- What one command must produce the same authoritative result locally and in CI?
+- Which runtime, dependency lock, formatter, linter, type checker, test runner, coverage policy, and clean-package check apply?
 
-## 7. Planning and economics
+## 7. Versioning and release
+
+- What is being versioned independently from the harness: one product, independently versioned packages, or no release artifact?
+- Which API, CLI, configuration, schema, artifact, or user-visible behavior is the public compatibility contract?
+- Is SemVer, CalVer, independent component versioning, or no formal versioning appropriate?
+- What file or system is the canonical product-version source, and what version starts the project?
+- Before 1.0, how are breaking changes signaled, and what changelog or migration evidence is required?
+
+## 8. Planning and economics
 
 - Which repository, Issue, Project, milestones, and fields own the work?
 - What schedule, budget, dependency, licensing, or operating-cost constraints apply?

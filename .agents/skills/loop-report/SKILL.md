@@ -26,6 +26,7 @@ Inspect the generated JSON evidence and Markdown report. Confirm:
 - baseline-relative changed paths and declared-scope violations;
 - agent handoffs and revision-bound independent-review decision;
 - decisions, deferrals, retries, failures, and unresolved risks;
+- current-revision product release impact and identified public-contract changes;
 - elapsed time and available cost/token telemetry.
 
 Do not claim live GitHub, deployment, or release state unless it was read during this loop.

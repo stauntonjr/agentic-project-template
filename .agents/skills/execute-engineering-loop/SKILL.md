@@ -45,6 +45,16 @@ python3 tools/loop.py record-check --run RUN_ID --name NAME \
   --criterion AC1
 ```
 
+Before independent approval, record the recommended product release impact. Base it on the public compatibility contract in `harness/project.yaml`, not commit-message syntax:
+
+```bash
+python3 tools/loop.py record-release-impact --run RUN_ID \
+  --level patch --reason "SEMANTIC COMPATIBILITY RATIONALE" \
+  --public-contract-change "OPTIONAL CHANGED CONTRACT"
+```
+
+Use `none`, `patch`, `minor`, or `major`. `none` means the project contract does not require a product release for this change. This assessment is a recommendation and never authorizes a version bump or publication.
+
 If objective, acceptance, or write scope changes, use `loop.py revise`; if implementation retries without changing the contract, use `loop.py new-attempt`. Prior checks and approvals do not satisfy the new revision or attempt, and a contract revision invalidates prior criterion waivers.
 
 After verification, the independent reviewer records a verdict:
@@ -65,7 +75,7 @@ Use `references/handoff-contract.md` for every agent handoff.
 
 1. Reconcile implementation, tests, docs, ADRs, handoff, Issue, and Project state.
 2. Run `make smoke`, `git diff --check`, and `git status --short`.
-3. Invoke `$loop-report` or run `python3 tools/loop.py finish --run RUN_ID`. A `reported` finish refuses missing criterion evidence, stale or non-independent approval, and writes outside the declared scope. Use `--state blocked` or `--state abandoned` to preserve an incomplete run truthfully.
+3. Invoke `$loop-report` or run `python3 tools/loop.py finish --run RUN_ID`. A `reported` finish refuses missing criterion evidence, missing or stale release impact, stale or non-independent approval, and writes outside the declared scope. Use `--state blocked` or `--state abandoned` to preserve an incomplete run truthfully.
 4. In Learn, propose challenge, skill, profile, or instruction updates. Do not apply policy changes without human review.
 
 A loop is not complete because code exists. It is complete only when the accepted boundary is verified, independently reviewed where required, reconciled, and reported.

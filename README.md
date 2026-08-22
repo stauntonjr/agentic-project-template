@@ -35,7 +35,7 @@ The initializer is idempotent: it inspects existing state, preserves confirmed a
 | Surface | Purpose |
 |---|---|
 | `AGENTS.md` | Short instruction map, authority rules, source precedence, and skill routing |
-| `harness/project.yaml` | Machine-readable project intent, autonomy, evidence, and lifecycle contract |
+| `harness/project.yaml` | Machine-readable project intent, autonomy, product version, quality, security, evidence, and lifecycle contract |
 | `harness/roles/` | Provider-neutral role contracts with distinct authority and handoffs |
 | `harness/loops/` | State machines with inputs, outputs, gates, retries, and stop conditions |
 | `.agents/skills/` | Intake, research, execution, reporting, planning, ADR, and release workflows |
@@ -50,6 +50,7 @@ The initializer is idempotent: it inspects existing state, preserves confirmed a
 | `harness/ownership.json` | Upgrade policy separating upstream-owned, project-owned, and merge-required paths |
 | `harness/evals/` | Forward-test scenarios for skill routing and safety behavior |
 | `docs/project/handoff.md` | Concise orientation index for fresh humans and agents |
+| `docs/project/engineering-baseline.md` | Portable capability contract and profile-selected tooling boundary |
 
 ## Default engineering loop
 
@@ -73,20 +74,31 @@ python3 tools/loop.py start --issue 123 \
 python3 tools/loop.py record-check --run RUN_ID --name unit \
   --command "python3 -m unittest discover -s tests -v" --status passed \
   --evidence "All targeted tests passed" --criterion AC1
+python3 tools/loop.py record-release-impact --run RUN_ID \
+  --level patch --reason "Backward-compatible correction to documented behavior"
 python3 tools/loop.py record-verdict --run RUN_ID \
   --reviewer codex/separate-verifier-session --verdict approve \
   --criterion AC1 --evidence "Diff and raw test output independently reviewed"
 python3 tools/loop.py finish --run RUN_ID
 ```
 
-`start` fingerprints pre-existing dirty and untracked paths; staged index blobs and modes; `assume-unchanged` and `skip-worktree` paths; and recursively inspected submodules or embedded Git repositories. Submodule visibility is forced even when `.gitmodules` requests `ignore = all`; unsafe directory entries fail closed. Completion compares the current tree, index, nested repositories, and committed paths with that baseline; rejects undeclared writes; requires passed evidence for every unwaived criterion; and rejects approvals made against an older requirement revision, attempt, commit, or candidate digest. Contract revisions invalidate prior waivers. A new waiver requires recorded `human:IDENTITY` provenance and a reason. The generated executive report distinguishes verified repository evidence, reported facts, and inference.
+`start` fingerprints pre-existing dirty and untracked paths; staged index blobs and modes; `assume-unchanged` and `skip-worktree` paths; and recursively inspected submodules or embedded Git repositories. Submodule visibility is forced even when `.gitmodules` requests `ignore = all`; unsafe directory entries fail closed. Completion compares the current tree, index, nested repositories, and committed paths with that baseline; rejects undeclared writes; requires passed evidence for every unwaived criterion; requires a current product release-impact assessment; and rejects approvals made against an older requirement revision, attempt, commit, or candidate digest. Contract revisions invalidate prior waivers. A new waiver requires recorded `human:IDENTITY` provenance and a reason. The generated executive report distinguishes verified repository evidence, reported facts, and inference.
+
+## Product versioning and engineering baseline
+
+`harness_version` tracks the reusable control plane. `engineering.versioning.current` tracks the derived product. An upgrade of the harness never implies an application release.
+
+Intake identifies the product's public compatibility contract and selects SemVer, CalVer, independently versioned components, or no formal product version. SemVer is not selected until an API, CLI, configuration, schema, artifact, or user-visible behavior contract is declared. Agents record a `none`, `patch`, `minor`, or `major` recommendation for each completed loop; humans retain version and release authority.
+
+Profiles select concrete tools behind a portable capability contract: one authoritative local/CI command, runtime and dependency reproducibility, formatting, linting, type checking, tests, coverage policy, and clean package or build smoke. The Python data profile uses pinned `uv` commands with Ruff, Pyright, pytest, pytest-cov, and Hypothesis. It requires a branch-coverage baseline before release; projects ratchet that measured baseline rather than inheriting an unearned threshold. See `docs/project/engineering-baseline.md` and [ADR-0005](docs/adr/0005-product-version-and-engineering-baseline.md).
 
 ## Core commands
 
 ```bash
 make check                 # Harness structure and contract validation
 make test                  # Deterministic unit tests
-make smoke                 # Check plus tests
+make actions-supply-chain  # Immutable Actions and least-privilege workflow check
+make smoke                 # Contracts, Actions, compilation, tests, and selected-profile checks
 python3 tools/github_planning.py audit --offline
 python3 tools/github_planning.py bootstrap-project       # Dry run
 python3 tools/github_planning.py bootstrap-project --yes # Explicit create/copy
@@ -94,6 +106,8 @@ python3 tools/github_planning.py audit
 python3 tools/github_planning.py apply       # Dry run
 python3 tools/github_planning.py apply --yes # Explicit live mutation
 python3 tools/harness_upgrade.py status
+python3 tools/product_version.py           # Product source/contract drift
+python3 tools/product_version.py --tag v1.2.3
 python3 tools/evaluate_harness.py
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
 ```
@@ -179,6 +193,9 @@ Implemented now:
 - Local and live GitHub drift audit, Project create/copy, repository linking, missing-field creation, and non-destructive label/milestone reconciliation.
 - Historical defect challenge manifests and harness validation scenarios.
 - Provenance locks, ownership-aware three-way upgrade plans, explicit apply, receipts, rollback, and an optional manually dispatched upgrade-PR workflow.
+- Independent product-version contracts and current-revision release-impact evidence.
+- Profile-driven engineering capability contracts with concrete Python defaults.
+- Dependabot, dependency review, CodeQL, secret-control expectations, least-privilege permissions, and immutable Action enforcement.
 
 Deliberately deferred:
 
@@ -201,7 +218,7 @@ Project-wide working agreements may be committed in `docs/project/working-agreem
 
 ## Profiles and adoption
 
-The template ships with `generic`, `python-data`, `web-service`, and `agent-system` profiles. Profiles supply defaults; the intake record captures every override and its status as `confirmed`, `provisional`, `assumed`, `TBD`, or `not-applicable`.
+The template ships with `generic`, `python-data`, `web-service`, and `agent-system` profiles. Profiles supply capability and tool defaults; the intake record captures every override and its status as `confirmed`, `provisional`, `assumed`, `TBD`, or `not-applicable`. A successful no-op is not a valid substitute for an unresolved check.
 
 Dogfood a new profile on one repository before making it a template default. A useful progression is:
 

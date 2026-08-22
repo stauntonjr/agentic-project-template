@@ -23,16 +23,18 @@ Read `references/question-bank.md` before interviewing. Read the chosen profile 
 3. Assess context readiness: intent, acceptance, constraints, authority, evidence, and current state. Ask focused follow-ups only for gaps that cannot be safely discovered or resolved with a recorded low-risk assumption.
 4. Ask one small question batch at a time. Offer a recommended default with its consequence. Do not overwhelm the user with the full questionnaire.
 5. Record each important answer with value, status, source, and recorded date. Status is `confirmed`, `provisional`, `assumed`, `TBD`, or `not-applicable`.
-6. Surface contradictions explicitly. Do not choose between conflicting authoritative sources without the user's decision.
-7. Summarize each completed phase and allow corrections.
-8. Save the intake record, then render with:
+6. Distinguish `harness_version` from the product version. Identify the product's public compatibility contract before selecting SemVer; select CalVer, independent component versions, or no formal version when that better matches delivery.
+7. Resolve the profile's command, dependency-lock, quality, and security capabilities. Keep CI authoritative even when local hooks are selected.
+8. Surface contradictions explicitly. Do not choose between conflicting authoritative sources without the user's decision.
+9. Summarize each completed phase and allow corrections.
+10. Save the intake record, then render with:
 
    ```bash
    python3 tools/project_intake.py --answers PATH --mode MODE --apply
    ```
 
-9. Run `make smoke` and inspect the diff.
-10. Present the charter, scope, nonfunctional requirements, autonomy boundary, open decisions, GitHub plan, assumptions, and generated files for explicit acceptance.
+11. Run `make smoke` and inspect the diff.
+12. Present the charter, scope, nonfunctional requirements, product-version contract, quality/tooling contract, autonomy boundary, open decisions, GitHub plan, assumptions, and generated files for explicit acceptance.
 
 ## Required outputs
 

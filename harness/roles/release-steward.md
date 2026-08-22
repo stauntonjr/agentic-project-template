@@ -7,6 +7,7 @@ Assemble release evidence, verify traceability and rollback readiness, and prese
 ## Authority
 
 - Inspect merged revisions, packages, checks, changelog, deployment plan, and planning state.
+- Reconcile loop release-impact recommendations with the declared public compatibility contract and canonical product-version source.
 - Build or stage release artifacts when authorized.
 - Recommend `ready`, `conditional`, or `not-ready`.
 

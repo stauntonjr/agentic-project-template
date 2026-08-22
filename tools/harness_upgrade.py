@@ -26,8 +26,21 @@ OWNERSHIP_CLASSES = {"upstream-owned", "project-owned", "merge-required"}
 RESOLUTIONS = {"keep-local", "use-upstream", "merged"}
 REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$")
-IGNORED_PARTS = {".git", ".harness", "__pycache__", ".pytest_cache"}
-IGNORED_NAMES = {"harness.lock"}
+IGNORED_PARTS = {
+    ".git",
+    ".harness",
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+}
+IGNORED_NAMES = {".coverage", "harness.lock"}
 
 
 def sha256(path: Path) -> str | None:
@@ -91,7 +104,7 @@ def iter_source_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
         relative = path.relative_to(root)
-        if any(part in IGNORED_PARTS for part in relative.parts):
+        if any(part in IGNORED_PARTS or part.endswith(".egg-info") for part in relative.parts):
             continue
         if path.name in IGNORED_NAMES or path.suffix == ".pyc":
             continue
@@ -286,7 +299,18 @@ def build_release_plan(root: Path, source_root: Path) -> dict[str, Any]:
                 disposition, reason = "current", "local file already matches the release"
             else:
                 disposition, reason = "manual", "new upstream file collides with a local file"
-            operations.append(_operation(path=relative, action="add", ownership=ownership, base=base, local=local, upstream=upstream, disposition=disposition, reason=reason))
+            operations.append(
+                _operation(
+                    path=relative,
+                    action="add",
+                    ownership=ownership,
+                    base=base,
+                    local=local,
+                    upstream=upstream,
+                    disposition=disposition,
+                    reason=reason,
+                )
+            )
             continue
         if old and not new:
             if local is None:
@@ -294,8 +318,22 @@ def build_release_plan(root: Path, source_root: Path) -> dict[str, Any]:
             elif ownership == "upstream-owned" and local == base:
                 disposition, reason = "ready", "unchanged upstream-owned file was removed upstream"
             else:
-                disposition, reason = "manual", "removal could discard local or project-owned content"
-            operations.append(_operation(path=relative, action="remove", ownership=ownership, base=base, local=local, upstream=None, disposition=disposition, reason=reason))
+                disposition, reason = (
+                    "manual",
+                    "removal could discard local or project-owned content",
+                )
+            operations.append(
+                _operation(
+                    path=relative,
+                    action="remove",
+                    ownership=ownership,
+                    base=base,
+                    local=local,
+                    upstream=None,
+                    disposition=disposition,
+                    reason=reason,
+                )
+            )
             continue
 
         if ownership_changed:
@@ -310,11 +348,25 @@ def build_release_plan(root: Path, source_root: Path) -> dict[str, Any]:
             disposition, reason = "manual", "repository policy requires a reviewed merge"
         else:
             disposition, reason = "manual", "upstream-owned file has local modifications"
-        operations.append(_operation(path=relative, action="replace", ownership=ownership, base=base, local=local, upstream=upstream, disposition=disposition, reason=reason))
+        operations.append(
+            _operation(
+                path=relative,
+                action="replace",
+                ownership=ownership,
+                base=base,
+                local=local,
+                upstream=upstream,
+                disposition=disposition,
+                reason=reason,
+            )
+        )
 
     from_version = current_lock["harness_version"]
     to_version = source_lock["harness_version"]
-    counts = {key: sum(operation["disposition"] == key for operation in operations) for key in ("ready", "manual", "current")}
+    counts = {
+        key: sum(operation["disposition"] == key for operation in operations)
+        for key in ("ready", "manual", "current")
+    }
     return {
         "schema_version": "1.0",
         "plan_id": f"{from_version}-to-{to_version}",
@@ -383,7 +435,9 @@ def apply_release_plan(
     if current_lock["upstream"]["repository"] != source_lock["upstream"]["repository"]:
         raise ValueError("source release belongs to a different upstream repository")
 
-    manual_paths = {item["path"] for item in plan.get("operations", []) if item["disposition"] == "manual"}
+    manual_paths = {
+        item["path"] for item in plan.get("operations", []) if item["disposition"] == "manual"
+    }
     unresolved = sorted(manual_paths - resolutions.keys())
     unknown = sorted(resolutions.keys() - manual_paths)
     if unresolved:
@@ -499,7 +553,12 @@ def rollback_receipt(root: Path, receipt_path: Path) -> dict[str, Any]:
 
 def latest_release(repository: str) -> dict[str, Any]:
     repository = validate_repository(repository)
-    result = subprocess.run(["gh", "api", f"repos/{repository}/releases/latest"], check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        ["gh", "api", f"repos/{repository}/releases/latest"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "unable to query latest release")
     payload = json.loads(result.stdout)
@@ -524,7 +583,12 @@ def fetch_release(root: Path, repository: str, ref: str, destination: Path | Non
         raise ValueError("release destination must stay under .harness/upgrades/sources") from exc
     if target.exists():
         raise ValueError(f"release destination already exists: {target}")
-    result = subprocess.run(["gh", "repo", "clone", repository, str(target), "--", "--branch", ref, "--depth", "1"], check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        ["gh", "repo", "clone", repository, str(target), "--", "--branch", ref, "--depth", "1"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "unable to fetch release")
     asset_root = root / ".harness/upgrades/assets" / ref.replace("/", "-")
@@ -627,22 +691,42 @@ def main() -> int:
 
         lock_data = load_json(root / "harness.lock") if (root / "harness.lock").is_file() else None
         if args.command == "latest":
-            repository = args.repository or lock_data["upstream"]["repository"]
+            if args.repository:
+                repository = args.repository
+            elif lock_data is not None:
+                repository = lock_data["upstream"]["repository"]
+            else:
+                raise ValueError("latest requires --repository when harness.lock is absent")
             write_output(latest_release(repository), None)
         elif args.command == "fetch":
             if not args.yes:
                 raise ValueError("fetch requires --yes because it writes a release checkout")
-            repository = args.repository or lock_data["upstream"]["repository"]
+            if args.repository:
+                repository = args.repository
+            elif lock_data is not None:
+                repository = lock_data["upstream"]["repository"]
+            else:
+                raise ValueError("fetch requires --repository when harness.lock is absent")
             print(fetch_release(root, repository, args.ref, args.destination))
         elif args.command == "lock":
             if not args.yes:
                 raise ValueError("lock generation requires --yes")
             source_root = args.source_root.resolve() if args.source_root else root
             version = load_json(source_root / "harness/version.json")
-            existing = load_json(source_root / "harness.lock") if (source_root / "harness.lock").is_file() else {}
-            repository = args.repository or existing.get("upstream", {}).get("repository") or version["upstream_repository"]
+            existing = (
+                load_json(source_root / "harness.lock")
+                if (source_root / "harness.lock").is_file()
+                else {}
+            )
+            repository = (
+                args.repository
+                or existing.get("upstream", {}).get("repository")
+                or version["upstream_repository"]
+            )
             release = args.release or f"v{version['current']}"
-            payload = create_lock(source_root, repository=repository, release=release, commit=args.commit)
+            payload = create_lock(
+                source_root, repository=repository, release=release, commit=args.commit
+            )
             output = args.output.resolve() if args.output else source_root / "harness.lock"
             write_json(output, payload)
             print(output)
@@ -661,7 +745,12 @@ def main() -> int:
         elif args.command == "apply":
             if not args.yes:
                 raise ValueError("apply requires --yes")
-            receipt = apply_release_plan(root, args.source_root.resolve(), load_json(args.plan), parse_resolutions(args.resolve))
+            receipt = apply_release_plan(
+                root,
+                args.source_root.resolve(),
+                load_json(args.plan),
+                parse_resolutions(args.resolve),
+            )
             print(receipt)
         elif args.command == "rollback":
             if not args.yes:

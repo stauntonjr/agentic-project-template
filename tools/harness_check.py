@@ -13,17 +13,31 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from .check_actions_supply_chain import check_workflows
     from .common import load_json, repository_root
-    from .harness_upgrade import sha256, validate_lock, validate_ownership_policy
+    from .harness_upgrade import safe_path, sha256, validate_lock, validate_ownership_policy
+    from .product_version import product_version_status
+    from .run_quality import command_argv
 except ImportError:  # Direct script execution.
+    from check_actions_supply_chain import check_workflows
     from common import load_json, repository_root
-    from harness_upgrade import sha256, validate_lock, validate_ownership_policy
+    from harness_upgrade import safe_path, sha256, validate_lock, validate_ownership_policy
+    from product_version import product_version_status
+    from run_quality import command_argv
 
 
 REQUIRED_PATHS = (
+    ".editorconfig",
+    ".gitattributes",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "AGENTS.md",
     "README.md",
     "SECURITY.md",
+    "tools/check_actions_supply_chain.py",
+    "tools/product_version.py",
+    "tools/python_package_smoke.py",
+    "tools/run_quality.py",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",
@@ -44,14 +58,35 @@ REQUIRED_PATHS = (
     "harness/ownership.json",
     "harness.lock",
     ".github/planning.json",
+    ".github/dependabot.yml",
+    ".github/actions-allowlist.json",
+    ".github/workflows/codeql.yml",
+    ".github/workflows/dependency-review.yml",
     ".pi/settings.json",
     "docs/project/charter.md",
+    "docs/project/engineering-baseline.md",
     "docs/project/handoff.md",
 )
 ROLE_IDS = {"orchestrator", "explorer", "implementer", "verifier", "release-steward"}
 ROLE_FILES = ROLE_IDS | {"human-owner"}
 TERMINAL_STATES = {"reported", "blocked", "abandoned"}
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SEMVER = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+COMMAND_KEYS = {
+    "primary_check",
+    "bootstrap",
+    "format_check",
+    "lint",
+    "typecheck",
+    "unit",
+    "integration",
+    "package_smoke",
+}
+QUALITY_CHECKS = COMMAND_KEYS - {"primary_check", "bootstrap"}
 
 
 @dataclass
@@ -112,8 +147,65 @@ def validate_project(root: Path, result: Result) -> dict[str, Any]:
     )
     profile = project_data.get("profile")
     result.require(
-        isinstance(profile, str) and (root / "harness/profiles" / f"{profile}.json").is_file(),
+        isinstance(profile, str)
+        and bool(SKILL_NAME.fullmatch(profile))
+        and (root / "harness/profiles" / f"{profile}.json").is_file(),
         f"selected profile does not exist: {profile}",
+    )
+    engineering = project.get("engineering", {})
+    commands = engineering.get("command_contract", {})
+    result.require(
+        set(commands) == COMMAND_KEYS,
+        "engineering.command_contract must define the complete portable command set",
+    )
+    quality = engineering.get("quality", {})
+    for key in ("dependency_lock", "coverage_policy", "required_checks", "property_testing"):
+        result.require(key in quality, f"engineering.quality missing {key}")
+    required_checks = quality.get("required_checks", [])
+    result.require(
+        isinstance(required_checks, list) and bool(required_checks),
+        "engineering.quality.required_checks must be a non-empty list",
+    )
+    if isinstance(required_checks, list):
+        unknown_checks = sorted(set(required_checks) - QUALITY_CHECKS)
+        result.require(
+            not unknown_checks,
+            "engineering.quality.required_checks contains unknown capabilities: "
+            + ", ".join(unknown_checks),
+        )
+    versioning = engineering.get("versioning", {})
+    for key in (
+        "strategy",
+        "current",
+        "public_contract",
+        "source",
+        "tag_prefix",
+        "pre_1_0_policy",
+        "release_notes",
+    ):
+        result.require(key in versioning, f"engineering.versioning missing {key}")
+    strategy = versioning.get("strategy")
+    result.require(
+        strategy in {"TBD", "semver", "calver", "independent", "none"},
+        f"unsupported product versioning strategy: {strategy}",
+    )
+    if strategy == "semver":
+        result.require(
+            bool(SEMVER.fullmatch(str(versioning.get("current", "")))),
+            "SemVer product current version is invalid",
+        )
+        result.require(
+            bool(versioning.get("public_contract")),
+            "SemVer requires a declared public compatibility contract",
+        )
+    security = project.get("github", {}).get("security", {})
+    result.require(
+        security.get("action_pinning") == "full-commit-sha",
+        "GitHub Action policy must require full commit SHAs",
+    )
+    result.require(
+        security.get("workflow_permissions") == "least-privilege",
+        "GitHub workflow policy must require least privilege",
     )
     if not project.get("template_mode", False):
         unresolved = json.dumps(project_data)
@@ -127,8 +219,92 @@ def validate_project(root: Path, result: Result) -> dict[str, Any]:
             ("intent.users", project.get("intent", {}).get("users")),
             ("intent.outcomes", project.get("intent", {}).get("outcomes")),
             ("intent.success_metrics", project.get("intent", {}).get("success_metrics")),
+            ("constraints.licenses", project.get("constraints", {}).get("licenses")),
         ):
-            result.require(value not in (None, "", "TBD", []), f"unresolved essential field: {dotted_key}")
+            result.require(
+                value not in (None, "", "TBD", []),
+                f"unresolved essential field: {dotted_key}",
+            )
+        for capability in sorted(COMMAND_KEYS):
+            command = commands.get(capability)
+            result.require(
+                isinstance(command, str) and bool(command.strip()) and command != "TBD",
+                f"unresolved command capability: {capability}",
+            )
+            if isinstance(command, str) and command.startswith("not-applicable:"):
+                result.require(
+                    bool(command.partition(":")[2].strip()),
+                    f"not-applicable command capability requires a reason: {capability}",
+                )
+            elif isinstance(command, str) and command not in {"", "TBD"}:
+                try:
+                    command_argv(command, capability)
+                except ValueError as exc:
+                    result.errors.append(str(exc))
+            if capability in required_checks and isinstance(command, str):
+                result.require(
+                    not command.startswith("not-applicable:"),
+                    f"required command capability is not applicable: {capability}",
+                )
+        dependency_lock = quality.get("dependency_lock")
+        result.require(
+            isinstance(dependency_lock, str)
+            and dependency_lock not in {"", "TBD", "required-if-dependencies"},
+            "instantiated projects must resolve a dependency lockfile or explicit exception",
+        )
+        if isinstance(dependency_lock, str) and dependency_lock.startswith("not-applicable:"):
+            result.require(
+                bool(dependency_lock.partition(":")[2].strip()),
+                "not-applicable dependency lock requires a reason",
+            )
+        elif isinstance(dependency_lock, str) and dependency_lock not in {
+            "",
+            "TBD",
+            "required-if-dependencies",
+        }:
+            try:
+                lock_path = safe_path(root, dependency_lock)
+            except ValueError as exc:
+                result.errors.append(f"dependency lockfile: {exc}")
+            else:
+                result.require(
+                    lock_path.is_file(),
+                    f"configured dependency lockfile does not exist: {dependency_lock}",
+                )
+        coverage_policy = quality.get("coverage_policy")
+        result.require(
+            coverage_policy not in (None, "", "TBD"),
+            "instantiated projects must resolve a coverage policy",
+        )
+        if isinstance(coverage_policy, str) and coverage_policy.startswith("not-applicable:"):
+            result.require(
+                bool(coverage_policy.partition(":")[2].strip()),
+                "not-applicable coverage policy requires a reason",
+            )
+        for dotted_key, value in (
+            ("engineering.command_contract.primary_check", commands.get("primary_check")),
+            ("engineering.versioning.strategy", strategy),
+        ):
+            result.require(
+                value not in (None, "", "TBD", []),
+                f"unresolved essential field: {dotted_key}",
+            )
+        if strategy != "none":
+            for dotted_key, value in (
+                ("engineering.versioning.current", versioning.get("current")),
+                ("engineering.versioning.public_contract", versioning.get("public_contract")),
+                ("engineering.versioning.source", versioning.get("source")),
+            ):
+                result.require(
+                    value not in (None, "", "TBD", []),
+                    f"unresolved essential field: {dotted_key}",
+                )
+        try:
+            version_status = product_version_status(root)
+            for error in version_status.get("errors", []):
+                result.errors.append(error)
+        except (OSError, ValueError) as exc:
+            result.errors.append(str(exc))
     return project
 
 
@@ -234,7 +410,14 @@ def validate_provider_adapters(root: Path, result: Result) -> None:
             adapter.get("status") in {"supported", "experimental", "planned"},
             f"{path.name}: invalid status",
         )
-        for key in ("display_name", "entrypoints", "mappings", "capabilities", "limitations", "security_notes"):
+        for key in (
+            "display_name",
+            "entrypoints",
+            "mappings",
+            "capabilities",
+            "limitations",
+            "security_notes",
+        ):
             result.require(key in adapter, f"{path.name}: missing {key}")
         for entrypoint in adapter.get("entrypoints", []):
             result.require(
@@ -276,9 +459,18 @@ def validate_pi_adapter(root: Path, result: Result) -> None:
         settings.get("sessionDir") == "../.harness/pi/sessions",
         "Pi sessions must stay under ignored .harness state",
     )
-    result.require(not settings.get("packages"), "Pi adapter must not auto-install third-party packages")
-    for personal_key in ("defaultProvider", "defaultModel", "defaultThinkingLevel", "enabledModels"):
-        result.require(personal_key not in settings, f"Pi project settings must not set {personal_key}")
+    result.require(
+        not settings.get("packages"), "Pi adapter must not auto-install third-party packages"
+    )
+    for personal_key in (
+        "defaultProvider",
+        "defaultModel",
+        "defaultThinkingLevel",
+        "enabledModels",
+    ):
+        result.require(
+            personal_key not in settings, f"Pi project settings must not set {personal_key}"
+        )
     gitignore = (root / ".gitignore").read_text(encoding="utf-8").splitlines()
     result.require(".harness/pi/" in gitignore, "Pi runtime session state must be ignored")
 
@@ -287,13 +479,15 @@ def validate_pi_adapter(root: Path, result: Result) -> None:
     if extension.is_file():
         source = extension.read_text(encoding="utf-8")
         for marker in (
-            '@earendil-works/pi-coding-agent',
+            "@earendil-works/pi-coding-agent",
             'pi.registerCommand("harness-adapter"',
             'name: "harness_questionnaire"',
-            'maxItems: 3',
-            'if (!ctx.hasUI)',
+            "maxItems: 3",
+            "if (!ctx.hasUI)",
         ):
-            result.require(marker in source, f"Pi context-readiness extension missing marker: {marker}")
+            result.require(
+                marker in source, f"Pi context-readiness extension missing marker: {marker}"
+            )
 
     expected_prompts = {
         "harness-intake.md": "project-intake",
@@ -362,6 +556,27 @@ def validate_json_assets(root: Path, result: Result) -> None:
     result.checked.append("JSON assets")
 
 
+def validate_engineering_tooling(root: Path, result: Result) -> None:
+    for path in sorted((root / "harness/profiles").glob("*.json")):
+        profile = load_json(path)
+        result.require(profile.get("id") == path.stem, f"{path.name}: profile id mismatch")
+        result.require(
+            bool(profile.get("recommended_checks")), f"{path.name}: no recommended checks"
+        )
+        result.require(
+            bool(profile.get("tooling") or profile.get("tooling_capabilities")),
+            f"{path.name}: no tooling contract",
+        )
+    dependabot = (root / ".github/dependabot.yml").read_text(encoding="utf-8")
+    result.require(
+        'package-ecosystem: "github-actions"' in dependabot,
+        "Dependabot must update GitHub Actions",
+    )
+    for error in check_workflows(root):
+        result.errors.append(error)
+    result.checked.append("engineering and GitHub tooling")
+
+
 def check(root: Path) -> Result:
     result = Result()
     for relative in REQUIRED_PATHS:
@@ -376,11 +591,9 @@ def check(root: Path) -> Result:
         validate_pi_adapter(root, result)
         validate_planning(root, result)
         validate_json_assets(root, result)
+        validate_engineering_tooling(root, result)
     except (ValueError, OSError) as exc:
         result.errors.append(str(exc))
-    workflow = root / ".github/workflows/harness.yml"
-    if workflow.is_file() and re.search(r"uses:\s+[^@\s]+@v\d+\s*$", workflow.read_text(), re.M):
-        result.warnings.append("GitHub Actions use mutable major tags; pin reviewed SHAs before production")
     return result
 
 

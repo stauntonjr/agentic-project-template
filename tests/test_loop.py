@@ -10,6 +10,7 @@ from tools.loop import (
     make_write_set,
     parse_criteria,
     record_check,
+    record_release_impact,
     record_verdict,
     revise_run,
     start_run,
@@ -28,7 +29,9 @@ def init_repository(root: Path, *, commit: bool = True) -> Path:
     tracked.write_text("before\n", encoding="utf-8")
     if commit:
         subprocess.run(["git", "add", "--", "artifact.txt"], cwd=root, check=True)
-        subprocess.run(["git", "commit", "-m", "baseline"], cwd=root, check=True, stdout=subprocess.PIPE)
+        subprocess.run(
+            ["git", "commit", "-m", "baseline"], cwd=root, check=True, stdout=subprocess.PIPE
+        )
     return tracked
 
 
@@ -63,7 +66,9 @@ def init_repository_with_submodule(base: Path) -> tuple[Path, Path]:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    subprocess.run(["git", "commit", "-am", "add child"], cwd=root, check=True, stdout=subprocess.PIPE)
+    subprocess.run(
+        ["git", "commit", "-am", "add child"], cwd=root, check=True, stdout=subprocess.PIPE
+    )
     return root, root / "deps/child/artifact.txt"
 
 
@@ -80,7 +85,7 @@ def start_test_run(
     write_paths: tuple[str, ...] = ("artifact.txt",),
     implementers: tuple[str, ...] = ("implementer-1",),
 ):
-    return start_run(
+    record = start_run(
         root,
         "Change the artifact",
         "123",
@@ -89,6 +94,13 @@ def start_test_run(
         declared_write_set=make_write_set(write_paths, []),
         implementers=list(implementers),
     )
+    record_release_impact(
+        root,
+        run_id,
+        level="none",
+        reason="Test fixture does not publish a product",
+    )
+    return record
 
 
 def approve_current(root: Path, run_id: str = "test-run") -> None:
@@ -128,6 +140,8 @@ class LoopTests(unittest.TestCase):
             self.assertIn("artifact.txt", report)
             self.assertIn("targeted unit boundary", report)
             self.assertIn("approve by verifier-1", report)
+            self.assertIn("Recommended product release impact: none", report)
+            self.assertEqual("none", evidence["release_impact"]["level"])
             self.assertEqual([], evidence["boundary"]["scope"]["violations"])
             self.assertEqual("reported", finished["state"])
 
@@ -192,7 +206,9 @@ class LoopTests(unittest.TestCase):
     def test_unborn_report_uses_baseline_relative_scope(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            subprocess.run(["git", "init", "-b", "main"], cwd=root, check=True, stdout=subprocess.PIPE)
+            subprocess.run(
+                ["git", "init", "-b", "main"], cwd=root, check=True, stdout=subprocess.PIPE
+            )
             record = start_run(
                 root,
                 "Create the initial project",
@@ -211,6 +227,13 @@ class LoopTests(unittest.TestCase):
                 status="passed",
                 evidence="new.txt exists",
                 criteria=["AC1"],
+            )
+            record_release_impact(
+                root,
+                record["run_id"],
+                level="minor",
+                reason="The initial public file is a new pre-1.0 capability",
+                public_contract_changes=["new.txt"],
             )
             record_verdict(
                 root,
@@ -239,6 +262,23 @@ class LoopTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "verifier verdict is stale"):
                 finish_run(root, "test-run", "reported")
 
+    def test_release_impact_change_invalidates_verdict(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            approve_current(root)
+            record_release_impact(
+                root,
+                "test-run",
+                level="patch",
+                reason="Changed after independent review",
+                public_contract_changes=["artifact behavior"],
+            )
+
+            with self.assertRaisesRegex(ValueError, "verifier verdict is stale"):
+                finish_run(root, "test-run", "reported")
+
     def test_staged_index_change_invalidates_verdict_when_status_and_worktree_match(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -249,14 +289,22 @@ class LoopTests(unittest.TestCase):
             tracked.write_text("WORKTREE\n", encoding="utf-8")
             approve_current(root)
             status_before = subprocess.run(
-                ["git", "status", "--short"], cwd=root, check=True, text=True, stdout=subprocess.PIPE
+                ["git", "status", "--short"],
+                cwd=root,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
             ).stdout
 
             tracked.write_text("INDEX-C\n", encoding="utf-8")
             subprocess.run(["git", "add", "--", "artifact.txt"], cwd=root, check=True)
             tracked.write_text("WORKTREE\n", encoding="utf-8")
             status_after = subprocess.run(
-                ["git", "status", "--short"], cwd=root, check=True, text=True, stdout=subprocess.PIPE
+                ["git", "status", "--short"],
+                cwd=root,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
             ).stdout
 
             self.assertEqual(status_before, status_after)
@@ -290,7 +338,9 @@ class LoopTests(unittest.TestCase):
                     stdout=subprocess.PIPE,
                 ).stdout
                 self.assertNotIn("hidden.txt", ordinary_status)
-                with self.assertRaisesRegex(ValueError, "writes outside declared scope: hidden.txt"):
+                with self.assertRaisesRegex(
+                    ValueError, "writes outside declared scope: hidden.txt"
+                ):
                     finish_run(root, "test-run", "reported")
 
     def test_assume_unchanged_content_change_invalidates_verdict(self) -> None:
@@ -412,9 +462,7 @@ class LoopTests(unittest.TestCase):
             nested_file.write_text("changed during run\n", encoding="utf-8")
             approve_current(root)
 
-            with self.assertRaisesRegex(
-                ValueError, "writes outside declared scope: vendor/nested"
-            ):
+            with self.assertRaisesRegex(ValueError, "writes outside declared scope: vendor/nested"):
                 finish_run(root, "test-run", "reported")
 
     def test_submodule_ignore_all_cannot_hide_scope_escape(self) -> None:
@@ -526,7 +574,9 @@ class LoopTests(unittest.TestCase):
             init_repository(root)
             start_test_run(root)
 
-            with self.assertRaisesRegex(ValueError, "lacks passed check evidence for criteria: AC1"):
+            with self.assertRaisesRegex(
+                ValueError, "lacks passed check evidence for criteria: AC1"
+            ):
                 record_verdict(
                     root,
                     "test-run",
@@ -612,6 +662,39 @@ class LoopTests(unittest.TestCase):
             _, _, finished = finish_run(root, "test-run", "reported")
             self.assertEqual("reported", finished["state"])
 
+    def test_reported_completion_requires_current_release_impact(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_run(
+                root,
+                "Change the artifact",
+                "123",
+                "impact-run",
+                acceptance_criteria=parse_criteria(["AC1=Artifact is accepted"]),
+                declared_write_set=make_write_set(["artifact.txt"], []),
+                implementers=["implementer-1"],
+            )
+            record_check(
+                root,
+                "impact-run",
+                name="unit",
+                command="python3 -m unittest",
+                status="passed",
+                evidence="targeted boundary",
+                criteria=["AC1"],
+            )
+            record_verdict(
+                root,
+                "impact-run",
+                reviewer="verifier-1",
+                verdict="approve",
+                criteria=["AC1"],
+                evidence="Reviewed the unchanged fixture",
+            )
+            with self.assertRaisesRegex(ValueError, "product release impact is not assessed"):
+                finish_run(root, "impact-run", "reported")
+
     def test_revision_invalidates_prior_checks_and_verdict(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -636,7 +719,9 @@ class LoopTests(unittest.TestCase):
                 waived_by="human:owner",
                 reason="Waived only for revision one",
             )
-            revise_run(root, "test-run", reason="Objective contract changed", objective="New objective")
+            revise_run(
+                root, "test-run", reason="Objective contract changed", objective="New objective"
+            )
 
             with self.assertRaisesRegex(ValueError, "criteria lack current passed checks: AC1"):
                 finish_run(root, "test-run", "reported")

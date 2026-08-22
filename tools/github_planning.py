@@ -115,10 +115,9 @@ def diff_state(config: dict[str, Any], live: dict[str, Any]) -> dict[str, Any]:
         current = live_labels.get(desired["name"])
         if current is None:
             labels_create.append(desired)
-        elif (
-            current.get("color", "").lower() != desired.get("color", "").lower()
-            or (current.get("description") or "") != (desired.get("description") or "")
-        ):
+        elif current.get("color", "").lower() != desired.get("color", "").lower() or (
+            current.get("description") or ""
+        ) != (desired.get("description") or ""):
             labels_update.append({"desired": desired, "current": current})
 
     milestones_create: list[dict[str, Any]] = []
@@ -188,16 +187,10 @@ def project_bootstrap_plan(config: dict[str, Any]) -> dict[str, Any]:
                 "source_number": bootstrap.get("source_number"),
             }
         )
-    actions.extend(
-        {"action": "ensure-field", **field}
-        for field in config.get("fields", [])
-    )
+    actions.extend({"action": "ensure-field", **field} for field in config.get("fields", []))
     if bootstrap.get("link_repository", True):
         actions.append({"action": "link-repository", "repository": config["repository"]})
-    actions.extend(
-        {"action": "manual-view", **view}
-        for view in project.get("views", [])
-    )
+    actions.extend({"action": "manual-view", **view} for view in project.get("views", []))
     return {"ok": not errors, "errors": errors, "dry_run": True, "actions": actions}
 
 
@@ -229,9 +222,7 @@ def field_mismatches(
                     f"options are {actual_options}, expected {desired.get('options', [])}"
                 )
         if reasons:
-            mismatches.append(
-                {"name": desired["name"], "reasons": reasons, "current": current}
-            )
+            mismatches.append({"name": desired["name"], "reasons": reasons, "current": current})
     return mismatches
 
 
@@ -427,7 +418,9 @@ def main() -> int:
     apply = subparsers.add_parser("apply")
     apply.add_argument("--yes", action="store_true", help="Perform supported live writes")
     bootstrap = subparsers.add_parser("bootstrap-project")
-    bootstrap.add_argument("--yes", action="store_true", help="Create or copy and configure a Project")
+    bootstrap.add_argument(
+        "--yes", action="store_true", help="Create or copy and configure a Project"
+    )
     args = parser.parse_args()
 
     root = args.root.resolve() if args.root else repository_root(Path(__file__).parent)

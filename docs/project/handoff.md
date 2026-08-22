@@ -29,12 +29,16 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Provenance-locked, ownership-aware three-way upgrade plans with explicit apply resolutions, receipts, and rollback.
 - Eight isolated forward-test scenarios covering routing, context gaps, evidence, and safety behavior.
 - CI for the harness itself.
+- Separate harness and product version contracts with current-revision release-impact reporting.
+- Profile-driven quality capabilities, concrete Python defaults, repository hygiene files, and a shared local/CI command boundary.
+- Dependabot, dependency review, CodeQL, least-privilege workflows, and deterministic full-SHA Action validation.
 
 ## Open decisions
 
 - Which repository should be the first live dogfood target.
 - Whether GitHub Project creation should copy a canonical user Project or render fields from desired state.
 - Which live repository should dogfood the Pi adapter's intake-to-report path.
+- Which live GitHub security settings should be reconciled automatically after the first dogfood audit.
 
 ## Refresh protocol
 

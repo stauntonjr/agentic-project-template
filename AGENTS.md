@@ -86,11 +86,12 @@ Before handoff:
 
 ```bash
 make smoke
+python3 tools/product_version.py
 git diff --check
 git status --short
 ```
 
-Record exact commands and outcomes in the loop run. Report verified, inferred, and reported claims separately. State incomplete verification and unresolved risks plainly.
+Record exact commands and outcomes in the loop run. Before independent approval, record the product release impact as `none`, `patch`, `minor`, or `major` against the public compatibility contract; this is a recommendation, not release authority. Report verified, inferred, and reported claims separately. State incomplete verification and unresolved risks plainly.
 
 ## Learning boundary
 

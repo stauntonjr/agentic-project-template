@@ -48,7 +48,11 @@ def validate_challenge(data: dict[str, Any], path: Path) -> list[str]:
         errors.append(f"{path.name}: filename must match challenge id")
     for command_key in ("oracle", "known_bad"):
         argv = data.get(command_key, {}).get("argv")
-        if not isinstance(argv, list) or not argv or not all(isinstance(item, str) for item in argv):
+        if (
+            not isinstance(argv, list)
+            or not argv
+            or not all(isinstance(item, str) for item in argv)
+        ):
             errors.append(f"{path.name}: {command_key}.argv must be a non-empty string list")
     return errors
 
@@ -74,9 +78,8 @@ def replay(root: Path, challenge: dict[str, Any]) -> dict[str, Any]:
     signature = expected.get("signature", "")
     oracle_ok = oracle.returncode == challenge["oracle"].get("success_exit_code", 0)
     known_bad_output = known_bad.stdout + known_bad.stderr
-    known_bad_ok = (
-        known_bad.returncode == expected.get("exit_code", 1)
-        and (not signature or signature in known_bad_output)
+    known_bad_ok = known_bad.returncode == expected.get("exit_code", 1) and (
+        not signature or signature in known_bad_output
     )
     return {
         "id": challenge["id"],
@@ -107,13 +110,21 @@ def main() -> int:
         print(json.dumps({"ok": False, "errors": errors}, indent=2))
         return 1
     if not args.run:
-        print(json.dumps({"ok": True, "validated": [data["id"] for _, data in challenges]}, indent=2))
+        print(
+            json.dumps({"ok": True, "validated": [data["id"] for _, data in challenges]}, indent=2)
+        )
         return 0
     results = [replay(root, data) for _, data in challenges]
-    payload = {"recorded_at": utc_now(), "results": results, "ok": all(item["ok"] for item in results)}
+    payload = {
+        "recorded_at": utc_now(),
+        "results": results,
+        "ok": all(item["ok"] for item in results),
+    }
     output = root / ".harness/challenge-results" / f"{payload['recorded_at'].replace(':', '')}.json"
     write_json(output, payload)
-    print(json.dumps({"ok": payload["ok"], "artifact": str(output), "count": len(results)}, indent=2))
+    print(
+        json.dumps({"ok": payload["ok"], "artifact": str(output), "count": len(results)}, indent=2)
+    )
     return 0 if payload["ok"] else 1
 
 

@@ -8,6 +8,8 @@
 - Keep GitHub Issues as canonical work objects and Projects as operational views.
 - Record material architecture decisions in ADRs.
 - Separate verified facts, reported claims, and inference.
+- Run the same authoritative check locally and in CI; never satisfy an unresolved check with a successful no-op.
+- Keep harness and product versions independent and record product release impact before independent approval.
 - Never treat conversation history as durable project state.
 
 ## Preference scopes

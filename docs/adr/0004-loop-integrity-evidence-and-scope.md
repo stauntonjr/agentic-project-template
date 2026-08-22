@@ -25,6 +25,8 @@ Every new engineering-loop run must:
 
 Blocked and abandoned runs remain reportable without satisfying the completion gate so incomplete work is preserved truthfully. Requirement or scope changes increment the run revision and invalidate prior waivers; implementation retries increment the attempt identity. Existing check and verdict records remain in history but cannot satisfy the new revision or attempt. A criterion waiver must record a `human:IDENTITY` authority label and reason; this is auditable provenance rather than authentication.
 
+Schema 1.2 also requires a current product release-impact assessment. The verifier candidate identity binds its digest so changing `none`, `patch`, `minor`, `major`, rationale, or declared public-contract changes after approval makes that approval stale.
+
 This decision does not yet add an append-only transition journal, deterministic cross-session resume, retry-class taxonomy, failure memos, runtime watchdogs, or open-ended metric loops.
 
 ## Consequences

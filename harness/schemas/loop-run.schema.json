@@ -17,10 +17,11 @@
     "start_commit",
     "state",
     "checks",
-    "verdicts"
+    "verdicts",
+    "release_impact"
   ],
   "properties": {
-    "schema_version": {"const": "1.1"},
+    "schema_version": {"const": "1.2"},
     "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
     "revision": {"type": "integer", "minimum": 1},
     "attempt_id": {"type": "integer", "minimum": 1},
@@ -68,6 +69,12 @@
     },
     "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
     "verdicts": {"type": "array", "items": {"$ref": "#/$defs/verdict"}},
+    "release_impact": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/releaseImpact"}
+      ]
+    },
     "agent_handoffs": {"type": "array"},
     "decisions": {"type": "array"},
     "risks": {"type": "array"}
@@ -155,12 +162,32 @@
         "decision": {"enum": ["approve", "revise", "reject"]},
         "candidate": {
           "type": "object",
-          "required": ["commit", "tree_digest"],
+          "required": ["commit", "tree_digest", "release_impact_digest"],
           "properties": {
             "commit": {"type": "string"},
-            "tree_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+            "tree_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "release_impact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
           }
         }
+      }
+    },
+    "releaseImpact": {
+      "type": "object",
+      "required": [
+        "revision",
+        "attempt_id",
+        "level",
+        "reason",
+        "public_contract_changes",
+        "recorded_at"
+      ],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "attempt_id": {"type": "integer", "minimum": 1},
+        "level": {"enum": ["none", "patch", "minor", "major"]},
+        "reason": {"type": "string", "minLength": 1},
+        "public_contract_changes": {"type": "array", "items": {"type": "string"}},
+        "recorded_at": {"type": "string"}
       }
     }
   }

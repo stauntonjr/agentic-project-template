@@ -18,6 +18,8 @@ What changed, for whom, and why?
 - ADR impact:
 - Schema/API/data/migration impact:
 - Compatibility:
+- Product release impact (`none`, `patch`, `minor`, or `major`) and rationale:
+- Public-contract changes:
 
 ## Evidence
 

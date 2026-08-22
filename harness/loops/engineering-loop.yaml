@@ -48,7 +48,7 @@
       "id": "implement",
       "owner": "implementer",
       "requires": ["bounded issue", "owned branch and worktree"],
-      "produces": ["focused change", "implementation notes"],
+      "produces": ["focused change", "implementation notes", "product release-impact recommendation"],
       "gate": "task-owned changes are ready for verification",
       "next": ["verify", "blocked"]
     },
@@ -79,7 +79,7 @@
     {
       "id": "report",
       "owner": "orchestrator",
-      "requires": ["loop boundary", "check evidence", "repository state"],
+      "requires": ["loop boundary", "check evidence", "repository state", "current product release-impact assessment"],
       "produces": ["executive report", "handoff updates"],
       "gate": "claims are labeled verified, reported, or inferred",
       "next": ["learn", "reported"]

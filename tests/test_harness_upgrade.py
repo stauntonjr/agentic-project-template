@@ -61,7 +61,9 @@ def make_release(root: Path, version: str, payload: str, policy_text: str) -> No
 
 class HarnessUpgradeTests(unittest.TestCase):
     def test_migration_plan_is_non_mutating_and_marks_manual_review(self) -> None:
-        current = json.loads((ROOT / "harness/project.yaml").read_text(encoding="utf-8"))["harness_version"]
+        current = json.loads((ROOT / "harness/project.yaml").read_text(encoding="utf-8"))[
+            "harness_version"
+        ]
         manifest = {
             "schema_version": "1.0",
             "from_version": current,
@@ -105,6 +107,21 @@ class HarnessUpgradeTests(unittest.TestCase):
             self.assertEqual("v1.0.0", lock["upstream"]["release"])
             self.assertEqual("upstream-owned", lock["files"]["payload.txt"]["ownership"])
             self.assertEqual("merge-required", lock["files"]["policy.md"]["ownership"])
+
+    def test_lock_ignores_generated_dependency_and_build_trees(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".venv/lib").mkdir(parents=True)
+            (root / ".venv/lib/dependency.py").write_text("generated\n", encoding="utf-8")
+            (root / "node_modules/package").mkdir(parents=True)
+            (root / "node_modules/package/index.js").write_text("generated\n", encoding="utf-8")
+            (root / "dist").mkdir()
+            (root / "dist/artifact.whl").write_text("generated\n", encoding="utf-8")
+            make_release(root, "1.0.0", "old\n", "policy\n")
+            lock = json.loads((root / "harness.lock").read_text(encoding="utf-8"))
+            self.assertNotIn(".venv/lib/dependency.py", lock["files"])
+            self.assertNotIn("node_modules/package/index.js", lock["files"])
+            self.assertNotIn("dist/artifact.whl", lock["files"])
 
     def test_three_way_plan_separates_safe_and_manual_changes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -12,10 +12,11 @@
     "claims",
     "checks",
     "verdicts",
+    "release_impact",
     "risks"
   ],
   "properties": {
-    "schema_version": {"const": "1.1"},
+    "schema_version": {"const": "1.2"},
     "revision": {"type": "integer", "minimum": 1},
     "attempt_id": {"type": "integer", "minimum": 1},
     "boundary": {
@@ -44,6 +45,7 @@
     },
     "checks": {"type": "array"},
     "verdicts": {"type": "array"},
+    "release_impact": {"type": ["object", "null"]},
     "risks": {"type": "array"}
   }
 }

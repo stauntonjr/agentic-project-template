@@ -28,7 +28,31 @@
     "languages": [],
     "build_commands": [],
     "test_commands": ["python3 -m unittest discover -s tests -v"],
-    "release_strategy": "TBD",
+    "command_contract": {
+      "primary_check": "make smoke",
+      "bootstrap": "TBD",
+      "format_check": "TBD",
+      "lint": "TBD",
+      "typecheck": "TBD",
+      "unit": "python3 -m unittest discover -s tests -v",
+      "integration": "TBD",
+      "package_smoke": "TBD"
+    },
+    "quality": {
+      "dependency_lock": "required-if-dependencies",
+      "coverage_policy": "ratchet-or-explicit-exception",
+      "required_checks": ["format_check", "lint", "unit"],
+      "property_testing": "profile-selected"
+    },
+    "versioning": {
+      "strategy": "TBD",
+      "current": "TBD",
+      "public_contract": [],
+      "source": "TBD",
+      "tag_prefix": "v",
+      "pre_1_0_policy": "breaking-changes-bump-minor",
+      "release_notes": "CHANGELOG.md"
+    },
     "architecture_changes_require_adr": true,
     "public_interface_acceptance_required": true
   },
@@ -50,7 +74,16 @@
   "github": {
     "issues_are_canonical_work_items": true,
     "project_enabled": true,
-    "planning_contract": ".github/planning.json"
+    "planning_contract": ".github/planning.json",
+    "security": {
+      "dependency_updates": "dependabot",
+      "dependency_review": "required",
+      "code_scanning": "codeql",
+      "secret_scanning": "required",
+      "push_protection": "required",
+      "workflow_permissions": "least-privilege",
+      "action_pinning": "full-commit-sha"
+    }
   },
   "open_questions": [
     "Who are the primary users?",

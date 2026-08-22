@@ -15,6 +15,14 @@
     "held-out-challenge",
     "human-approval"
   ],
+  "tooling_capabilities": [
+    "deterministic-contract-tests",
+    "model-and-prompt-versioning",
+    "tool-permission-tests",
+    "adversarial-evaluations",
+    "cost-and-latency-telemetry",
+    "replayable-run-evidence"
+  ],
   "questions": [
     "Which actions are advisory, reversible, externally visible, or destructive?",
     "How are model, prompt, tool, input, output, and decision versions recorded?",

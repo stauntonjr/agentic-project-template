@@ -17,6 +17,7 @@ Project-local agent resources are executable trust boundaries. Review provider s
 ## Repository rules
 
 - Never commit real credentials or unredacted private prompts.
-- Pin third-party Actions to reviewed full commit SHAs before production use.
+- Pin every third-party Action to a reviewed full commit SHA; `make actions-supply-chain` enforces this for committed workflows.
 - Run dependency, secret, and static-analysis checks appropriate to the selected profile.
+- Treat secret scanning, push protection, repository rules, and security-feature eligibility as live GitHub state that must be audited separately from repository files.
 - Record security exceptions and expiration dates in reviewed Issues or ADRs.

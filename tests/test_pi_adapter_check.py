@@ -8,8 +8,7 @@ class PiAdapterCheckTests(unittest.TestCase):
         payload = {
             "data": {
                 "commands": [
-                    {"name": name, "source": source}
-                    for name, source in REQUIRED_COMMANDS.items()
+                    {"name": name, "source": source} for name, source in REQUIRED_COMMANDS.items()
                 ]
             }
         }
