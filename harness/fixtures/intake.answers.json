@@ -1,0 +1,17 @@
+{
+  "project.name": "Example Agent Project",
+  "project.summary": "Demonstrate a deterministic bootstrap without external dependencies.",
+  "project.repository": "example/example-agent-project",
+  "project.profile": "generic",
+  "intent.users": ["maintainer"],
+  "intent.outcomes": ["A validated repository scaffold"],
+  "intent.success_metrics": ["make smoke passes"],
+  "intent.in_scope": ["repository bootstrap"],
+  "intent.out_of_scope": ["production deployment"],
+  "constraints.data_classification": "public",
+  "constraints.deployment": "none",
+  "engineering.languages": ["Python"],
+  "engineering.build_commands": [],
+  "engineering.test_commands": ["python3 -m unittest discover -s tests -v"],
+  "autonomy.level": "supervised"
+}

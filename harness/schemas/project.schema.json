@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/harness/project.schema.json",
+  "title": "Agentic project contract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "harness_version",
+    "project",
+    "intent",
+    "engineering",
+    "autonomy",
+    "sources_of_truth",
+    "github"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "harness_version": {"type": "string"},
+    "template_mode": {"type": "boolean"},
+    "project": {
+      "type": "object",
+      "required": ["name", "summary", "lifecycle", "profile", "status", "repository"]
+    },
+    "intent": {
+      "type": "object",
+      "required": ["users", "outcomes", "success_metrics", "in_scope", "out_of_scope"]
+    },
+    "engineering": {"type": "object"},
+    "autonomy": {
+      "type": "object",
+      "required": ["level", "network_writes", "destructive_actions", "release", "policy_changes"]
+    },
+    "sources_of_truth": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["rank", "source", "scope"]
+      }
+    },
+    "github": {"type": "object"}
+  }
+}

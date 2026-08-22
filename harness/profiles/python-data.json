@@ -1,0 +1,22 @@
+{
+  "id": "python-data",
+  "description": "Python library, data pipeline, analytics, or ML project.",
+  "defaults": {
+    "engineering.languages": ["Python"],
+    "engineering.build_commands": ["python3 -m build"],
+    "engineering.test_commands": ["python3 -m unittest discover -s tests -v"]
+  },
+  "recommended_checks": [
+    "compile",
+    "unit",
+    "data-contract",
+    "clean-install",
+    "public-entrypoint",
+    "reproducibility"
+  ],
+  "questions": [
+    "What is the as-of, revision, and provenance model?",
+    "Which datasets are public, licensed, synthetic, or confidential?",
+    "What naive baseline and held-out evaluation are required?"
+  ]
+}

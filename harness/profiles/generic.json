@@ -1,0 +1,10 @@
+{
+  "id": "generic",
+  "description": "Minimal language-neutral defaults.",
+  "defaults": {
+    "autonomy.level": "supervised",
+    "engineering.architecture_changes_require_adr": true,
+    "engineering.public_interface_acceptance_required": true
+  },
+  "recommended_checks": ["format", "lint", "unit", "integration", "package-or-build-smoke"]
+}
