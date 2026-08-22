@@ -10,7 +10,7 @@ From GitHub after this repository is published as a template:
 
 ```bash
 gh repo create OWNER/NEW-REPOSITORY \
-  --template OWNER/agentic-project-template \
+  --template stauntonjr/agentic-project-template \
   --private \
   --clone
 cd NEW-REPOSITORY
@@ -166,7 +166,7 @@ For an explicitly authorized network path, `latest` reads the newest GitHub rele
 
 The manually dispatched `Publish harness release` workflow is the release boundary. It requires a typed confirmation, requires the tag to match `harness/version.json`, runs the full smoke suite, generates `harness.release.lock` against the already-known source commit, and then creates the GitHub Release. No release is published merely by merging template changes.
 
-## v0.3 boundaries
+## v0.4 boundaries
 
 Implemented now:
 

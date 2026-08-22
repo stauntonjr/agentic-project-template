@@ -16,6 +16,7 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Project status: template; project intake not yet accepted.
 - Active engineering loop: none.
 - Release state: not applicable.
+- Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
 ## Implemented control plane
 
@@ -31,11 +32,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 ## Open decisions
 
-- Final public repository name and owner.
 - Which repository should be the first live dogfood target.
 - Whether GitHub Project creation should copy a canonical user Project or render fields from desired state.
 - Which live repository should dogfood the Pi adapter's intake-to-report path.
-- Final published template repository coordinates used to replace `OWNER/agentic-project-template` in release metadata.
 
 ## Refresh protocol
 

@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "harness_version": "0.4.0",
   "upstream": {
-    "repository": "OWNER/agentic-project-template",
+    "repository": "stauntonjr/agentic-project-template",
     "release": "v0.4.0",
     "commit": "UNPUBLISHED"
   },
@@ -192,7 +192,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "c9c2ac347d081432e2a0a8b713e674365cb5d853d212c649362866b76403da79",
+      "sha256": "2be7bda90bb59fcc4b3bbb106092aa14dbcc7b439075671ad0ec1bc1a00ed318",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -224,7 +224,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "869425d5ccc8737d60b00c6ed689bac89f6be2e534b8db97f430ceed2cd98d81",
+      "sha256": "40808d9a9c638702fe423f0bf1bb6bcdd1e4026eb4e1511b0e662bd1542ae5bc",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -360,7 +360,7 @@
       "ownership": "upstream-owned"
     },
     "harness/version.json": {
-      "sha256": "bdfffeaf76b012cf2cad2c8b8b5b0eb849143127b63ec1805425b59c1511a8de",
+      "sha256": "dbab159c64303bd6522027fa2dd8d69c4cbfb1a670be006b98238c33802a661b",
       "ownership": "upstream-owned"
     },
     "pyproject.toml": {
