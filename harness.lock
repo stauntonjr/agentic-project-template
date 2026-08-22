@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "36c241dd65b6cc8d2fd667129ef2d632d91fcc7b112f4d3e9ed1b9f41b694cb5",
+      "sha256": "ccdd6d3a7353cdf90ee98fd107e99e2a5b300abd4ef0b959732e384d1aad8e08",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -424,7 +424,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_github_planning.py": {
-      "sha256": "586e09e9e2ca81586222a0a1c44f41fcde5acd312840d9fd0467dcafb54f590b",
+      "sha256": "a1615147c89318cbae116bb9a6781c96a25db99bb5df3f268ae593ee21b6af01",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
@@ -472,7 +472,7 @@
       "ownership": "upstream-owned"
     },
     "tools/github_planning.py": {
-      "sha256": "15a118a5d37197e96424234d0c5fa21609b8895e5ecd951096b18da66fc22057",
+      "sha256": "f57aba104ced57d11a45031a9a1fb1a670b6c5d2efdba23e70dde966a88f6fbb",
       "ownership": "upstream-owned"
     },
     "tools/harness_check.py": {
