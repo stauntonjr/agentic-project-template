@@ -23,8 +23,13 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Issue #18 packages the seven reusable workflows as the installed SemVer-versioned
   `agentic-engineering-harness` Codex plugin while keeping repository-local skills canonical and
   project policy out of user configuration.
-- Recommended next loop: Agentic Repo Auditor Issue #8 runs the first packaged, read-only audit
-  against a pinned S3NTINEL revision and publishes its report only after owner review.
+- Agentic Repo Auditor Issue #8 published the first packaged, read-only audit against pinned
+  S3NTINEL commit `14ba0416` through Auditor PR #15. The exact installed CLI output is deterministic,
+  the target fingerprint remained unchanged, and the report explicitly excludes application and
+  runtime assessment.
+- Recommended next loop: Agentic Repo Auditor Issue #13 repairs the demonstrated false warning in
+  agent-instruction coverage before a second existing repository is audited. Auditor Issues #12
+  and #14 remain `Needs Input` for portable evidence-contract decisions.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -106,6 +111,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   architecture authority; keeps a directive-review lifecycle as an unapplied Kortex-local
   proposal; and replays sanitized process-loss and human-reviewed recovery without touching
   Kortex, deploying a model, or reading or writing memory stores.
+- Agentic Repo Auditor Issue #8 pins S3NTINEL at `14ba0416`, publishes canonical JSON and Markdown
+  with 4 pass, 8 warn, and 1 fail findings, and triages all nine non-pass results. Auditor Issue #13
+  owns the literal-keyword false warning; Issues #12 and #14 own template-specific evidence gaps.
+  The audit changed no S3NTINEL file or planning state and does not claim full-application review.
 
 ## Refresh protocol
 
