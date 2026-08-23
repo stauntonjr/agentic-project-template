@@ -173,6 +173,11 @@ class ProjectIntakeTests(unittest.TestCase):
         self.assertEqual("make smoke", project["engineering"]["command_contract"]["primary_check"])
         self.assertEqual("example/example-agent-project", planning["repository"])
         self.assertEqual("example", planning["project"]["owner"])
+        self.assertEqual("dedicated", planning["project"]["topology"])
+        self.assertIsNone(planning["project"]["number"])
+        self.assertEqual("copy", planning["project"]["bootstrap"]["method"])
+        self.assertEqual("stauntonjr", planning["project"]["bootstrap"]["source_owner"])
+        self.assertEqual(13, planning["project"]["bootstrap"]["source_number"])
 
     def test_cli_creates_a_valid_derived_repository(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

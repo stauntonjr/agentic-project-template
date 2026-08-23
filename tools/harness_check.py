@@ -15,13 +15,27 @@ from typing import Any
 try:
     from .check_actions_supply_chain import check_workflows
     from .common import load_json, repository_root
-    from .harness_upgrade import safe_path, sha256, validate_lock, validate_ownership_policy
+    from .harness_upgrade import (
+        safe_path,
+        sha256,
+        validate_lock,
+        validate_manifest,
+        validate_ownership_policy,
+    )
+    from .github_planning import validate_contract as validate_planning_contract
     from .product_version import product_version_status
     from .run_quality import command_argv
 except ImportError:  # Direct script execution.
     from check_actions_supply_chain import check_workflows
     from common import load_json, repository_root
-    from harness_upgrade import safe_path, sha256, validate_lock, validate_ownership_policy
+    from harness_upgrade import (
+        safe_path,
+        sha256,
+        validate_lock,
+        validate_manifest,
+        validate_ownership_policy,
+    )
+    from github_planning import validate_contract as validate_planning_contract
     from product_version import product_version_status
     from run_quality import command_argv
 
@@ -507,10 +521,12 @@ def validate_pi_adapter(root: Path, result: Result) -> None:
 
 def validate_planning(root: Path, result: Result) -> None:
     planning = load_json(root / ".github/planning.json")
+    for error in validate_planning_contract(planning):
+        result.errors.append(f"planning contract: {error}")
     for collection, key in (("labels", "name"), ("milestones", "title"), ("fields", "name")):
         values = [item.get(key) for item in planning.get(collection, [])]
         result.require(len(values) == len(set(values)), f"duplicate {collection} in planning.json")
-    field_types = {"SINGLE_SELECT", "TEXT", "NUMBER", "DATE", "ITERATION"}
+    field_types = {"SINGLE_SELECT", "TEXT", "NUMBER", "DATE"}
     for item in planning.get("fields", []):
         result.require(
             item.get("data_type") in field_types,
@@ -524,7 +540,9 @@ def validate_json_assets(root: Path, result: Result) -> None:
         for path in sorted((root / base).glob("*.json")):
             load_json(path)
     load_json(root / "harness/challenges/CHALLENGE_TEMPLATE.json")
-    load_json(root / "harness/migrations/MIGRATION_TEMPLATE.json")
+    for path in sorted((root / "harness/migrations").glob("*.json")):
+        for error in validate_manifest(load_json(path)):
+            result.errors.append(f"{path.relative_to(root)}: {error}")
     load_json(root / "harness/preferences.example.json")
     load_json(root / "harness/evals/scenarios.json")
     version = load_json(root / "harness/version.json")

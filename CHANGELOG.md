@@ -2,7 +2,25 @@
 
 All notable changes to the harness are recorded here. The harness version and a derived project's product version are independent release streams.
 
-## [0.4.1] - Unreleased
+## [0.5.0] - Unreleased
+
+### Added
+
+- Accepted shared-program versus dedicated-application GitHub Project topology, with
+  Project #13 as the canonical field/view copy source.
+- Live, non-destructive Project title, saved-view, and repository-link drift auditing.
+- Idempotent creation of missing basic saved views through GitHub's typed API.
+- Fail-closed validation for every supported write-bearing planning value and explicit
+  drift for ambiguous duplicate live identities.
+
+### Changed
+
+- Derived intake now clears the template's live Project identity and prepares a dedicated
+  one-time copy bootstrap; adopters may explicitly select a shared Project instead.
+- The planning contract now requires `topology` and `canonical_source`. Existing derived
+  repositories must review and add these keys before upgrading.
+
+## [0.4.1] - 2026-08-22
 
 ### Fixed
 

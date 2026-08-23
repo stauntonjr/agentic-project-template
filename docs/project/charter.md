@@ -33,7 +33,7 @@ Humans own product intent, risk acceptance, architecture approval, external side
 
 ## Engineering and release contract
 
-- Harness version: 0.4.1.
+- Harness version: 0.5.0.
 - Product versioning, current version, public compatibility contract, and canonical source: TBD during intake.
 - Primary local/CI check: `make smoke` for the template; derived-project commands are profile-selected.
 - Dependency lock: required when dependencies exist.

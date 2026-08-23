@@ -1,14 +1,19 @@
 {
   "schema_version": "1.0",
-  "repository": "OWNER/REPOSITORY",
+  "repository": "stauntonjr/agentic-project-template",
   "project": {
-    "owner": "OWNER",
-    "number": null,
-    "title": "Project Roadmap",
+    "topology": "shared",
+    "owner": "stauntonjr",
+    "number": 13,
+    "title": "Agentic Engineering Harness Roadmap",
+    "canonical_source": {
+      "owner": "stauntonjr",
+      "number": 13
+    },
     "bootstrap": {
-      "method": "create",
-      "source_owner": null,
-      "source_number": null,
+      "method": "copy",
+      "source_owner": "stauntonjr",
+      "source_number": 13,
       "link_repository": true
     },
     "allow_unmanaged_views": true,

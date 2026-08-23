@@ -2,7 +2,7 @@
 
 A provider-neutral engineering harness for projects developed substantially or entirely by coding agents. It turns project intent, authority, engineering loops, GitHub planning, verification, and reporting into durable repository artifacts.
 
-This is a working v0.4, not a claim of autonomous software delivery. Humans still own product intent, risk acceptance, external side effects, and release authorization.
+This is a working v0.5, not a claim of autonomous software delivery. Humans still own product intent, risk acceptance, external side effects, and release authorization.
 
 ## Start a project
 
@@ -43,7 +43,7 @@ The initializer is idempotent: it inspects existing state, preserves confirmed a
 | `.pi/` | Experimental Pi settings, workflow prompts, and structured context-readiness questions |
 | `harness/adapters/` | Machine-readable provider capabilities, mappings, limitations, and security boundaries |
 | `tools/` | Dependency-free intake, validation, loop evidence, report, and GitHub audit tools |
-| `.github/planning.json` | Expected GitHub labels, milestones, Project fields, and views |
+| `.github/planning.json` | Selected GitHub Project topology plus expected labels, milestones, fields, views, and repository link |
 | `harness/challenges/` | Executable historical failure-case contract |
 | `harness/version.json` | Version and dry-run migration boundary for derived repositories |
 | `harness.lock` | Pinned upstream release, commit, per-file checksums, and ownership classes |
@@ -112,7 +112,7 @@ python3 tools/evaluate_harness.py
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
 ```
 
-No GitHub mutation occurs without both the mutating subcommand and `--yes`. Project bootstrap can create or copy a Project, link it to the repository, and create missing fields. Saved views remain a reported manual step. Destructive cleanup is deliberately out of scope.
+No GitHub mutation occurs without both the mutating subcommand and `--yes`. Project bootstrap can create or copy a Project, link it to the repository, and create missing fields and basic saved views. Repeated bootstrap is a no-op once state matches. Existing field/view mismatches, complex layout settings, permissions, workflows, insights, and destructive cleanup remain manual. See [GitHub planning topology](docs/project/github-planning.md) and [ADR-0006](docs/adr/0006-github-project-topology.md).
 
 ## Pi adapter
 
@@ -180,7 +180,7 @@ For an explicitly authorized network path, `latest` reads the newest GitHub rele
 
 The manually dispatched `Publish harness release` workflow is the release boundary. It requires a typed confirmation, requires the tag to match `harness/version.json`, runs the full smoke suite, generates `harness.release.lock` against the already-known source commit, and then creates the GitHub Release. No release is published merely by merging template changes.
 
-## v0.4 boundaries
+## v0.5 boundaries
 
 Implemented now:
 
@@ -190,7 +190,7 @@ Implemented now:
 - Machine-readable provider mappings that expose native capabilities and unsupported boundaries.
 - Pi-native workflow prompts and a dependency-free structured-question extension.
 - Git-boundary collection and evidence-labeled executive reports.
-- Local and live GitHub drift audit, Project create/copy, repository linking, missing-field creation, and non-destructive label/milestone reconciliation.
+- Local and live GitHub drift audit, shared/dedicated Project topology, idempotent create/copy, repository linking, basic saved views, missing-field creation, and non-destructive label/milestone reconciliation.
 - Historical defect challenge manifests and harness validation scenarios.
 - Provenance locks, ownership-aware three-way upgrade plans, explicit apply, receipts, rollback, and an optional manually dispatched upgrade-PR workflow.
 - Independent product-version contracts and current-revision release-impact evidence.
@@ -199,7 +199,7 @@ Implemented now:
 
 Deliberately deferred:
 
-- Automatic saved Project-view mutation.
+- Destructive or full-fidelity Project mutation: existing field/view replacement, permissions, workflows, insights, and complex view layout remain reviewed manual work.
 - Repository rulesets, environments, secrets, permissions, and branch-protection reconciliation.
 - Additional provider adapters beyond Codex and Pi.
 - Automated Pi subagent/worktree orchestration; independent verification still requires a separate trusted session or reviewed extension.

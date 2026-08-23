@@ -12,7 +12,7 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 ## Current state
 
-- Harness version: 0.4.1.
+- Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
 - Active engineering loop: none.
 - Release state: not applicable.
@@ -32,12 +32,12 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Separate harness and product version contracts with current-revision release-impact reporting.
 - Profile-driven quality capabilities, concrete Python defaults, repository hygiene files, and a shared local/CI command boundary.
 - Dependabot, dependency review, CodeQL, least-privilege workflows, and deterministic full-SHA Action validation.
+- Accepted shared-program versus dedicated-application Project topology, with Project #13 as the canonical source and additive field/view/link reconciliation.
 
 ## Open decisions
 
-- Which repository should be the first live dogfood target.
-- Whether GitHub Project creation should copy a canonical user Project or render fields from desired state.
-- Which live repository should dogfood the Pi adapter's intake-to-report path.
+- The exact Macro Technical Pulse worktree and bounded Issue for the first full-loop dogfood.
+- Provider and spend authorization for the real Pi-authored comparison lane during that dogfood.
 - Which live GitHub security settings should be reconciled automatically after the first dogfood audit.
 
 ## Refresh protocol

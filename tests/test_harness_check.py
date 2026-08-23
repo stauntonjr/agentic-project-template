@@ -49,6 +49,29 @@ class HarnessCheckTests(unittest.TestCase):
         self.assertIn("2 provider adapters", result.checked)
         self.assertIn("Pi adapter", result.checked)
 
+    def test_planning_topology_is_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "invalid-planning"
+            shutil.copytree(
+                ROOT,
+                target,
+                ignore=shutil.ignore_patterns(
+                    ".git", ".harness", ".venv", ".coverage", "__pycache__"
+                ),
+            )
+            planning = load_json(target / ".github/planning.json")
+            planning["project"]["topology"] = "shared"
+            planning["project"]["number"] = None
+            write_json(target / ".github/planning.json", planning)
+            result = check(target)
+            self.assertFalse(result.ok)
+            self.assertTrue(
+                any(
+                    "shared project topology requires a project number" in error
+                    for error in result.errors
+                )
+            )
+
     def test_pi_adapter_remains_thin_and_provider_neutral(self) -> None:
         settings = json.loads((ROOT / ".pi/settings.json").read_text(encoding="utf-8"))
         manifest = json.loads((ROOT / "harness/adapters/pi.json").read_text(encoding="utf-8"))

@@ -273,6 +273,17 @@ def render(
         owner = repository.split("/", 1)[0]
         rendered_planning["repository"] = repository
         rendered_planning["project"]["owner"] = owner
+        if repository.lower() != str(planning.get("repository", "")).lower():
+            canonical = rendered_planning["project"].get("canonical_source", {})
+            rendered_planning["project"]["topology"] = "dedicated"
+            rendered_planning["project"]["number"] = None
+            rendered_planning["project"]["title"] = f"{project['project']['name']} Roadmap"
+            rendered_planning["project"]["bootstrap"] = {
+                "method": "copy",
+                "source_owner": canonical.get("owner"),
+                "source_number": canonical.get("number"),
+                "link_repository": True,
+            }
     return project, rendered_planning, missing
 
 

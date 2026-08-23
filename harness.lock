@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "harness_version": "0.4.1",
+  "harness_version": "0.5.0",
   "upstream": {
     "repository": "stauntonjr/agentic-project-template",
-    "release": "v0.4.1",
+    "release": "v0.5.0",
     "commit": "UNPUBLISHED"
   },
   "files": {
@@ -32,7 +32,7 @@
       "ownership": "upstream-owned"
     },
     ".agents/skills/manage-github-planning/SKILL.md": {
-      "sha256": "5f0e2f7db68177ba4ebabbf6766153d604b3297384a13f07fd93e06f98521789",
+      "sha256": "ece9292da8d821780f0cf146eca74dd117b0834bd3e147953b94e28d29f94e7f",
       "ownership": "upstream-owned"
     },
     ".agents/skills/manage-github-planning/agents/openai.yaml": {
@@ -148,7 +148,7 @@
       "ownership": "merge-required"
     },
     ".github/planning.json": {
-      "sha256": "c6aba1444bd7f7e9f7209084e3e32843caf79c46342268f95ff22e5cf17415e3",
+      "sha256": "c3b2ba5430b35009a46ccbdfccfab9df75f0f0bab0ad542f716cf1af9238dfad",
       "ownership": "project-owned"
     },
     ".github/pull_request_template.md": {
@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "ed3f9425d90f12a8d5bef2928982cc656ae3c73eb64e586ff8eab0cc5dd578e1",
+      "sha256": "88c76b4c4f39bd2a236756a0d647bd4ec139943932e1693db987f69baef29ed8",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -224,7 +224,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "216737674c062bd65d659afc1a512984974f3dc4f72b39a10452bcec6f167949",
+      "sha256": "40be9e8f31b907ead9576e492f82f08a696e2c2351cc33a4f174a20c0adb3734",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -255,16 +255,24 @@
       "sha256": "678210a0a999754e232cdeb1aa04d381a37db18f36172d1ea7d0722af3cbc9dc",
       "ownership": "project-owned"
     },
+    "docs/adr/0006-github-project-topology.md": {
+      "sha256": "894e07d9200a66977a3a2e90910cc2921915184a4d678ba7c18cf87fb45b2719",
+      "ownership": "project-owned"
+    },
     "docs/project/charter.md": {
-      "sha256": "ee74e45e7102c1b211c89d6b815546d41e1fd398c7a3c00814b3ccfde784740d",
+      "sha256": "84417172242fd0777a9a3d1fefd3e2d706d915e54ec6d11c35dc7945acdbd3ea",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
       "sha256": "085f5a746279ec112886894802bc920ca69837ec4bec30106165ff87a433b29f",
       "ownership": "project-owned"
     },
+    "docs/project/github-planning.md": {
+      "sha256": "9acd562d205f5b225abcd660448d22de465d83d71cb6164c333dac10b5251672",
+      "ownership": "project-owned"
+    },
     "docs/project/handoff.md": {
-      "sha256": "04f28d2e13b823136ef343ec4edc0251754998f46d393c7f9b14f8297f5827d0",
+      "sha256": "c74b6f7e9da0ff9f9c9d3c5f68c6bdb5e0087974b3723b761748f23aab71e928",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -303,6 +311,10 @@
       "sha256": "56a51186161323d8b2041debaed1a29f9cfb6ebb6d4ee57e0148b8412348f413",
       "ownership": "upstream-owned"
     },
+    "harness/migrations/0.4.1-to-0.5.0.json": {
+      "sha256": "3f336755e78af90706492befa5d9308b082a42074b43af80f06450d071b283d9",
+      "ownership": "upstream-owned"
+    },
     "harness/migrations/MIGRATION_TEMPLATE.json": {
       "sha256": "00701a9b604137db15e26cc3cf463f8e57df618b06465d52558713d5de62feb6",
       "ownership": "upstream-owned"
@@ -332,7 +344,7 @@
       "ownership": "upstream-owned"
     },
     "harness/project.yaml": {
-      "sha256": "efb570f77e1df7d32132f54de06ba781de795710502710c11131970933b4982a",
+      "sha256": "54e727aef6af3ff02d72c36aa7ac674f55a82255ac30db66f3e6a4a54c15bd12",
       "ownership": "project-owned"
     },
     "harness/roles/explorer.md": {
@@ -404,7 +416,7 @@
       "ownership": "upstream-owned"
     },
     "harness/version.json": {
-      "sha256": "c5f25a1b22aecd3ca8689d800b9d579e43e51701bbb33cea9f2bf3053ebf9ed2",
+      "sha256": "169d6bf959f37b1c226786ffa89b13ddd2b0745a5ab18de02df5645f4640c134",
       "ownership": "upstream-owned"
     },
     "pyproject.toml": {
@@ -424,11 +436,11 @@
       "ownership": "upstream-owned"
     },
     "tests/test_github_planning.py": {
-      "sha256": "a1615147c89318cbae116bb9a6781c96a25db99bb5df3f268ae593ee21b6af01",
+      "sha256": "f6a9429836ae8632524115e6b104b201d667f15c87cc99d107b8e944f48ed279",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
-      "sha256": "b0d2eb5ff504821f013186349353427c940ed065e3b935c3412fdf106ec9e4d4",
+      "sha256": "0313241f56c50b48bb4154a522bcfd05559c5357a02e3a3952dfaa1565db04e5",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_upgrade.py": {
@@ -448,7 +460,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_project_intake.py": {
-      "sha256": "8845bbdee90857b95a6978b94f7711efc5cc147a40ad2649c8e741c3365c378c",
+      "sha256": "8b2ab1378493fa1bc95d7228c4e8172ac88bfeb0dec44d3c079f45af1083b836",
       "ownership": "upstream-owned"
     },
     "tests/test_run_quality.py": {
@@ -472,11 +484,11 @@
       "ownership": "upstream-owned"
     },
     "tools/github_planning.py": {
-      "sha256": "f57aba104ced57d11a45031a9a1fb1a670b6c5d2efdba23e70dde966a88f6fbb",
+      "sha256": "52bd83318eeeb02568359a2f2207beadee31cbdd00dd64c14228e90d83776030",
       "ownership": "upstream-owned"
     },
     "tools/harness_check.py": {
-      "sha256": "78ca84c2f8a640a508efd59ddba4acf21257b8c42b3340624a18cd0fe1921d7b",
+      "sha256": "40aba433256fd5b0e49f0dd968993ba7985ea6ca7c6404823b7c17ef9690be89",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -496,7 +508,7 @@
       "ownership": "upstream-owned"
     },
     "tools/project_intake.py": {
-      "sha256": "70c421e122137035980d6e268c45eb57788cf6600f5c0619fd09e6eea89a52ac",
+      "sha256": "f394e075d1074fd089530e76de615cf91ce0a6d7b3beb960f78c878b7bca91a1",
       "ownership": "upstream-owned"
     },
     "tools/python_package_smoke.py": {
