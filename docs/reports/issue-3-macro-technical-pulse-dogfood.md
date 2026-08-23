@@ -167,10 +167,12 @@ at this report revision.
 
 ## Risks, limitations, and failures
 
-- The license decision remains human-owned and unresolved.
-- Local Qwen tool-name adherence is insufficient for unattended engineering loops under the
-  tested prompt/tool combination.
-- Pi `--no-tools` is incompatible with this vLLM endpoint because it serializes an empty tool list.
+- The owner selected MIT after this dogfood; applying that decision to the application remains a
+  separate, reviewed application change.
+- Local Qwen tool-name adherence was insufficient in this original session. Follow-up Issue #23
+  adds strict sampling plus a deterministic unavailable-tool ceiling and re-tests the model.
+- Pi 0.84.1 `--no-tools` continuations with prior tool history remain incompatible with this vLLM
+  endpoint because Pi serializes an empty tool list; Issue #23 documents the tested safe pattern.
 - SparkRun's user service helper scripts lacked executable permission and had never loaded the
   configured model successfully; their owner execute bits were repaired on the DGX host.
 - The SparkRun proxy did not auto-register the healthy port-8000 backend. Pi worked because its
@@ -187,9 +189,10 @@ at this report revision.
 
 ## Decisions or authorization needed
 
-- Macro Technical Pulse's license must be selected by its owner before active harness adoption.
-- Decide in a later bounded loop whether to add a Pi/vLLM compatibility shim for empty tools and
-  invalid tool-call retry limits; those changes are not silently folded into this adoption fix.
+- Post-loop decision: on 2026-08-23, Macro Technical Pulse's owner selected MIT. This report records
+  the decision but does not claim the application repository has already been relicensed.
+- Follow-up Issue #23 owns the Pi/vLLM strict-tool, invalid-call ceiling, and empty-tool continuation
+  work; those changes remain separate from the completed adoption fix.
 
 ## Recommended next loop
 

@@ -45,6 +45,8 @@
     "skills": "native Agent Skills discovery",
     "workflow_prompts": "native prompt templates",
     "structured_questions": "project extension",
+    "tool_constrained_sampling": "questionnaire requests JSON-schema constrained sampling when the provider supports it",
+    "invalid_tool_call_ceiling": "three consecutive unavailable-tool calls, enforced before each attempted execution",
     "role_delegation": "not supplied by Pi core adapter",
     "independent_verification": "separate trusted session or reviewed extension required",
     "sandbox": "external boundary required"
@@ -52,6 +54,7 @@
   "limitations": [
     "The adapter does not install a subagent package or claim that Pi core provides role isolation.",
     "The questionnaire requires a Pi mode with UI support; non-interactive callers receive an explicit unavailable result.",
+    "A continuation with prior tool history may require one least-authority but still capable tool for OpenAI-compatible endpoints that reject an empty tools array; start a fresh session when zero tool authority is required.",
     "Only Pi 0.84.1 has been exercised by this template revision."
   ],
   "security_notes": [

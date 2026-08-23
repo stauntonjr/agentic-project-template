@@ -12,6 +12,8 @@ All notable changes to the harness are recorded here. The harness version and a 
 - Idempotent creation of missing basic saved views through GitHub's typed API.
 - Fail-closed validation for every supported write-bearing planning value and explicit
   drift for ambiguous duplicate live identities.
+- A reproducible live-model Pi tool-call probe covering strict questionnaire sampling, valid reads,
+  unavailable-tool ceilings, zero-tool sessions, and least-authority continuations.
 
 ### Changed
 
@@ -32,6 +34,9 @@ All notable changes to the harness are recorded here. The harness version and a 
   and refuses a second proposal collision.
 - Greenfield template copies apply the same lexical target-root preflight before creating any
   project files.
+- The Pi adapter requests strict JSON-schema tool sampling when supported and aborts after three
+  consecutive unavailable-tool calls before a fourth sibling can be preflighted, while active calls
+  reset the counter.
 
 ## [0.4.1] - 2026-08-22
 
