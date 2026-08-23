@@ -27,9 +27,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   S3NTINEL commit `14ba0416` through Auditor PR #15. The exact installed CLI output is deterministic,
   the target fingerprint remained unchanged, and the report explicitly excludes application and
   runtime assessment.
-- Recommended next loop: Agentic Repo Auditor Issue #13 repairs the demonstrated false warning in
-  agent-instruction coverage before a second existing repository is audited. Auditor Issues #12
-  and #14 remain `Needs Input` for portable evidence-contract decisions.
+- Agentic Repo Auditor Issue #13 is repaired through Auditor PR #16 at `b0fa931a`: instruction
+  coverage now uses a documented token-bounded vocabulary and exact matched-term evidence while
+  explicitly denying semantic-understanding claims.
+- Recommended next decision: choose satisfiable portable project-contract evidence for Auditor
+  Issue #12, then portable primary-check declarations for Issue #14. Both remain `Needs Input`.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -112,9 +114,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   proposal; and replays sanitized process-loss and human-reviewed recovery without touching
   Kortex, deploying a model, or reading or writing memory stores.
 - Agentic Repo Auditor Issue #8 pins S3NTINEL at `14ba0416`, publishes canonical JSON and Markdown
-  with 4 pass, 8 warn, and 1 fail findings, and triages all nine non-pass results. Auditor Issue #13
-  owns the literal-keyword false warning; Issues #12 and #14 own template-specific evidence gaps.
-  The audit changed no S3NTINEL file or planning state and does not claim full-application review.
+  with 4 pass, 8 warn, and 1 fail findings, and triages all nine non-pass results. Follow-up Issue
+  #13 resolves the literal-keyword false warning; Issues #12 and #14 retain the template-specific
+  evidence decisions. The audit changed no S3NTINEL file or planning state and does not claim
+  full-application review.
 
 ## Refresh protocol
 
