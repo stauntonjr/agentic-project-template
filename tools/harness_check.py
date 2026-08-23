@@ -29,6 +29,8 @@ try:
         validate_ownership_policy,
     )
     from .product_version import product_version_status
+    from .recovery_scenarios import fixture_paths, validate_fixture
+    from .run_challenges import validate_all as validate_all_challenges
     from .run_quality import command_argv
 except ImportError:  # Direct script execution.
     from common import load_json, repository_root
@@ -40,6 +42,8 @@ except ImportError:  # Direct script execution.
         validate_ownership_policy,
     )
     from product_version import product_version_status
+    from recovery_scenarios import fixture_paths, validate_fixture
+    from run_challenges import validate_all as validate_all_challenges
     from run_quality import command_argv
 
 try:
@@ -65,6 +69,8 @@ REQUIRED_PATHS = (
     "harness/runtime/actions_supply_chain.py",
     "tools/product_version.py",
     "tools/python_package_smoke.py",
+    "tools/recovery_scenarios.py",
+    "tools/run_challenges.py",
     "tools/run_quality.py",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
@@ -94,6 +100,7 @@ REQUIRED_PATHS = (
     "docs/project/charter.md",
     "docs/project/engineering-baseline.md",
     "docs/project/handoff.md",
+    "docs/project/recovery-matrix.md",
 )
 ROLE_IDS = {"orchestrator", "explorer", "implementer", "verifier", "release-steward"}
 ROLE_FILES = ROLE_IDS | {"human-owner"}
@@ -580,6 +587,10 @@ def validate_json_assets(root: Path, result: Result) -> None:
         for path in sorted((root / base).glob("*.json")):
             load_json(path)
     load_json(root / "harness/challenges/CHALLENGE_TEMPLATE.json")
+    _, challenge_errors = validate_all_challenges(root)
+    result.errors.extend(challenge_errors)
+    for path in fixture_paths(root):
+        result.errors.extend(validate_fixture(load_json(path), path))
     for path in sorted((root / "harness/migrations").glob("*.json")):
         for error in validate_manifest(load_json(path)):
             result.errors.append(f"{path.relative_to(root)}: {error}")

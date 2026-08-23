@@ -55,7 +55,25 @@ python3 tools/loop.py record-release-impact --run RUN_ID \
 
 Use `none`, `patch`, `minor`, or `major`. `none` means the project contract does not require a product release for this change. This assessment is a recommendation and never authorizes a version bump or publication.
 
-If objective, acceptance, or write scope changes, use `loop.py revise`; if implementation retries without changing the contract, use `loop.py new-attempt`. Prior checks and approvals do not satisfy the new revision or attempt, and a contract revision invalidates prior criterion waivers.
+If objective, acceptance, or write scope changes, use `loop.py revise`; if implementation retries without changing the contract, use `loop.py new-attempt`. Prior checks and approvals do not satisfy the new revision or attempt, and a contract revision invalidates prior criterion waivers. `new-attempt` persists each failure and blocks after the third without creating attempt four.
+
+Inspect a preserved run without changing Git state:
+
+```bash
+python3 tools/loop.py recovery-status --run RUN_ID --integration-ref main
+```
+
+After retry exhaustion, do not delete partial work or continue under a fourth attempt. Prepare a
+structured handoff containing `schema_version`, `summary`, `failure_boundary`, `preserved_paths`,
+and `next_action`. Only a human-reviewed resume starts a new revision:
+
+```bash
+python3 tools/loop.py resume --run RUN_ID --handoff /path/to/handoff.json \
+  --by human:IDENTITY
+```
+
+The `human:` marker is auditable provenance, not authentication. Resume preserves the working tree,
+returns to `understand`, and invalidates the old revision's checks, waivers, impact, and verdict.
 
 After verification, the independent reviewer records a verdict:
 

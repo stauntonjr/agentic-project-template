@@ -23,6 +23,7 @@
     {"pattern": "harness/version.json", "ownership": "upstream-owned"},
     {"pattern": "harness/ownership.json", "ownership": "upstream-owned"},
     {"pattern": "harness/migrations/**", "ownership": "upstream-owned"},
+    {"pattern": "harness/recovery/**", "ownership": "upstream-owned"},
     {"pattern": "harness.lock", "ownership": "upstream-owned"},
     {"pattern": "harness/challenges/CHALLENGE_TEMPLATE.json", "ownership": "upstream-owned"},
     {"pattern": "harness/preferences.example.json", "ownership": "upstream-owned"},

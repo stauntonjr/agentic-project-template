@@ -1,4 +1,4 @@
-.PHONY: check test compile actions-supply-chain project-check smoke planning-audit challenge-validate challenges harness-version product-version harness-lock harness-eval-validate pi-runtime-check
+.PHONY: check test compile actions-supply-chain project-check smoke planning-audit challenge-validate challenges recovery-check harness-version product-version harness-lock harness-eval-validate pi-runtime-check
 
 check:
 	python3 tools/harness_check.py
@@ -15,7 +15,7 @@ actions-supply-chain:
 project-check:
 	python3 tools/run_quality.py
 
-smoke: check actions-supply-chain compile test project-check
+smoke: check actions-supply-chain compile test project-check challenge-validate recovery-check
 
 planning-audit:
 	python3 tools/github_planning.py audit --offline
@@ -25,6 +25,9 @@ challenge-validate:
 
 challenges:
 	python3 tools/run_challenges.py --run
+
+recovery-check:
+	python3 tools/recovery_scenarios.py
 
 harness-version:
 	python3 tools/harness_upgrade.py status

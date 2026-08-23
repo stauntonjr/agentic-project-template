@@ -118,6 +118,13 @@ python3 tools/loop.py finish --run RUN_ID
 
 `start` fingerprints pre-existing dirty and untracked paths; staged index blobs and modes; `assume-unchanged` and `skip-worktree` paths; and recursively inspected submodules or embedded Git repositories. Submodule visibility is forced even when `.gitmodules` requests `ignore = all`; unsafe directory entries fail closed. Completion compares the current tree, index, nested repositories, and committed paths with that baseline; rejects undeclared writes; requires passed evidence for every unwaived criterion; requires a current product release-impact assessment; and rejects approvals made against an older requirement revision, attempt, commit, or candidate digest. Contract revisions invalidate prior waivers. A new waiver requires recorded `human:IDENTITY` provenance and a reason. The generated executive report distinguishes verified repository evidence, reported facts, and inference.
 
+Retries are executable policy rather than prompt guidance. Failures one and two start attempts two
+and three; the third consecutive failure persists the run as `blocked` without creating attempt
+four. `loop.py recovery-status` inspects preserved work and optional integration ancestry without
+changing Git. A retry-exhausted run resumes only from a structured `human:IDENTITY` handoff, under
+a new revision whose evidence must be rebuilt. See [ADR-0007](docs/adr/0007-recovery-semantics-and-challenge-promotion.md)
+and the [recovery coverage matrix](docs/project/recovery-matrix.md).
+
 ## Product versioning and engineering baseline
 
 `harness_version` tracks the reusable control plane. `engineering.versioning.current` tracks the derived product. An upgrade of the harness never implies an application release.
@@ -143,6 +150,9 @@ python3 tools/harness_upgrade.py status
 python3 tools/product_version.py           # Product source/contract drift
 python3 tools/product_version.py --tag v1.2.3
 python3 tools/evaluate_harness.py
+python3 tools/recovery_scenarios.py       # Six disposable recovery fixtures
+python3 tools/run_challenges.py           # Validate candidates and approved challenges
+python3 tools/run_challenges.py --run --include-candidates # Review-only candidate replay
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
 ```
 
@@ -225,7 +235,8 @@ Implemented now:
 - Pi-native workflow prompts and a dependency-free structured-question extension.
 - Git-boundary collection and evidence-labeled executive reports.
 - Local and live GitHub drift audit, shared/dedicated Project topology, idempotent create/copy, repository linking, basic saved views, missing-field creation, and non-destructive label/milestone reconciliation.
-- Historical defect challenge manifests and harness validation scenarios.
+- Six deterministic recovery fixtures, a persisted three-failure stop, reviewed handoff resume,
+  and candidate-versus-approved historical challenge manifests.
 - Provenance locks, ownership-aware three-way upgrade plans, explicit apply, receipts, rollback, and an optional manually dispatched upgrade-PR workflow.
 - Independent product-version contracts and current-revision release-impact evidence.
 - Profile-driven engineering capability contracts with concrete Python defaults.

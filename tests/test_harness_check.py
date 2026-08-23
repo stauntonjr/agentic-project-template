@@ -183,6 +183,30 @@ class HarnessCheckTests(unittest.TestCase):
         self.assertIn("2 provider adapters", result.checked)
         self.assertIn("Pi adapter", result.checked)
 
+    def test_recovery_fixture_rejects_raw_transcript_retention(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "invalid-recovery"
+            shutil.copytree(
+                ROOT,
+                target,
+                ignore=shutil.ignore_patterns(
+                    ".git", ".harness", ".venv", ".coverage", "__pycache__"
+                ),
+            )
+            fixture = load_json(target / "harness/recovery/R001.json")
+            fixture["source"]["contains_raw_transcript"] = True
+            write_json(target / "harness/recovery/R001.json", fixture)
+
+            result = check(target)
+
+            self.assertFalse(result.ok)
+            self.assertTrue(
+                any(
+                    "source.contains_raw_transcript must be false" in error
+                    for error in result.errors
+                )
+            )
+
     def test_planning_topology_is_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "invalid-planning"
