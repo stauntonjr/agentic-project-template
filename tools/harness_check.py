@@ -32,6 +32,7 @@ try:
     from .recovery_scenarios import fixture_paths, validate_fixture
     from .run_challenges import validate_all as validate_all_challenges
     from .run_quality import command_argv
+    from .skill_plugin import check as check_skill_plugin
 except ImportError:  # Direct script execution.
     from common import load_json, repository_root
     from harness_upgrade import (
@@ -45,6 +46,7 @@ except ImportError:  # Direct script execution.
     from recovery_scenarios import fixture_paths, validate_fixture
     from run_challenges import validate_all as validate_all_challenges
     from run_quality import command_argv
+    from skill_plugin import check as check_skill_plugin
 
 try:
     from . import github_planning as planning_module
@@ -423,6 +425,27 @@ def validate_skills(root: Path, result: Result) -> None:
     result.checked.append(f"{len(skills)} skills")
 
 
+def validate_optional_skill_plugin(root: Path, result: Result) -> None:
+    marketplace = root / ".agents/plugins/marketplace.json"
+    plugin = root / "plugins/agentic-engineering-harness"
+    if not marketplace.exists() and not plugin.exists():
+        return
+    marketplace_ok = marketplace.is_file() and not marketplace.is_symlink()
+    plugin_ok = plugin.is_dir() and not plugin.is_symlink()
+    result.require(
+        marketplace_ok,
+        "skill plugin marketplace must be an ordinary file",
+    )
+    result.require(
+        plugin_ok,
+        "skill plugin must be an ordinary directory",
+    )
+    if marketplace_ok and plugin_ok:
+        for error in check_skill_plugin(root):
+            result.errors.append(error)
+        result.checked.append("installable skill plugin mirror")
+
+
 def validate_codex_agents(root: Path, result: Result) -> None:
     agent_files = sorted((root / ".codex/agents").glob("*.toml"))
     result.require(bool(agent_files), "no Codex role adapters found")
@@ -696,6 +719,7 @@ def check(root: Path) -> Result:
         validate_loop(root, result)
         validate_roles(root, result)
         validate_skills(root, result)
+        validate_optional_skill_plugin(root, result)
         validate_codex_agents(root, result)
         validate_provider_adapters(root, result)
         validate_pi_adapter(root, result)

@@ -18,10 +18,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   resume, and a sanitized six-class recovery matrix. Issue #15 adds a read-only Kortex provenance
   and governed-learning evaluation. Issue #2 validates layered domain routing on S3NTINEL without
   mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime imports, and test
-  application quality discovery.
-- Active Issue #17 adds opt-in local outcome telemetry with explicit provenance, privacy and
-  retention defaults, and a de-identified aggregation boundary; provider and organization tooling
-  remain deferred.
+  application quality discovery. Issue #17 adds opt-in local outcome telemetry with explicit
+  provenance, privacy and retention defaults, and a de-identified aggregation boundary.
+- Active Issue #18 packages the seven reusable workflows as a SemVer-versioned Codex plugin while
+  keeping repository-local skills canonical and project policy out of user configuration.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -43,6 +43,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Accepted shared-program versus dedicated-application Project topology, with Project #13 as the canonical source and additive field/view/link reconciliation.
 - Disabled-by-default loop outcome telemetry that emits to stdout, rejects content-bearing input,
   and keeps written summaries local and caller-managed.
+- A repository marketplace and generated `agentic-engineering-harness` plugin whose per-file
+  provenance binds canonical skill sources to collision-safe namespaced distribution files.
 
 ## Open decisions
 

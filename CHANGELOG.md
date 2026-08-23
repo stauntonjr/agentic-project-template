@@ -27,6 +27,9 @@ All notable changes to the harness are recorded here. The harness version and a 
 - Opt-in, content-free per-loop outcome telemetry with explicit measurement provenance, strict
   local schemas, stdout-only defaults, retrospective observation timestamps, and a de-identified
   aggregation boundary that preserves unavailable values and unlike units.
+- A SemVer-versioned `agentic-engineering-harness` Codex plugin containing the seven reusable
+  workflow skills, generated from repository-local canonical sources with per-file provenance,
+  collision-safe namespacing, and a repository marketplace entry.
 
 ### Changed
 
@@ -40,6 +43,9 @@ All notable changes to the harness are recorded here. The harness version and a 
 - Engineering-loop retries now persist the third consecutive failure as `blocked` without creating
   attempt four. A retry-exhausted resume preserves partial work and starts a new evidence revision
   only from a structured `human:IDENTITY` handoff.
+- Plugin packaging now deterministically qualifies cross-skill references while retaining
+  progressively disclosed `SKILL.md` and reference files. Repository policy and application state
+  remain outside the user-installed bundle.
 
 ### Fixed
 

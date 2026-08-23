@@ -73,6 +73,8 @@ the copied harness validator does not import it merely because the names match.
 | `harness/loops/` | State machines with inputs, outputs, gates, retries, and stop conditions |
 | `harness/runtime/` | Isolated harness-owned validator implementations used by copied entrypoints |
 | `.agents/skills/` | Intake, research, execution, reporting, planning, ADR, and release workflows |
+| `plugins/agentic-engineering-harness/` | Versioned Codex plugin generated from the reusable skill source |
+| `.agents/plugins/marketplace.json` | Installable repository marketplace entry for the skill plugin |
 | `.codex/agents/` | Thin Codex adapters for the canonical role contracts |
 | `.pi/` | Experimental Pi settings, workflow prompts, and structured context-readiness questions |
 | `harness/adapters/` | Machine-readable provider capabilities, mappings, limitations, and security boundaries |
@@ -156,6 +158,7 @@ python3 tools/run_challenges.py           # Validate candidates and approved cha
 python3 tools/run_challenges.py --run --include-candidates # Review-only candidate replay
 python3 tools/loop_telemetry.py summarize --run RUN_ID # Opt-in, stdout-only by default
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
+make plugin-check           # Plugin mirror, provenance, and marketplace validation
 ```
 
 Outcome telemetry is never collected automatically. The local CLI derives only loop-record facts,
@@ -166,6 +169,24 @@ separate; there is no provider billing access, token collection, remote export, 
 analytics. See [Outcome telemetry](docs/project/outcome-telemetry.md).
 
 No GitHub mutation occurs without both the mutating subcommand and `--yes`. Project bootstrap can create or copy a Project, link it to the repository, and create missing fields and basic saved views. Repeated bootstrap is a no-op once state matches. Existing field/view mismatches, complex layout settings, permissions, workflows, insights, and destructive cleanup remain manual. See [GitHub planning topology](docs/project/github-planning.md) and [ADR-0006](docs/adr/0006-github-project-topology.md).
+
+## Installable skill bundle
+
+The seven reusable workflows are also available as the versioned
+`agentic-engineering-harness` Codex plugin. `.agents/skills/` remains the canonical editable
+source; the plugin contains only a generated, checksum-verified, namespace-adjusted mirror. It
+does not package `AGENTS.md`, project contracts, roles, planning, provider adapters, or other
+project policy.
+
+```bash
+codex plugin marketplace add stauntonjr/agentic-project-template --ref main
+codex plugin add agentic-engineering-harness@agentic-project-template
+```
+
+Start a new thread and select the plugin or invoke a qualified skill such as
+`$agentic-engineering-harness:project-intake`. Repository-local skills retain their unqualified
+names and project scope; tested Codex 0.149.0 keeps the two namespaces distinct. See the
+[installation, upgrade, collision, and uninstall contract](docs/project/skill-plugin.md).
 
 ## Pi adapter
 
@@ -250,6 +271,8 @@ Implemented now:
 - Independent product-version contracts and current-revision release-impact evidence.
 - Profile-driven engineering capability contracts with concrete Python defaults.
 - Dependabot, dependency review, CodeQL, secret-control expectations, least-privilege permissions, and immutable Action enforcement.
+- A versioned installable Codex plugin generated from the canonical reusable skills, with
+  per-file transformation provenance and isolated install/collision/uninstall verification.
 
 Deliberately deferred:
 
@@ -259,7 +282,6 @@ Deliberately deferred:
 - Automated Pi subagent/worktree orchestration; independent verification still requires a separate trusted session or reviewed extension.
 - Live model scoring of the harness scenarios.
 - Automatic token/cost ingestion and organization-wide analytics.
-- Packaging the skill bundle as an installable plugin.
 - Automatic semantic merging of project-owned or merge-required files.
 
 These are explicit next-version candidates, not implied capabilities.
