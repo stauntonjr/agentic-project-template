@@ -7,7 +7,6 @@ import json
 import re
 from pathlib import Path
 
-
 ACTION_USE = re.compile(
     r"^\s*(?:-\s+)?(?:uses|\"uses\"|'uses')\s*:\s*"
     r"(?:\"([^\"]+)\"|'([^']+)'|([^\s#]+))",

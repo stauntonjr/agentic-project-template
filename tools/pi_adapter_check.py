@@ -155,8 +155,7 @@ const { createJiti } = require("jiti");
         cwd=root,
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         env=environment,
         timeout=15,
     )
@@ -164,7 +163,7 @@ const { createJiti } = require("jiti");
         raise ValueError(result.stderr.strip() or "Pi extension contract probe failed")
     payload = json.loads(result.stdout)
     if not isinstance(payload, dict):
-        raise ValueError("Pi extension contract probe returned a non-object")
+        raise TypeError("Pi extension contract probe returned a non-object")
     return payload
 
 
@@ -186,8 +185,7 @@ def run_check(root: Path, executable: str) -> dict[str, Any]:
         cwd=root,
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         timeout=10,
     )
     version = version_result.stdout.strip()
@@ -211,8 +209,7 @@ def run_check(root: Path, executable: str) -> dict[str, Any]:
             check=False,
             text=True,
             input=json.dumps({"type": "get_commands"}) + "\n",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             env=environment,
             timeout=15,
         )

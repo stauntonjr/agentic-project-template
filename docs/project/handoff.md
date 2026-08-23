@@ -14,9 +14,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Latest implemented harness change: Issue #26 isolates copied validation from application
-  tool-module collisions. Issue #25 keeps adopt-mode activation provisional until context and
-  reconciliation are both complete.
+- Latest implemented harness change: Issue #27 adds explicit before/after application quality
+  discovery and conforms copied Python sources to Procurement's locked Ruff boundary. Issues #25
+  and #26 keep adoption fail-closed and isolate copied runtime imports.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -61,9 +61,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   sparse-input, and all eleven executable known-bad challenge boundaries passed independently.
 - Its live Project #6 audit reports no missing fields, labels, milestones, or managed views; a
   disposable pagination shim was required because host GitHub CLI 2.45 lacks `gh api --slurp`.
-- The Procurement overlay remains provisional: Issues #25-#27 own false-active adoption state,
-  application tool-module shadowing, and copied-file quality-discovery failures. The authoritative
-  application checkout, separate wiki, GitHub Project #6, and product behavior remain unchanged.
+- The Procurement overlay remains provisional because its 44 policy and reconciliation gaps still
+  require human decisions. Issues #25-#27 now cover false-active state, application tool-module
+  shadowing, and copied-file quality discovery. The authoritative application checkout, separate
+  wiki, GitHub Project #6, and product behavior remain unchanged.
 - Issue #25 now separates context readiness from activation: adopt mode records lifecycle `adopt`,
   exact disposition counts, `context_readiness`, reconciliation status, and overall project
   activation independently. Project activation stays `provisional` until both intake context and
@@ -72,8 +73,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Issue #26 moves the Actions supply-chain implementation into the harness-owned
   `harness.runtime` namespace. The historical tools entrypoint remains a compatibility wrapper,
   while copied validation bypasses an incompatible application-owned module with the same filename
-  and returns structured provisional-adoption evidence. Issue #27 remains the next adoption
-  blocker.
+  and returns structured provisional-adoption evidence.
+- Issue #27 exercises Procurement's exact `make check` command before and after adoption. Both
+  checks pass at `0f9d1a4`; adoption records status `compatible`, while the separate 44-gap
+  reconciliation state correctly remains provisional. The reusable copied Python paths also pass
+  its locked Ruff 0.16.3 format and lint commands without application policy changes.
 
 ## Refresh protocol
 

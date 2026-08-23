@@ -38,6 +38,25 @@ activate the overall harness while essential intake context is still missing. Ge
 records expose `context_readiness`, `adoption.reconciliation_status`, and overall
 `adoption.status` separately. Use `--mode gap-only` to ask only unresolved questions.
 
+For an existing application, explicitly name its authoritative non-mutating quality command so
+the adopter can compare the clean baseline with the copied overlay:
+
+```bash
+python3 tools/project_intake.py \
+  --answers harness/fixtures/intake.answers.json \
+  --target /path/to/existing-application \
+  --mode adopt \
+  --adoption-check 'make check' \
+  --apply
+```
+
+The command is never inferred or run without `--adoption-check`. Its exact text, before/after exit
+codes, compatibility status, and any copied paths named by the failing output are recorded in the
+intake and adoption-gap report. A missing, failing baseline, timeout, or post-copy regression keeps
+adoption provisional. The adopter does not edit application quality configuration, dependency
+locks, or ignore rules to manufacture a pass; universal copied Python sources conform to the
+locked Ruff boundary exercised by Procurement Intelligence Lab.
+
 Copied validators import harness-owned implementations from `harness/runtime/`, not from the
 application's `tools` module namespace. Historical commands under `tools/` remain thin CLI
 wrappers in repositories where those paths are available. During adoption, an existing
@@ -239,8 +258,10 @@ Dogfood a new profile on one repository before making it a template default. A u
 
 1. Start a greenfield project with `new` mode.
 2. Adopt a mature repository with `adopt` mode.
-3. Convert escaped defects into challenge manifests.
-4. Measure human corrections, retries, escaped defects, cycle time, and accepted-change cost.
+3. Supply the application's authoritative check with `--adoption-check` and review the recorded
+   before/after evidence.
+4. Convert escaped defects into challenge manifests.
+5. Measure human corrections, retries, escaped defects, cycle time, and accepted-change cost.
 
 ## Design influences
 

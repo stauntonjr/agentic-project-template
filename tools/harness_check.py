@@ -12,13 +12,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) in sys.path:
     sys.path.remove(str(ROOT))
 sys.path.insert(0, str(ROOT))
 
-from harness.runtime.actions_supply_chain import check_workflows  # noqa: E402
+from harness.runtime.actions_supply_chain import check_workflows
 
 try:
     from .common import load_json, repository_root

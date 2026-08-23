@@ -6,9 +6,10 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 def repository_root(start: Path | None = None) -> Path:
@@ -40,7 +41,7 @@ def write_json(path: Path, value: Any) -> None:
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def run(
@@ -54,8 +55,7 @@ def run(
         cwd=cwd,
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
     if check and result.returncode != 0:
         command = " ".join(argv)
