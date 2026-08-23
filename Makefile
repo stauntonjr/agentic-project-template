@@ -1,4 +1,4 @@
-.PHONY: check test compile actions-supply-chain project-check smoke planning-audit challenge-validate challenges recovery-check harness-version product-version harness-lock harness-eval-validate pi-runtime-check
+.PHONY: check test compile actions-supply-chain project-check smoke planning-audit challenge-validate challenges recovery-check harness-version product-version harness-lock harness-eval-validate pi-runtime-check plugin-check plugin-sync
 
 check:
 	python3 tools/harness_check.py
@@ -43,3 +43,9 @@ harness-eval-validate:
 
 pi-runtime-check:
 	python3 tools/pi_adapter_check.py
+
+plugin-check:
+	python3 tools/skill_plugin.py check
+
+plugin-sync:
+	python3 tools/skill_plugin.py sync --yes

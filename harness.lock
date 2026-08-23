@@ -7,6 +7,10 @@
     "commit": "UNPUBLISHED"
   },
   "files": {
+    ".agents/plugins/marketplace.json": {
+      "sha256": "9ff69cfa8d71727689090c5d4440408b6874392f8105e26c3fab0d60d4445368",
+      "ownership": "project-owned"
+    },
     ".agents/skills/execute-engineering-loop/SKILL.md": {
       "sha256": "dd451dd325eb937a1fc8d7f52b8e27a0715b38b7dd4e2677290c27ddf7878e32",
       "ownership": "upstream-owned"
@@ -208,7 +212,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "b87c7dcaf3bc3545f9cd4a1716af4ce3c1380876f09d5d531976ac94766491ae",
+      "sha256": "f81d1571cff5104518cde1312f1d9f3be00a02b797f7d7c8e936cc6682dc4e60",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -220,11 +224,11 @@
       "ownership": "merge-required"
     },
     "Makefile": {
-      "sha256": "563e96b6f23e3fc502bbcab7bdaa36ab143e44ebf7398547ecbddd1ec0fafc12",
+      "sha256": "6175a0ce10f1efce1222d30b1c1a6907974d85e3afb735649d87e208164ab718",
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "66791f733bee2b8985a6d01274c2825a49cd058ebba6348cff449c94b71fe9c8",
+      "sha256": "d75bbbb70e38dc173bdbe0a99f62135dd7d2ca5e764c09ea6f8b100264310ac6",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -276,7 +280,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "f110eaa183ad77b8291d4903ce56a2487a9c71e8d73da45d7e167fc39345064c",
+      "sha256": "8d8e93547cab44e969e1fafad47f501e4f1c4b13f7aca9fdceefd15eccdbf410",
       "ownership": "project-owned"
     },
     "docs/project/outcome-telemetry.md": {
@@ -289,6 +293,10 @@
     },
     "docs/project/recovery-matrix.md": {
       "sha256": "d4585d1d7eb6939609eb7a8b14a04e8d5a383cd7677d28f1119c2a9e3754cc44",
+      "ownership": "project-owned"
+    },
+    "docs/project/skill-plugin.md": {
+      "sha256": "5e39726b25de9c77970dbaaf45ffe07ea4fc83a8f01746b4cd5d2fd7d704025e",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -309,6 +317,10 @@
     },
     "docs/reports/issue-17-outcome-telemetry.md": {
       "sha256": "01b21911510a76f4f54222a9a1a47f540042440790201efd9cb14c67410748d3",
+      "ownership": "project-owned"
+    },
+    "docs/reports/issue-18-skill-plugin.md": {
+      "sha256": "b3bbbf9f4af96f0ab4bd1dcd6286dd27bcb41a6c4305287c02c38e4962fb8fe9",
       "ownership": "project-owned"
     },
     "docs/reports/issue-2-s3ntinel-routing.md": {
@@ -547,6 +559,106 @@
       "sha256": "169d6bf959f37b1c226786ffa89b13ddd2b0745a5ab18de02df5645f4640c134",
       "ownership": "upstream-owned"
     },
+    "plugins/agentic-engineering-harness/.codex-plugin/plugin.json": {
+      "sha256": "9a4ad8347640f3346bf8ee73593e086c2a5aa93512f2aabbdccd048ffccebf10",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/LICENSE": {
+      "sha256": "096633e7fc86d71172d976ed2b00baaeee861fdd805f312c4698144c4c3355a6",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/PROVENANCE.json": {
+      "sha256": "4688ddb56550b3cc1d52ed9b263c1b4c540a7e4020eaa74162a96768ce85cb91",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/execute-engineering-loop/SKILL.md": {
+      "sha256": "95e9ce2f6e9896b22f62039c655a18a079765872dc19066cd2b02319be7417b9",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/execute-engineering-loop/agents/openai.yaml": {
+      "sha256": "8519e8d1e3e90b88251c1f2e85be018d1d933214323d9bd9980e1b25974ed780",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/execute-engineering-loop/references/handoff-contract.md": {
+      "sha256": "a0675d49827bf6f3e325bdfb48387ed12f7b4444f9ac10e0c9526a089cfa0f7b",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/loop-report/SKILL.md": {
+      "sha256": "51723c61326d38e17bb3b89674fde517176694eb74937497d971ecece050cf48",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/loop-report/agents/openai.yaml": {
+      "sha256": "96f5ab8a7650a6952211de3a7f3e3acf0ec47205b5a3f222b1cf781ad843e999",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/loop-report/references/report-contract.md": {
+      "sha256": "d547a6afddebe3ebeb728c1d602245d490b2dade541ec15ca6c877f6fe6e43ba",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/manage-github-planning/SKILL.md": {
+      "sha256": "ece9292da8d821780f0cf146eca74dd117b0834bd3e147953b94e28d29f94e7f",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/manage-github-planning/agents/openai.yaml": {
+      "sha256": "f1e3d597872ba12f02fc924e18091163c47dce12aa56751397c293f02269d2fe",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/manage-github-planning/references/safety.md": {
+      "sha256": "729b4fe170ae0816f0ace67b8668fc796cf64073a7d0ba9d544070f1bbf95677",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/project-intake/SKILL.md": {
+      "sha256": "1252a83a8ccfc61984d381722c8188264e42a0ca1251f5686de71b322619023a",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/project-intake/agents/openai.yaml": {
+      "sha256": "f1fb99419886882a75576a20fd4eb24b654eb58db26235a833ef0bdfd67ccbe2",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/project-intake/references/question-bank.md": {
+      "sha256": "73087914eb57cfc01bb726ed583823f608f5e650a46d35761acd047b93331eca",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/record-architecture-decision/SKILL.md": {
+      "sha256": "cf5bd94b7c0d49fe7e11efaa53bfd243db70748975b8357a9324a6024ab276a7",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/record-architecture-decision/agents/openai.yaml": {
+      "sha256": "14a795f08cc90508151d076ee558d214d4ebab474b7935d07f52c220c10bb6ed",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/record-architecture-decision/references/decision-criteria.md": {
+      "sha256": "538ec0720dee86b758b25764a77dce5cb16c3a1769f08cae3b4a8264dd58296b",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/release-readiness/SKILL.md": {
+      "sha256": "6e37d5c15cf8795fc1400a9ea91ec9ce1a86c21b5edd7373f69c7017bd907736",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/release-readiness/agents/openai.yaml": {
+      "sha256": "8858bf06b41b039450d48c2ce0d541e53f37622aeaa1f68a2aeebcb30fafe54f",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/release-readiness/references/checklist.md": {
+      "sha256": "815452be6209076add369b6eeba64f3215563518c8ffa5fe554fc457908f49d1",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/research-existing-solutions/SKILL.md": {
+      "sha256": "0b0d496de64b0033c0d66c36431178472e9270fe27b5e237837011a322583f5a",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/research-existing-solutions/agents/openai.yaml": {
+      "sha256": "d4c3349a528ddd3c59bd9b6de1ebe4d701126d149a89d81ab6944d85f9947916",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/research-existing-solutions/references/research-contract.md": {
+      "sha256": "1e84370796adf7d02bab7ecb86b8d26a446d05e3d233e7e5d8c20021385a746e",
+      "ownership": "project-owned"
+    },
+    "plugins/agentic-engineering-harness/skills/research-existing-solutions/references/source-hubs.md": {
+      "sha256": "8598fd4d781087837a2105f9819081022b475d5723d4d46d1471965f37b2a567",
+      "ownership": "project-owned"
+    },
     "pyproject.toml": {
       "sha256": "a063a73cb2acf7fd0c3a0a49467dd44779f9f047cdbd1fddce989657882305d8",
       "ownership": "merge-required"
@@ -607,6 +719,10 @@
       "sha256": "aa9b11875c254b5315e7a4cd3e629d7eb8927d6eeb239f156533622cfbb12249",
       "ownership": "upstream-owned"
     },
+    "tests/test_skill_plugin.py": {
+      "sha256": "b83b97ef532928aa6d6bacb4538cdca64d2554d4a8d970b6289c29eda176ed57",
+      "ownership": "upstream-owned"
+    },
     "tools/__init__.py": {
       "sha256": "4328e48cc8a040b891741dae7ad407523d88c2491daa868b6ba7a4a5dee3169a",
       "ownership": "upstream-owned"
@@ -628,7 +744,7 @@
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {
-      "sha256": "26974f680510d97b68d81e5275256d2f10d33c27b801f7372f1e3b2da240a876",
+      "sha256": "dd336b2a39a7716e45e1d7d272551167e651c29ea8f38feb3763bb06e35a96a6",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -673,6 +789,10 @@
     },
     "tools/run_quality.py": {
       "sha256": "4186c8a6ed703ff480f152c7db89b23d2d2361e66aed62da86ac21d650e382a5",
+      "ownership": "upstream-owned"
+    },
+    "tools/skill_plugin.py": {
+      "sha256": "db55f1b02bf0c7dbfc0fc0aacddfd61c7b08ecc87f55c158d1574808ccca3829",
       "ownership": "upstream-owned"
     },
     "uv.lock": {
