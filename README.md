@@ -38,6 +38,12 @@ activate the overall harness while essential intake context is still missing. Ge
 records expose `context_readiness`, `adoption.reconciliation_status`, and overall
 `adoption.status` separately. Use `--mode gap-only` to ask only unresolved questions.
 
+Copied validators import harness-owned implementations from `harness/runtime/`, not from the
+application's `tools` module namespace. Historical commands under `tools/` remain thin CLI
+wrappers in repositories where those paths are available. During adoption, an existing
+application tool with the same filename is preserved and reported as a reconciliation collision;
+the copied harness validator does not import it merely because the names match.
+
 ## What is included
 
 | Surface | Purpose |
@@ -46,6 +52,7 @@ records expose `context_readiness`, `adoption.reconciliation_status`, and overal
 | `harness/project.yaml` | Machine-readable project intent, autonomy, product version, quality, security, evidence, and lifecycle contract |
 | `harness/roles/` | Provider-neutral role contracts with distinct authority and handoffs |
 | `harness/loops/` | State machines with inputs, outputs, gates, retries, and stop conditions |
+| `harness/runtime/` | Isolated harness-owned validator implementations used by copied entrypoints |
 | `.agents/skills/` | Intake, research, execution, reporting, planning, ADR, and release workflows |
 | `.codex/agents/` | Thin Codex adapters for the canonical role contracts |
 | `.pi/` | Experimental Pi settings, workflow prompts, and structured context-readiness questions |

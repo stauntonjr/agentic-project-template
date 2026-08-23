@@ -12,8 +12,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) in sys.path:
+    sys.path.remove(str(ROOT))
+sys.path.insert(0, str(ROOT))
+
+from harness.runtime.actions_supply_chain import check_workflows  # noqa: E402
+
 try:
-    from .check_actions_supply_chain import check_workflows
     from .common import load_json, repository_root
     from .harness_upgrade import (
         safe_path,
@@ -25,7 +32,6 @@ try:
     from .product_version import product_version_status
     from .run_quality import command_argv
 except ImportError:  # Direct script execution.
-    from check_actions_supply_chain import check_workflows
     from common import load_json, repository_root
     from harness_upgrade import (
         safe_path,
@@ -56,6 +62,8 @@ REQUIRED_PATHS = (
     "README.md",
     "SECURITY.md",
     "tools/check_actions_supply_chain.py",
+    "harness/__init__.py",
+    "harness/runtime/actions_supply_chain.py",
     "tools/product_version.py",
     "tools/python_package_smoke.py",
     "tools/run_quality.py",
