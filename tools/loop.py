@@ -9,9 +9,10 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 try:
     from .common import git, load_json, repository_root, utc_now, write_json
@@ -38,7 +39,7 @@ def current_commit(root: Path) -> str:
 
 
 def make_run_id(root: Path) -> str:
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     revision = current_commit(root)
     suffix = revision[:8] if revision != "UNBORN" else "unborn"
     base = f"{timestamp}-{suffix}"

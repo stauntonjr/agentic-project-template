@@ -22,7 +22,7 @@
     "context_readiness": {"enum": ["provisional", "sufficient"]},
     "adoption": {
       "type": "object",
-      "required": ["status", "reconciliation_status", "gap_count", "dispositions"],
+      "required": ["status", "reconciliation_status", "gap_count", "dispositions", "quality"],
       "additionalProperties": false,
       "properties": {
         "status": {"enum": ["provisional", "active"]},
@@ -42,6 +42,32 @@
             "adoption_deferred": {"type": "integer", "minimum": 0},
             "merge_required_existing": {"type": "integer", "minimum": 0},
             "merge_required_missing": {"type": "integer", "minimum": 0}
+          }
+        },
+        "quality": {
+          "type": "object",
+          "required": [
+            "status",
+            "command",
+            "baseline_exit_code",
+            "adopted_exit_code",
+            "incompatible_paths",
+            "diagnostic"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "enum": ["not-evaluated", "compatible", "incompatible", "indeterminate"]
+            },
+            "command": {"type": ["string", "null"]},
+            "baseline_exit_code": {"type": ["integer", "null"]},
+            "adopted_exit_code": {"type": ["integer", "null"]},
+            "incompatible_paths": {
+              "type": "array",
+              "items": {"type": "string"},
+              "uniqueItems": true
+            },
+            "diagnostic": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -87,9 +113,13 @@
           "adoption": {
             "properties": {
               "reconciliation_status": {"const": "complete"},
-              "gap_count": {"const": 0}
+              "gap_count": {"const": 0},
+              "quality": {
+                "properties": {"status": {"const": "compatible"}},
+                "required": ["status"]
+              }
             },
-            "required": ["reconciliation_status", "gap_count"]
+            "required": ["reconciliation_status", "gap_count", "quality"]
           }
         }
       }
@@ -136,9 +166,13 @@
                   "merge_required_existing": {"const": 0},
                   "merge_required_missing": {"const": 0}
                 }
+              },
+              "quality": {
+                "properties": {"status": {"const": "compatible"}},
+                "required": ["status"]
               }
             },
-            "required": ["gap_count", "dispositions"]
+            "required": ["gap_count", "dispositions", "quality"]
           }
         }
       }
@@ -158,29 +192,30 @@
           "adoption": {
             "properties": {
               "status": {"const": "provisional"},
-              "gap_count": {"type": "integer", "minimum": 1},
-              "dispositions": {
-                "anyOf": [
-                  {
-                    "properties": {"upstream_collisions": {"minimum": 1}},
-                    "required": ["upstream_collisions"]
-                  },
-                  {
-                    "properties": {"adoption_deferred": {"minimum": 1}},
-                    "required": ["adoption_deferred"]
-                  },
-                  {
-                    "properties": {"merge_required_existing": {"minimum": 1}},
-                    "required": ["merge_required_existing"]
-                  },
-                  {
-                    "properties": {"merge_required_missing": {"minimum": 1}},
-                    "required": ["merge_required_missing"]
-                  }
-                ]
-              }
+              "gap_count": {"type": "integer", "minimum": 0},
+              "dispositions": {"type": "object"},
+              "quality": {"type": "object"}
             },
-            "required": ["status", "gap_count", "dispositions"]
+            "anyOf": [
+              {
+                "properties": {"gap_count": {"minimum": 1}},
+                "required": ["gap_count"]
+              },
+              {
+                "properties": {
+                  "quality": {
+                    "properties": {
+                      "status": {
+                        "enum": ["not-evaluated", "incompatible", "indeterminate"]
+                      }
+                    },
+                    "required": ["status"]
+                  }
+                },
+                "required": ["quality"]
+              }
+            ],
+            "required": ["status", "gap_count", "dispositions", "quality"]
           }
         }
       }

@@ -52,9 +52,13 @@ def quality_commands(root: Path, *, bootstrap: bool = True) -> list[tuple[str, l
         raise ValueError(f"unknown required quality capabilities: {', '.join(unknown)}")
     commands: list[tuple[str, list[str]]] = []
     bootstrap_command = contract.get("bootstrap")
-    if bootstrap and isinstance(bootstrap_command, str) and bootstrap_command != "TBD":
-        if not bootstrap_command.startswith("not-applicable:"):
-            commands.append(("bootstrap", command_argv(bootstrap_command, "bootstrap")))
+    if (
+        bootstrap
+        and isinstance(bootstrap_command, str)
+        and bootstrap_command != "TBD"
+        and not bootstrap_command.startswith("not-applicable:")
+    ):
+        commands.append(("bootstrap", command_argv(bootstrap_command, "bootstrap")))
     for capability in CHECK_ORDER:
         if capability in required:
             commands.append((capability, command_argv(contract.get(capability), capability)))

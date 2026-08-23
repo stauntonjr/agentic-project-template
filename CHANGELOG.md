@@ -45,6 +45,12 @@ All notable changes to the harness are recorded here. The harness version and a 
 - The Pi adapter requests strict JSON-schema tool sampling when supported and aborts after three
   consecutive unavailable-tool calls before a fourth sibling can be preflighted, while active calls
   reset the counter.
+- Existing-repository adoption can explicitly run an application's authoritative quality command
+  before and after copying harness files. It records the command, exit codes, compatibility, and
+  implicated copied paths; missing, indeterminate, or incompatible evidence keeps activation
+  provisional.
+- Universal copied Python harness sources now satisfy Procurement Intelligence Lab's locked Ruff
+  0.16.3 format and lint discovery without changing its configuration, lock, or ignore rules.
 
 ## [0.4.1] - 2026-08-22
 

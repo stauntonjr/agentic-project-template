@@ -11,7 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -461,7 +461,7 @@ def apply_release_plan(
             if sha256(source) != item.get("upstream_sha256"):
                 raise ValueError(f"source changed after planning: {item['path']}")
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     receipt_dir = receipt_root or root / ".harness/upgrades" / plan["plan_id"] / stamp
     receipt_dir.mkdir(parents=True, exist_ok=False)
     backup_root = receipt_dir / "backup"

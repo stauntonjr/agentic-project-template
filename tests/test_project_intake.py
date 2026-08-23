@@ -1,21 +1,22 @@
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 from tools.common import load_json
 from tools.project_intake import (
     adoption_output_paths,
+    adoption_quality_evidence,
     copy_missing_for_adoption,
     copy_template,
     mark_adoption_state,
     normalize_answer,
+    not_evaluated_quality,
     render,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -94,6 +95,72 @@ class ProjectIntakeTests(unittest.TestCase):
         self.assertEqual("sufficient", intake["context_readiness"])
         self.assertEqual("active", intake["adoption"]["status"])
         self.assertEqual("complete", intake["adoption"]["reconciliation_status"])
+
+    def test_unevaluated_quality_keeps_zero_gap_adoption_provisional(self) -> None:
+        project = template_project()
+        project["open_questions"] = []
+        intake = {"missing_essential_fields": []}
+        dispositions = {
+            "copied": ["tools/loop.py"],
+            "upstream_collisions": [],
+            "adoption_deferred": [],
+            "merge_required_existing": [],
+            "merge_required_missing": [],
+        }
+
+        mark_adoption_state(
+            project,
+            intake,
+            dispositions,
+            not_evaluated_quality(),
+        )
+
+        self.assertEqual("provisional", project["project"]["status"])
+        self.assertEqual("sufficient", intake["context_readiness"])
+        self.assertEqual(0, intake["adoption"]["gap_count"])
+        self.assertEqual("provisional", intake["adoption"]["reconciliation_status"])
+        self.assertEqual("not-evaluated", intake["adoption"]["quality"]["status"])
+        self.assertIn("authoritative quality command", project["open_questions"][-1])
+
+    def test_failing_baseline_is_indeterminate_not_an_adoption_regression(self) -> None:
+        evidence = adoption_quality_evidence(
+            "make check",
+            ["tools/loop.py"],
+            {"exit_code": 1, "output": "existing failure", "error": None},
+            {"exit_code": 1, "output": "tools/loop.py", "error": None},
+        )
+
+        self.assertEqual("indeterminate", evidence["status"])
+        self.assertEqual(1, evidence["baseline_exit_code"])
+        self.assertEqual(1, evidence["adopted_exit_code"])
+        self.assertIn("did not pass before", evidence["diagnostic"])
+
+    def test_procurement_quality_fixture_pins_the_conformance_boundary(self) -> None:
+        fixture = load_json(ROOT / "harness/fixtures/procurement-quality-discovery.json")
+
+        self.assertEqual("make check", fixture["application"]["authoritative_check"])
+        self.assertEqual("0.16.3", fixture["tool"]["version"])
+        self.assertEqual(26, fixture["before"]["lint_error_count"])
+        self.assertEqual(
+            {
+                "harness/runtime/actions_supply_chain.py",
+                "tools/common.py",
+                "tools/evaluate_harness.py",
+                "tools/harness_check.py",
+                "tools/harness_upgrade.py",
+                "tools/loop.py",
+                "tools/pi_adapter_check.py",
+                "tools/pi_tool_probe.py",
+                "tools/product_version.py",
+                "tools/project_intake.py",
+                "tools/python_package_smoke.py",
+                "tools/run_quality.py",
+            },
+            set(fixture["before"]["lint_incompatible_paths"]),
+        )
+        self.assertTrue(
+            all(value is False for value in fixture["boundary"].values() if isinstance(value, bool))
+        )
 
     def test_python_profile_overrides_template_placeholders(self) -> None:
         answers = {
@@ -411,6 +478,84 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertIn("Missing merge-required paths", gaps)
             self.assertIn("LICENSE", gaps)
             self.assertIn(".github/workflows/harness.yml", gaps)
+
+    def test_adoption_check_records_an_incompatible_copied_path(self) -> None:
+        if not load_json(ROOT / "harness/project.yaml").get("template_mode", False):
+            self.skipTest("cross-repository adoption is template-only")
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            target.mkdir()
+            checker = target / "app_quality.py"
+            checker.write_text(
+                "from pathlib import Path\n"
+                "path = Path('tools/pi_tool_probe.py')\n"
+                "if path.exists():\n"
+                "    print(path.as_posix())\n"
+                "    raise SystemExit(1)\n",
+                encoding="utf-8",
+            )
+            readme = target / "README.md"
+            readme.write_bytes(b"application readme\x00bytes\n")
+            command = f"{sys.executable} app_quality.py"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools/project_intake.py"),
+                    "--answers",
+                    str(ROOT / "harness/fixtures/intake.answers.json"),
+                    "--target",
+                    str(target),
+                    "--mode",
+                    "adopt",
+                    "--adoption-check",
+                    command,
+                    "--apply",
+                ],
+                cwd=ROOT,
+                check=False,
+                text=True,
+                capture_output=True,
+                env=subprocess_environment(),
+            )
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(b"application readme\x00bytes\n", readme.read_bytes())
+            intake = load_json(target / "harness/intake.json")
+            quality = intake["adoption"]["quality"]
+            self.assertEqual("incompatible", quality["status"])
+            self.assertEqual(command, quality["command"])
+            self.assertEqual(0, quality["baseline_exit_code"])
+            self.assertEqual(1, quality["adopted_exit_code"])
+            self.assertEqual(["tools/pi_tool_probe.py"], quality["incompatible_paths"])
+            self.assertEqual("provisional", intake["adoption"]["status"])
+            report = (target / "docs/project/adoption-gaps.md").read_text(encoding="utf-8")
+            self.assertIn(f"Exact application command: `{command}`", report)
+            self.assertIn("Status: `incompatible`", report)
+            self.assertIn("`tools/pi_tool_probe.py`", report)
+            self.assertIn("application quality compatibility: incompatible", result.stdout)
+
+    def test_adoption_check_is_rejected_outside_existing_repository_adoption(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "tools/project_intake.py"),
+                "--answers",
+                str(ROOT / "harness/fixtures/intake.answers.json"),
+                "--mode",
+                "new",
+                "--adoption-check",
+                "make check",
+            ],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=subprocess_environment(),
+        )
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn("supported only when adopting an existing repository", result.stderr)
 
     def test_adoption_copies_only_upstream_owned_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

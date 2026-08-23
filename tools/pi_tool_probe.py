@@ -105,8 +105,7 @@ def run_pi(
         cwd=root,
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         env=environment,
         timeout=timeout,
     )
@@ -151,7 +150,9 @@ def main() -> int:
         and "Agent operating contract" in final_assistant_text(read_events)
     )
     if not read_ok:
-        failures.append("read scenario did not make one valid read call and return the first heading")
+        failures.append(
+            "read scenario did not make one valid read call and return the first heading"
+        )
     evidence["read"] = {
         "ok": read_ok,
         "returncode": read_result.returncode,

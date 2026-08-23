@@ -9,7 +9,9 @@ import fnmatch
 import json
 import os
 import re
+import shlex
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -158,7 +160,7 @@ def load_answers(path: Path | None) -> dict[str, Any]:
     if "answers" in data and isinstance(data["answers"], dict):
         return data["answers"]
     if not isinstance(data, dict):
-        raise ValueError("answers file must contain an object")
+        raise TypeError("answers file must contain an object")
     return data
 
 
@@ -504,9 +506,79 @@ def copy_missing_for_adoption(source: Path, target: Path) -> dict[str, list[str]
     return result
 
 
-def adoption_gap_report(dispositions: dict[str, list[str]]) -> str:
+def not_evaluated_quality(command: str | None = None) -> dict[str, Any]:
+    return {
+        "status": "not-evaluated",
+        "command": command,
+        "baseline_exit_code": None,
+        "adopted_exit_code": None,
+        "incompatible_paths": [],
+        "diagnostic": "application quality compatibility was not evaluated",
+    }
+
+
+def run_adoption_check(root: Path, argv: list[str], *, timeout: int) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            argv,
+            cwd=root,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {"exit_code": None, "output": "", "error": f"timed out after {timeout}s"}
+    except OSError as exc:
+        return {"exit_code": None, "output": "", "error": str(exc)}
+    return {
+        "exit_code": result.returncode,
+        "output": f"{result.stdout}\n{result.stderr}",
+        "error": None,
+    }
+
+
+def adoption_quality_evidence(
+    command: str,
+    copied_paths: list[str],
+    baseline: dict[str, Any],
+    adopted: dict[str, Any],
+) -> dict[str, Any]:
+    output = str(adopted.get("output", "")).replace("\\", "/")
+    incompatible_paths = sorted(path for path in copied_paths if path in output)
+    baseline_exit = baseline.get("exit_code")
+    adopted_exit = adopted.get("exit_code")
+    if baseline.get("error") or adopted.get("error"):
+        status = "indeterminate"
+        diagnostic = baseline.get("error") or adopted.get("error")
+    elif baseline_exit != 0:
+        status = "indeterminate"
+        diagnostic = "application check did not pass before harness files were copied"
+    elif adopted_exit == 0:
+        status = "compatible"
+        diagnostic = "application check passed before and after harness files were copied"
+    else:
+        status = "incompatible"
+        diagnostic = (
+            "application check passed before adoption and failed after harness files were copied"
+        )
+    return {
+        "status": status,
+        "command": command,
+        "baseline_exit_code": baseline_exit,
+        "adopted_exit_code": adopted_exit,
+        "incompatible_paths": incompatible_paths,
+        "diagnostic": str(diagnostic),
+    }
+
+
+def adoption_gap_report(dispositions: dict[str, list[str]], quality: dict[str, Any]) -> str:
     def lines(key: str) -> str:
         return "\n".join(f"- `{path}`" for path in dispositions.get(key, [])) or "- None."
+
+    command = quality.get("command") or "not supplied"
+    paths = quality.get("incompatible_paths", [])
+    quality_paths = "\n".join(f"- `{path}`" for path in paths) or "- None identified."
 
     return f"""# Harness adoption gaps
 
@@ -536,6 +608,22 @@ These template paths were intentionally not copied into the application. Review 
 
 {lines("merge_required_missing")}
 
+## Application quality discovery
+
+- Status: `{quality.get("status")}`.
+- Exact application command: `{command}`.
+- Baseline exit code: `{quality.get("baseline_exit_code")}`.
+- Adopted-overlay exit code: `{quality.get("adopted_exit_code")}`.
+- Diagnostic: {quality.get("diagnostic")}.
+
+Copied harness paths named by the application command:
+
+{quality_paths}
+
+No application quality configuration, dependency lock, or ignore rule was changed. A check is run
+only when the adopter explicitly supplies `--adoption-check`. A missing, indeterminate, or
+incompatible result keeps harness adoption provisional.
+
 ## Required review
 
 1. Merge the context-readiness, source-precedence, role, loop, safety, verification, and skill-routing rules into the authoritative `AGENTS.md`.
@@ -561,10 +649,21 @@ def adoption_gap_count(dispositions: dict[str, list[str]]) -> int:
 
 
 def mark_adoption_state(
-    project: dict[str, Any], intake: dict[str, Any], dispositions: dict[str, list[str]]
+    project: dict[str, Any],
+    intake: dict[str, Any],
+    dispositions: dict[str, list[str]],
+    quality: dict[str, Any] | None = None,
 ) -> int:
     unresolved = adoption_gap_count(dispositions)
-    adoption_ready = unresolved == 0
+    quality = quality or {
+        "status": "compatible",
+        "command": None,
+        "baseline_exit_code": 0,
+        "adopted_exit_code": 0,
+        "incompatible_paths": [],
+        "diagnostic": "compatibility supplied by the caller",
+    }
+    adoption_ready = unresolved == 0 and quality.get("status") == "compatible"
     context_ready = not intake.get("missing_essential_fields")
     intake["context_readiness"] = "sufficient" if context_ready else "provisional"
     project["project"]["lifecycle"] = "adopt"
@@ -574,10 +673,15 @@ def mark_adoption_state(
         "reconciliation_status": "complete" if adoption_ready else "provisional",
         "gap_count": unresolved,
         "dispositions": {key: len(value) for key, value in dispositions.items() if key != "copied"},
+        "quality": quality,
     }
     if unresolved:
         project["open_questions"].append(
             f"Resolve {unresolved} harness adoption reconciliation gaps"
+        )
+    if quality.get("status") != "compatible":
+        project["open_questions"].append(
+            "Evaluate copied harness paths with the application's authoritative quality command"
         )
     return unresolved
 
@@ -589,7 +693,26 @@ def main() -> int:
     parser.add_argument("--mode", choices=MODES, default="new")
     parser.add_argument("--target", type=Path)
     parser.add_argument("--apply", action="store_true", help="Write rendered artifacts")
+    parser.add_argument(
+        "--adoption-check",
+        help="Explicit non-mutating application command to run before and after adopt apply",
+    )
+    parser.add_argument(
+        "--adoption-check-timeout",
+        type=int,
+        default=300,
+        help="Seconds allowed for each explicit adoption check (default: 300)",
+    )
     args = parser.parse_args()
+
+    if args.adoption_check_timeout < 1:
+        parser.error("--adoption-check-timeout must be positive")
+    try:
+        adoption_check_argv = shlex.split(args.adoption_check) if args.adoption_check else None
+    except ValueError as exc:
+        parser.error(f"invalid --adoption-check: {exc}")
+    if adoption_check_argv == []:
+        parser.error("--adoption-check must contain a command")
 
     source = repository_root(Path(__file__).parent)
     target = Path(os.path.abspath(args.target)) if args.target else source
@@ -605,6 +728,12 @@ def main() -> int:
     adopting_existing = (
         target != source and target.exists() and not target_exists and args.mode == "adopt"
     )
+    if args.adoption_check and not adopting_existing:
+        print(
+            "error: --adoption-check is supported only when adopting an existing repository",
+            file=sys.stderr,
+        )
+        return 2
     if target.exists() and not target_exists and target != source and not adopting_existing:
         print(f"error: target exists but is not a harness repository: {target}", file=sys.stderr)
         print(
@@ -651,7 +780,12 @@ def main() -> int:
     if not args.apply:
         if adopting_existing:
             dispositions, _copy_plan = plan_adoption(source, target)
-            mark_adoption_state(rendered_project, intake, dispositions)
+            mark_adoption_state(
+                rendered_project,
+                intake,
+                dispositions,
+                not_evaluated_quality(args.adoption_check),
+            )
         print("dry run; no files written")
         print(
             json.dumps(
@@ -674,10 +808,26 @@ def main() -> int:
         "merge_required_missing": [],
     }
     adoption_outputs: dict[str, Path] | None = None
+    quality = not_evaluated_quality(args.adoption_check)
     if adopting_existing:
         adoption_outputs = adoption_output_paths(target)
+        baseline_check = (
+            run_adoption_check(target, adoption_check_argv, timeout=args.adoption_check_timeout)
+            if adoption_check_argv
+            else None
+        )
         dispositions = copy_missing_for_adoption(source, target)
-        mark_adoption_state(rendered_project, intake, dispositions)
+        if adoption_check_argv and baseline_check is not None:
+            adopted_check = run_adoption_check(
+                target, adoption_check_argv, timeout=args.adoption_check_timeout
+            )
+            quality = adoption_quality_evidence(
+                args.adoption_check,
+                dispositions["copied"],
+                baseline_check,
+                adopted_check,
+            )
+        mark_adoption_state(rendered_project, intake, dispositions, quality)
     elif not target_exists:
         copy_template(source, target)
     project_target = (
@@ -713,7 +863,7 @@ def main() -> int:
         adoption_report = adoption_outputs["adoption_report"]
         adoption_report.parent.mkdir(parents=True, exist_ok=True)
         adoption_report.write_text(
-            adoption_gap_report(dispositions),
+            adoption_gap_report(dispositions, intake["adoption"]["quality"]),
             encoding="utf-8",
         )
     print(f"rendered project intake at {target}")
@@ -746,6 +896,7 @@ def main() -> int:
                 else "provisional; reconciliation and intake must both be ready"
             )
         )
+        print(f"application quality compatibility: {intake['adoption']['quality']['status']}")
     return 0
 
 
