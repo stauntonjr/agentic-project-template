@@ -206,3 +206,25 @@ Start commit: `cf31c78d449068a98aaf7562579b35ed1f418961`
 End commit: pending
 Template branch: `main`
 Application snapshot: `b41e3bc`
+
+## Post-loop application reconciliation — 2026-08-23
+
+The current-state claims in this section supersede the report's earlier pending-state statements;
+they do not rewrite what the isolated dogfood knew or changed at run time.
+
+- The Macro Technical Pulse owner selected MIT after the isolated dogfood, then applied that
+  decision through [MTP Issue #30](https://github.com/stauntonjr/macro-technical-pulse/issues/30)
+  and [PR #31](https://github.com/stauntonjr/macro-technical-pulse/pull/31).
+- PR #31 merged to MTP `main` as `1f06504d850d1160bef9fa6228c3ebdc4e8f02ae`; default-branch
+  [CI run 32653405251](https://github.com/stauntonjr/macro-technical-pulse/actions/runs/32653405251)
+  passed, Project #7 records the work Done with Evidence Approved, and the post-write planning
+  audit reported 26 configured items with zero drift.
+- GitHub's repository-license endpoint identifies the application `LICENSE` as SPDX `MIT`.
+  MTP ADR 0010 limits that grant to original project source and documentation; it does not
+  relicense third-party software, provider payloads, market data, exchange observations, derived
+  datasets, trademarks, or preserved legacy artifacts.
+- The license gap that correctly kept the isolated intake provisional is therefore resolved on
+  the application default branch. This does not claim that the full reusable harness was adopted
+  into MTP, nor does it retroactively make the dogfood checkout active.
+- Template Issue #23 separately published the Pi tool-call hardening as `d118dad`; the original Pi
+  failures above remain preserved as historical evidence rather than being rewritten as successes.

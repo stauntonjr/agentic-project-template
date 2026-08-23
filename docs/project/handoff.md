@@ -14,7 +14,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Active engineering loop: Issue #23, Pi tool-call hardening for local OpenAI-compatible models.
+- Latest completed harness change: Issue #23, Pi tool-call hardening for local OpenAI-compatible
+  models. Post-loop MTP license reconciliation is tracked in Issue #24.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -36,8 +37,6 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 ## Open decisions
 
-- Macro Technical Pulse's owner selected MIT on 2026-08-23. The decision is recorded here, but the
-  application repository has not yet been mutated or relicensed by this template loop.
 - Whether Pi should omit an empty `tools` array for OpenAI-compatible continuations remains an
   upstream/provider concern. The adapter documents a tested least-authority continuation pattern.
 - Which live GitHub security settings should be reconciled automatically after the first dogfood audit.
@@ -50,8 +49,12 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Pi 0.84.1 ran intake-to-report through local SparkRun Qwen with no external spend or GitHub
   writes; research accuracy, invalid tool calls, and empty-tools compatibility gaps are recorded in
   `docs/reports/issue-3-macro-technical-pulse-dogfood.md`.
-- Issue #23 adds strict questionnaire sampling, a three-call unavailable-tool ceiling, and a
+- Issue #23 added strict questionnaire sampling, a three-call unavailable-tool ceiling, and a
   reproducible live-model probe before another application dogfood begins.
+- Macro Technical Pulse adopted MIT for its original source and documentation through
+  [MTP PR #31](https://github.com/stauntonjr/macro-technical-pulse/pull/31), merged on 2026-08-23 as
+  `1f06504d`; its default-branch CI passed and GitHub detects SPDX `MIT`. Provider, market-data,
+  exchange-observation, and third-party artifact rights remain separate.
 
 ## Refresh protocol
 
