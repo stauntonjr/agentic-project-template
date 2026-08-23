@@ -43,6 +43,22 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_provisional_adoption_fails_with_a_precise_activation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = active_generic_copy(directory)
+            project = load_json(target / "harness/project.yaml")
+            project["project"]["lifecycle"] = "adopt"
+            project["project"]["status"] = "provisional"
+            write_json(target / "harness/project.yaml", project)
+
+            result = check(target)
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "harness project is provisional; resolve adoption gaps and essential intake context before activation",
+                result.errors,
+            )
+
     def test_project_owned_planning_loader_is_supported_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
