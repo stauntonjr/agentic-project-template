@@ -72,6 +72,7 @@ REQUIRED_PATHS = (
     "tools/recovery_scenarios.py",
     "tools/run_challenges.py",
     "tools/run_quality.py",
+    "tools/loop_telemetry.py",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",
@@ -85,9 +86,13 @@ REQUIRED_PATHS = (
     "harness/schemas/preferences.schema.json",
     "harness/schemas/eval-scenarios.schema.json",
     "harness/schemas/provider-adapter.schema.json",
+    "harness/schemas/telemetry-input.schema.json",
+    "harness/schemas/loop-telemetry.schema.json",
+    "harness/schemas/telemetry-aggregate.schema.json",
     "harness/adapters/codex.json",
     "harness/adapters/pi.json",
     "harness/evals/scenarios.json",
+    "harness/telemetry.json",
     "harness/version.json",
     "harness/ownership.json",
     "harness.lock",
@@ -625,6 +630,42 @@ def validate_json_assets(root: Path, result: Result) -> None:
     result.checked.append("JSON assets")
 
 
+def validate_telemetry(root: Path, result: Result) -> None:
+    config = load_json(root / "harness/telemetry.json")
+    if not isinstance(config, dict):
+        result.errors.append("telemetry config must be an object")
+        return
+    expected_defaults = {
+        "schema_version": "1.0",
+        "enabled_by_default": False,
+        "ingestion": "explicit-cli-only",
+        "default_output": "stdout",
+        "raw_input_retention": "not-retained",
+        "written_summary_retention": "caller-managed",
+        "organization_export": "disabled",
+        "content_capture": False,
+    }
+    for key, expected in expected_defaults.items():
+        result.require(
+            config.get(key) == expected,
+            f"telemetry {key} must be {expected!r}",
+        )
+    result.require(
+        config.get("measurement_origins")
+        == ["locally-measured", "provider-reported", "inferred", "unavailable"],
+        "telemetry measurement origins are invalid",
+    )
+    forbidden = config.get("forbidden_input_keys")
+    required_forbidden = {"prompt", "transcript", "reasoning", "secret", "token"}
+    result.require(
+        isinstance(forbidden, list)
+        and all(isinstance(item, str) for item in forbidden)
+        and required_forbidden.issubset({item.lower() for item in forbidden}),
+        "telemetry forbidden input keys omit required privacy terms",
+    )
+    result.checked.append("outcome telemetry privacy defaults")
+
+
 def validate_engineering_tooling(root: Path, result: Result) -> None:
     for path in sorted((root / "harness/profiles").glob("*.json")):
         profile = load_json(path)
@@ -660,6 +701,7 @@ def check(root: Path) -> Result:
         validate_pi_adapter(root, result)
         validate_planning(root, result)
         validate_json_assets(root, result)
+        validate_telemetry(root, result)
         validate_engineering_tooling(root, result)
     except (ValueError, OSError) as exc:
         result.errors.append(str(exc))

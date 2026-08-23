@@ -24,6 +24,9 @@ All notable changes to the harness are recorded here. The harness version and a 
 - A read-only Kortex provenance and governed-learning evaluation that separates evidence tiers,
   keeps learned policy changes proposed pending human review, uses sanitized durable handoffs, and
   replays interrupted-session recovery without application or memory-store mutation.
+- Opt-in, content-free per-loop outcome telemetry with explicit measurement provenance, strict
+  local schemas, stdout-only defaults, retrospective observation timestamps, and a de-identified
+  aggregation boundary that preserves unavailable values and unlike units.
 
 ### Changed
 

@@ -83,6 +83,7 @@ the copied harness validator does not import it merely because the names match.
 | `harness.lock` | Pinned upstream release, commit, per-file checksums, and ownership classes |
 | `harness/ownership.json` | Upgrade policy separating upstream-owned, project-owned, and merge-required paths |
 | `harness/evals/` | Forward-test scenarios for skill routing and safety behavior |
+| `harness/telemetry.json` | Disabled-by-default, content-free outcome telemetry and retention contract |
 | `docs/project/handoff.md` | Concise orientation index for fresh humans and agents |
 | `docs/project/engineering-baseline.md` | Portable capability contract and profile-selected tooling boundary |
 
@@ -153,8 +154,16 @@ python3 tools/evaluate_harness.py
 python3 tools/recovery_scenarios.py       # Six disposable recovery fixtures
 python3 tools/run_challenges.py           # Validate candidates and approved challenges
 python3 tools/run_challenges.py --run --include-candidates # Review-only candidate replay
+python3 tools/loop_telemetry.py summarize --run RUN_ID # Opt-in, stdout-only by default
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
 ```
+
+Outcome telemetry is never collected automatically. The local CLI derives only loop-record facts,
+accepts optional strictly allowlisted observations, distinguishes measured, provider-reported,
+inferred, and unavailable values, and writes only under ignored `.harness/telemetry/` when an
+output is explicitly requested. Aggregates remove run IDs and keep origins and unlike cost units
+separate; there is no provider billing access, token collection, remote export, or organization
+analytics. See [Outcome telemetry](docs/project/outcome-telemetry.md).
 
 No GitHub mutation occurs without both the mutating subcommand and `--yes`. Project bootstrap can create or copy a Project, link it to the repository, and create missing fields and basic saved views. Repeated bootstrap is a no-op once state matches. Existing field/view mismatches, complex layout settings, permissions, workflows, insights, and destructive cleanup remain manual. See [GitHub planning topology](docs/project/github-planning.md) and [ADR-0006](docs/adr/0006-github-project-topology.md).
 

@@ -14,6 +14,7 @@ build/
 .harness/upgrades/
 .harness/preferences.local.json
 .harness/pi/
+.harness/telemetry/
 .pi/npm/
 .pi/git/
 .specstory/

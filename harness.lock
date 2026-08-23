@@ -176,7 +176,7 @@
       "ownership": "merge-required"
     },
     ".gitignore": {
-      "sha256": "b7fea6f04354e2eb790badcf1d21348ced21bf79f741048b7d71ab2027b91629",
+      "sha256": "1ae06e4fa920b5ec9580439179ab237d4bb23a607e4836d08b9427a95f4f175d",
       "ownership": "merge-required"
     },
     ".pi/extensions/context-readiness.ts": {
@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "3b7c45679f4da1c65a3c4a94f264e0fd14f200048d6faa15efb6b34e95e0fe74",
+      "sha256": "b87c7dcaf3bc3545f9cd4a1716af4ce3c1380876f09d5d531976ac94766491ae",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -224,7 +224,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "9c6fef437436592301d03b92f88732cd1210534b0d16fa5eded1438d3ba47bdb",
+      "sha256": "66791f733bee2b8985a6d01274c2825a49cd058ebba6348cff449c94b71fe9c8",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -276,7 +276,11 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "b0a144b4dc4c2a48e7030d8ff33730f173e52aefa58773708426cb03ebff0550",
+      "sha256": "f110eaa183ad77b8291d4903ce56a2487a9c71e8d73da45d7e167fc39345064c",
+      "ownership": "project-owned"
+    },
+    "docs/project/outcome-telemetry.md": {
+      "sha256": "dd80858de02d7af5846d2d18843e87e4fd4db6d13b80e05d17f357df252e5ad4",
       "ownership": "project-owned"
     },
     "docs/project/pi-reference-adapter.md": {
@@ -303,6 +307,10 @@
       "sha256": "5a8aa67abea5f45fd3377dd80bc7952eac9a6cde25f4b26ec64c8af51d8b0a4f",
       "ownership": "project-owned"
     },
+    "docs/reports/issue-17-outcome-telemetry.md": {
+      "sha256": "01b21911510a76f4f54222a9a1a47f540042440790201efd9cb14c67410748d3",
+      "ownership": "project-owned"
+    },
     "docs/reports/issue-2-s3ntinel-routing.md": {
       "sha256": "8e05ee4af6e490a16bfddb848ef2689796abf474d08925f63cccab909e1de702",
       "ownership": "project-owned"
@@ -325,6 +333,10 @@
     },
     "docs/research/landscape.md": {
       "sha256": "8efc0691a945bddac14bc8db7c2b62d3decfb0d956594ad61ac714b045505a6a",
+      "ownership": "project-owned"
+    },
+    "docs/research/outcome-telemetry-landscape.md": {
+      "sha256": "f45c82925c43ae65f40cc397c2eb88bca7ba48aa23369cbdc04be7158bdb3a3b",
       "ownership": "project-owned"
     },
     "harness/__init__.py": {
@@ -495,6 +507,10 @@
       "sha256": "37f5e6c136134458ebdf30f5ad4a28cb9392e6e8474eccb667409aea9a63d8dc",
       "ownership": "upstream-owned"
     },
+    "harness/schemas/loop-telemetry.schema.json": {
+      "sha256": "2c0605cff06940f629898f360665807cd59a8ba313b07c311a044aa000674df0",
+      "ownership": "upstream-owned"
+    },
     "harness/schemas/migration.schema.json": {
       "sha256": "353adfbbba33a86a44426f2cb7acaf2b40b2989481bef20134bb6eb1841045b9",
       "ownership": "upstream-owned"
@@ -514,6 +530,18 @@
     "harness/schemas/provider-adapter.schema.json": {
       "sha256": "8e5ae1c8e17015ff6296eb53311d221327781e0c492eca4debb6b2ba9c1a95fa",
       "ownership": "upstream-owned"
+    },
+    "harness/schemas/telemetry-aggregate.schema.json": {
+      "sha256": "0d95f3357984b04fa357968878305024f272bb1a98db080b68f81d2f182deac5",
+      "ownership": "upstream-owned"
+    },
+    "harness/schemas/telemetry-input.schema.json": {
+      "sha256": "13deb364015b0dd664c1386351a5b55f6b2f9c546b72e63692a3315bc6baa6f5",
+      "ownership": "upstream-owned"
+    },
+    "harness/telemetry.json": {
+      "sha256": "c48b41d5e79f964d994e9809c617bda65d8f6ee1b359445db095f5bf0adec752",
+      "ownership": "project-owned"
     },
     "harness/version.json": {
       "sha256": "169d6bf959f37b1c226786ffa89b13ddd2b0745a5ab18de02df5645f4640c134",
@@ -549,6 +577,10 @@
     },
     "tests/test_loop.py": {
       "sha256": "5f0469283ba08aa1bbbfb723c4b78dfd0caa3ab4f03687a1d8c17f5874db14b7",
+      "ownership": "upstream-owned"
+    },
+    "tests/test_loop_telemetry.py": {
+      "sha256": "57906133779b623c7dd55c9f51c329eeddde5b9c8664d0e9462ce9e79230b3d7",
       "ownership": "upstream-owned"
     },
     "tests/test_pi_adapter_check.py": {
@@ -596,7 +628,7 @@
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {
-      "sha256": "156447eb3905e6c713b68157510421ea05079e16cbaefa78a41aabee312a0240",
+      "sha256": "26974f680510d97b68d81e5275256d2f10d33c27b801f7372f1e3b2da240a876",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -605,6 +637,10 @@
     },
     "tools/loop.py": {
       "sha256": "3564a81e3a4b2b303a66f0de43bf6a0d133266fb1069a0da03ef85291e14856e",
+      "ownership": "upstream-owned"
+    },
+    "tools/loop_telemetry.py": {
+      "sha256": "0425e175865c8d905604e3b979653ca938d5c8f4d5139c1a2acd8ad060accc2b",
       "ownership": "upstream-owned"
     },
     "tools/pi_adapter_check.py": {
