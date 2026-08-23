@@ -14,6 +14,9 @@ All notable changes to the harness are recorded here. The harness version and a 
   drift for ambiguous duplicate live identities.
 - A reproducible live-model Pi tool-call probe covering strict questionnaire sampling, valid reads,
   unavailable-tool ceilings, zero-tool sessions, and least-authority continuations.
+- A layered domain-routing forward scenario and pinned S3NTINEL evaluation that keep repository
+  Spark rules local while exercising reusable loop, verifier, release-steward, and Project
+  ownership boundaries.
 
 ### Changed
 
