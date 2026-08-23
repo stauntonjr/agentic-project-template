@@ -14,9 +14,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Latest completed harness change: Issue #23, Pi tool-call hardening for local OpenAI-compatible
-  models. Post-loop MTP license reconciliation is complete under Issue #24. Issue #11 is the active
-  Procurement Intelligence Lab adversarial adoption dogfood.
+- Latest implemented harness change: Issue #26 isolates copied validation from application
+  tool-module collisions. Issue #25 keeps adopt-mode activation provisional until context and
+  reconciliation are both complete.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -68,7 +68,12 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   exact disposition counts, `context_readiness`, reconciliation status, and overall project
   activation independently. Project activation stays `provisional` until both intake context and
   every reconciliation category are clear; validation and reported completion fail closed until
-  then. Issues #26-#27 remain the next adoption blockers.
+  then.
+- Issue #26 moves the Actions supply-chain implementation into the harness-owned
+  `harness.runtime` namespace. The historical tools entrypoint remains a compatibility wrapper,
+  while copied validation bypasses an incompatible application-owned module with the same filename
+  and returns structured provisional-adoption evidence. Issue #27 remains the next adoption
+  blocker.
 
 ## Refresh protocol
 

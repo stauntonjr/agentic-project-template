@@ -27,6 +27,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Fixed
 
+- Adopted harness validation now imports the Actions supply-chain implementation from the
+  harness-owned `harness.runtime` namespace. An incompatible application-owned
+  `tools/check_actions_supply_chain.py` remains byte-for-byte intact, is reported as a
+  reconciliation collision, and no longer causes the copied validator to crash during import.
 - Adopt-mode dry runs and applies now record an `adopt` lifecycle, exact reconciliation disposition
   counts, `context_readiness`, and separate reconciliation and overall activation states. Project
   activation remains `provisional` until both adoption gaps and essential intake context are

@@ -1,6 +1,9 @@
 from pathlib import Path
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -43,6 +46,89 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_adopted_validator_ignores_incompatible_application_supply_chain_module(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            tools = target / "tools"
+            tools.mkdir(parents=True)
+            application_module = tools / "check_actions_supply_chain.py"
+            original = b"APPLICATION_OWNED = True\n"
+            application_module.write_bytes(original)
+            shadow_module = tools / "harness.py"
+            shadow_module.write_bytes(b"raise AssertionError('application harness imported')\n")
+            shutil.copy2(ROOT / "tools/github_planning.py", tools / "github_planning.py")
+            readme = target / "README.md"
+            readme.write_bytes(b"application readme\n")
+            application_source = target / "src/application.py"
+            application_source.parent.mkdir()
+            application_source.write_bytes(b"VALUE = 'application'\n")
+            before = {
+                path.relative_to(target): path.read_bytes()
+                for path in (
+                    application_module,
+                    shadow_module,
+                    tools / "github_planning.py",
+                    readme,
+                    application_source,
+                )
+            }
+
+            environment = os.environ.copy()
+            for key in tuple(environment):
+                if key.startswith("COV_CORE_"):
+                    environment.pop(key)
+            adopted = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools/project_intake.py"),
+                    "--answers",
+                    str(ROOT / "harness/fixtures/intake.answers.json"),
+                    "--target",
+                    str(target),
+                    "--mode",
+                    "adopt",
+                    "--apply",
+                ],
+                cwd=ROOT,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+            )
+            self.assertEqual(0, adopted.returncode, adopted.stdout + adopted.stderr)
+            self.assertEqual(
+                before,
+                {relative: (target / relative).read_bytes() for relative in before},
+            )
+            self.assertTrue((target / "harness/runtime/actions_supply_chain.py").is_file())
+
+            validated = subprocess.run(
+                [sys.executable, str(target / "tools/harness_check.py"), "--json"],
+                cwd=target,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+            )
+
+            self.assertEqual(1, validated.returncode, validated.stdout + validated.stderr)
+            self.assertEqual("", validated.stderr)
+            payload = json.loads(validated.stdout)
+            self.assertFalse(payload["ok"])
+            self.assertIn(
+                "harness project is provisional; resolve adoption gaps and essential intake context before activation",
+                payload["errors"],
+            )
+            self.assertNotIn("Traceback", validated.stdout)
+            self.assertIn(
+                "`tools/check_actions_supply_chain.py`",
+                (target / "docs/project/adoption-gaps.md").read_text(encoding="utf-8"),
+            )
+
     def test_provisional_adoption_fails_with_a_precise_activation_error(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = active_generic_copy(directory)

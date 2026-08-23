@@ -2,13 +2,17 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.check_actions_supply_chain import check_workflows
+from harness.runtime.actions_supply_chain import check_workflows
+from tools.check_actions_supply_chain import check_workflows as compatibility_check_workflows
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ActionsSupplyChainTests(unittest.TestCase):
+    def test_historical_tool_module_reexports_the_runtime_implementation(self) -> None:
+        self.assertIs(check_workflows, compatibility_check_workflows)
+
     def test_repository_workflows_are_immutable_and_least_privilege(self) -> None:
         self.assertEqual([], check_workflows(ROOT))
 
