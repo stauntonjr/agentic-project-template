@@ -272,7 +272,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "4db8909a9a6d48a53def59f11849f400695e11de43c26ff4020057fdc25dcef2",
+      "sha256": "1701797efe229a7134c04e377c19b9c0bf4ec4b8dafa5896851aa40555276e0d",
       "ownership": "project-owned"
     },
     "docs/project/pi-reference-adapter.md": {
@@ -281,6 +281,10 @@
     },
     "docs/project/working-agreements.md": {
       "sha256": "efef14d5e233ce28a95bd3cc5c7dd292c9103c45c99cc17ed7e501cf2ee12e79",
+      "ownership": "project-owned"
+    },
+    "docs/reports/issue-11-procurement-intelligence-lab-dogfood.md": {
+      "sha256": "6bb44a7a04ec44ea8a3bdf04c8480a80a5589b1a9cd441ea7f1cb9e956a60699",
       "ownership": "project-owned"
     },
     "docs/reports/issue-23-pi-tool-calls.md": {

@@ -15,7 +15,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
 - Latest completed harness change: Issue #23, Pi tool-call hardening for local OpenAI-compatible
-  models. Post-loop MTP license reconciliation is tracked in Issue #24.
+  models. Post-loop MTP license reconciliation is complete under Issue #24. Issue #11 is the active
+  Procurement Intelligence Lab adversarial adoption dogfood.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -55,6 +56,14 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   [MTP PR #31](https://github.com/stauntonjr/macro-technical-pulse/pull/31), merged on 2026-08-23 as
   `1f06504d`; its default-branch CI passed and GitHub detects SPDX `MIT`. Provider, market-data,
   exchange-observation, and third-party artifact rights remain separate.
+- Procurement Intelligence Lab adopt mode preserved every tracked application file at `0f9d1a4`,
+  then reported 44 unresolved reconciliation gaps. Application unit, HTTP integration, clean-wheel,
+  sparse-input, and all eleven executable known-bad challenge boundaries passed independently.
+- Its live Project #6 audit reports no missing fields, labels, milestones, or managed views; a
+  disposable pagination shim was required because host GitHub CLI 2.45 lacks `gh api --slurp`.
+- The Procurement overlay remains provisional: Issues #25-#27 own false-active adoption state,
+  application tool-module shadowing, and copied-file quality-discovery failures. The authoritative
+  application checkout, separate wiki, GitHub Project #6, and product behavior remain unchanged.
 
 ## Refresh protocol
 
