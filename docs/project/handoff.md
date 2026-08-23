@@ -19,6 +19,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   and governed-learning evaluation. Issue #2 validates layered domain routing on S3NTINEL without
   mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime imports, and test
   application quality discovery.
+- Active Issue #17 adds opt-in local outcome telemetry with explicit provenance, privacy and
+  retention defaults, and a de-identified aggregation boundary; provider and organization tooling
+  remain deferred.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -38,6 +41,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Profile-driven quality capabilities, concrete Python defaults, repository hygiene files, and a shared local/CI command boundary.
 - Dependabot, dependency review, CodeQL, least-privilege workflows, and deterministic full-SHA Action validation.
 - Accepted shared-program versus dedicated-application Project topology, with Project #13 as the canonical source and additive field/view/link reconciliation.
+- Disabled-by-default loop outcome telemetry that emits to stdout, rejects content-bearing input,
+  and keeps written summaries local and caller-managed.
 
 ## Open decisions
 
