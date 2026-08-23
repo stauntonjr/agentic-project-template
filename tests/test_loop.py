@@ -16,6 +16,7 @@ from tools.loop import (
     start_run,
     waive_criterion,
 )
+from tools.project_intake import mark_adoption_state
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -124,6 +125,50 @@ def approve_current(root: Path, run_id: str = "test-run") -> None:
 
 
 class LoopTests(unittest.TestCase):
+    def test_context_incomplete_zero_gap_adoption_cannot_report_completion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            project = {
+                "project": {"lifecycle": "new", "status": "active"},
+                "open_questions": ["Resolve intent.outcomes"],
+            }
+            intake = {"missing_essential_fields": ["intent.outcomes"]}
+            dispositions = {
+                "copied": [],
+                "upstream_collisions": [],
+                "adoption_deferred": [],
+                "merge_required_existing": [],
+                "merge_required_missing": [],
+            }
+            mark_adoption_state(project, intake, dispositions)
+            project_path = root / "harness/project.yaml"
+            project_path.parent.mkdir()
+            project_path.write_text(json.dumps(project), encoding="utf-8")
+            start_test_run(root)
+            approve_current(root)
+
+            self.assertEqual("complete", intake["adoption"]["reconciliation_status"])
+            self.assertEqual("provisional", intake["context_readiness"])
+            with self.assertRaisesRegex(ValueError, "harness project is provisional"):
+                finish_run(root, "test-run", "reported")
+
+    def test_provisional_adoption_cannot_report_completion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            project_path = root / "harness/project.yaml"
+            project_path.parent.mkdir()
+            project_path.write_text(
+                json.dumps({"project": {"lifecycle": "adopt", "status": "provisional"}}),
+                encoding="utf-8",
+            )
+            start_test_run(root)
+            approve_current(root)
+
+            with self.assertRaisesRegex(ValueError, "harness project is provisional"):
+                finish_run(root, "test-run", "reported")
+
     def test_report_uses_real_git_boundary_and_acceptance_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

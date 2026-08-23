@@ -28,7 +28,15 @@ python3 tools/project_intake.py \
 python3 /tmp/example-agent-project/tools/harness_check.py
 ```
 
-The initializer is idempotent: it inspects existing state, preserves confirmed answers, and only replaces generated project documents when `--apply` is used. Use `--mode adopt` for an existing repository; it copies only missing harness files, preserves collisions, and writes `docs/project/adoption-gaps.md` for deliberate reconciliation. Use `--mode gap-only` to ask only unresolved questions.
+The initializer is idempotent: it inspects existing state, preserves confirmed answers, and only
+replaces generated project documents when `--apply` is used. Use `--mode adopt` for an existing
+repository; it copies only missing harness files, preserves collisions, and writes
+`docs/project/adoption-gaps.md` for deliberate reconciliation. Complete project context may be
+sufficient for bounded planning while the harness adoption remains explicitly `provisional` until
+every recorded reconciliation gap is resolved. Conversely, resolved file reconciliation does not
+activate the overall harness while essential intake context is still missing. Generated intake
+records expose `context_readiness`, `adoption.reconciliation_status`, and overall
+`adoption.status` separately. Use `--mode gap-only` to ask only unresolved questions.
 
 ## What is included
 

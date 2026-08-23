@@ -27,6 +27,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Fixed
 
+- Adopt-mode dry runs and applies now record an `adopt` lifecycle, exact reconciliation disposition
+  counts, `context_readiness`, and separate reconciliation and overall activation states. Project
+  activation remains `provisional` until both adoption gaps and essential intake context are
+  resolved; harness validation and reported loop completion fail closed until then.
 - Harness validation can use a trusted application-owned GitHub planning loader when the
   application intentionally retains its own planning implementation.
 - Adoption preflights every target path, rejects symlink traversal and non-directory ancestors

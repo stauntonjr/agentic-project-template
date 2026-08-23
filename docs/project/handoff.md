@@ -64,6 +64,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - The Procurement overlay remains provisional: Issues #25-#27 own false-active adoption state,
   application tool-module shadowing, and copied-file quality-discovery failures. The authoritative
   application checkout, separate wiki, GitHub Project #6, and product behavior remain unchanged.
+- Issue #25 now separates context readiness from activation: adopt mode records lifecycle `adopt`,
+  exact disposition counts, `context_readiness`, reconciliation status, and overall project
+  activation independently. Project activation stays `provisional` until both intake context and
+  every reconciliation category are clear; validation and reported completion fail closed until
+  then. Issues #26-#27 remain the next adoption blockers.
 
 ## Refresh protocol
 

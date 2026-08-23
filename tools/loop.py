@@ -713,6 +713,14 @@ def collect_git_evidence(root: Path, record: dict[str, Any]) -> dict[str, Any]:
 
 def completion_errors(root: Path, record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    project_path = root / "harness/project.yaml"
+    if project_path.is_file():
+        project = load_json(project_path).get("project", {})
+        if project.get("lifecycle") == "adopt" and project.get("status") != "active":
+            errors.append(
+                "harness project is provisional; resolve adoption gaps and essential intake "
+                "context before reported completion"
+            )
     criteria = record.get("acceptance_criteria", [])
     if not criteria:
         errors.append("run has no acceptance criteria")

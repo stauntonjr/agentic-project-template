@@ -11,6 +11,7 @@ from tools.project_intake import (
     adoption_output_paths,
     copy_missing_for_adoption,
     copy_template,
+    mark_adoption_state,
     normalize_answer,
     render,
 )
@@ -54,6 +55,46 @@ def template_project() -> dict:
 
 
 class ProjectIntakeTests(unittest.TestCase):
+    def test_adoption_with_missing_context_stays_provisional_without_file_gaps(self) -> None:
+        project = template_project()
+        project["open_questions"] = ["Resolve intent.outcomes"]
+        intake = {"missing_essential_fields": ["intent.outcomes"]}
+        dispositions = {
+            "copied": [],
+            "upstream_collisions": [],
+            "adoption_deferred": [],
+            "merge_required_existing": [],
+            "merge_required_missing": [],
+        }
+
+        unresolved = mark_adoption_state(project, intake, dispositions)
+
+        self.assertEqual(0, unresolved)
+        self.assertEqual("adopt", project["project"]["lifecycle"])
+        self.assertEqual("provisional", project["project"]["status"])
+        self.assertEqual("provisional", intake["context_readiness"])
+        self.assertEqual("provisional", intake["adoption"]["status"])
+        self.assertEqual("complete", intake["adoption"]["reconciliation_status"])
+
+    def test_adoption_becomes_active_only_when_context_and_file_gaps_are_resolved(self) -> None:
+        project = template_project()
+        project["open_questions"] = []
+        intake = {"missing_essential_fields": []}
+        dispositions = {
+            "copied": [],
+            "upstream_collisions": [],
+            "adoption_deferred": [],
+            "merge_required_existing": [],
+            "merge_required_missing": [],
+        }
+
+        mark_adoption_state(project, intake, dispositions)
+
+        self.assertEqual("active", project["project"]["status"])
+        self.assertEqual("sufficient", intake["context_readiness"])
+        self.assertEqual("active", intake["adoption"]["status"])
+        self.assertEqual("complete", intake["adoption"]["reconciliation_status"])
+
     def test_python_profile_overrides_template_placeholders(self) -> None:
         answers = {
             "project.profile": normalize_answer(
@@ -271,6 +312,9 @@ class ProjectIntakeTests(unittest.TestCase):
             target.mkdir()
             (target / "README.md").write_text("existing readme\n", encoding="utf-8")
             (target / "AGENTS.md").write_text("# Existing rules\n", encoding="utf-8")
+            existing_loop = target / "tools/loop.py"
+            existing_loop.parent.mkdir()
+            existing_loop.write_text("# application loop\n", encoding="utf-8")
             generated = {
                 "harness/intake.json": "existing intake\n",
                 ".github/planning.json": "existing planning\n",
@@ -281,6 +325,36 @@ class ProjectIntakeTests(unittest.TestCase):
                 path = target / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
+            dry_run = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools/project_intake.py"),
+                    "--answers",
+                    str(ROOT / "harness/fixtures/intake.answers.json"),
+                    "--target",
+                    str(target),
+                    "--mode",
+                    "adopt",
+                ],
+                cwd=ROOT,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=subprocess_environment(),
+            )
+            self.assertEqual(0, dry_run.returncode, dry_run.stdout + dry_run.stderr)
+            dry_payload = json.loads(dry_run.stdout.split("\n", 1)[1])
+            self.assertEqual("adopt", dry_payload["project"]["project"]["lifecycle"])
+            self.assertEqual("provisional", dry_payload["project"]["project"]["status"])
+            self.assertEqual("provisional", dry_payload["intake"]["adoption"]["status"])
+            self.assertEqual("sufficient", dry_payload["intake"]["context_readiness"])
+            self.assertEqual(
+                "provisional", dry_payload["intake"]["adoption"]["reconciliation_status"]
+            )
+            self.assertGreater(dry_payload["intake"]["adoption"]["gap_count"], 0)
+            self.assertTrue(all(dry_payload["intake"]["adoption"]["dispositions"].values()))
+            self.assertFalse((target / "harness/project.yaml").exists())
             result = subprocess.run(
                 [
                     sys.executable,
@@ -307,7 +381,21 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertEqual("existing readme\n", (target / "README.md").read_text())
             self.assertEqual("# Existing rules\n", (target / "AGENTS.md").read_text())
+            self.assertEqual("# application loop\n", existing_loop.read_text())
             self.assertTrue((target / "harness/project.yaml").is_file())
+            contract = load_json(target / "harness/project.yaml")
+            self.assertFalse(contract["template_mode"])
+            self.assertEqual("adopt", contract["project"]["lifecycle"])
+            self.assertEqual("provisional", contract["project"]["status"])
+            intake = load_json(target / "harness/intake.harness-proposed.json")
+            self.assertEqual("provisional", intake["adoption"]["status"])
+            self.assertEqual("sufficient", intake["context_readiness"])
+            self.assertEqual("provisional", intake["adoption"]["reconciliation_status"])
+            self.assertGreater(intake["adoption"]["gap_count"], 0)
+            self.assertTrue(all(intake["adoption"]["dispositions"].values()))
+            self.assertIn("context readiness: sufficient", result.stdout)
+            self.assertIn("harness reconciliation: provisional", result.stdout)
+            self.assertIn("harness activation: provisional", result.stdout)
             self.assertTrue((target / ".pi/extensions/context-readiness.ts").is_file())
             self.assertFalse((target / "LICENSE").exists())
             self.assertFalse((target / "CHANGELOG.md").exists())

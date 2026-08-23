@@ -161,6 +161,13 @@ def validate_project(root: Path, result: Result) -> dict[str, Any]:
     project_data = project.get("project", {})
     for key in ("name", "summary", "lifecycle", "profile", "status", "repository"):
         result.require(key in project_data, f"project contract missing project.{key}")
+    lifecycle = project_data.get("lifecycle")
+    status = project_data.get("status")
+    if lifecycle == "adopt" and status != "active":
+        result.require(
+            False,
+            "harness project is provisional; resolve adoption gaps and essential intake context before activation",
+        )
     ranks = [entry.get("rank") for entry in project.get("sources_of_truth", [])]
     result.require(
         ranks == list(range(1, len(ranks) + 1)),

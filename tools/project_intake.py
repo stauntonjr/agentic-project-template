@@ -412,9 +412,7 @@ def safe_target_path(root: Path, relative: str) -> Path:
         if current.is_symlink():
             raise ValueError(f"refusing target path through symlink: {relative}")
         if index < len(path.parts) - 1 and current.exists() and not current.is_dir():
-            raise ValueError(
-                f"refusing target path through non-directory ancestor: {relative}"
-            )
+            raise ValueError(f"refusing target path through non-directory ancestor: {relative}")
     return candidate
 
 
@@ -426,9 +424,7 @@ def non_overwriting_output(root: Path, canonical: str, proposal: str | None = No
         raise ValueError(f"refusing to overwrite existing target path: {canonical}")
     proposal_path = safe_target_path(root, proposal)
     if proposal_path.exists():
-        raise ValueError(
-            f"refusing to overwrite existing target paths: {canonical} and {proposal}"
-        )
+        raise ValueError(f"refusing to overwrite existing target paths: {canonical} and {proposal}")
     return proposal_path
 
 
@@ -458,7 +454,9 @@ def adoption_output_paths(target: Path) -> dict[str, Path]:
     }
 
 
-def copy_missing_for_adoption(source: Path, target: Path) -> dict[str, list[str]]:
+def plan_adoption(
+    source: Path, target: Path
+) -> tuple[dict[str, list[str]], list[tuple[Path, Path, str]]]:
     policy = load_json(source / "harness/ownership.json")
     result: dict[str, list[str]] = {
         "copied": [],
@@ -495,6 +493,11 @@ def copy_missing_for_adoption(source: Path, target: Path) -> dict[str, list[str]
             continue
         copy_plan.append((source_path, target_path, relative_text))
         result["copied"].append(relative_text)
+    return result, copy_plan
+
+
+def copy_missing_for_adoption(source: Path, target: Path) -> dict[str, list[str]]:
+    result, copy_plan = plan_adoption(source, target)
     for source_path, target_path, _relative_text in copy_plan:
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
@@ -543,6 +546,40 @@ These template paths were intentionally not copied into the application. Review 
 6. Resolve every upstream-owned collision before relying on copied tools or tests.
 7. Run `python3 tools/harness_check.py` and resolve every error before calling adoption complete.
 """
+
+
+def adoption_gap_count(dispositions: dict[str, list[str]]) -> int:
+    return sum(
+        len(dispositions[key])
+        for key in (
+            "upstream_collisions",
+            "adoption_deferred",
+            "merge_required_existing",
+            "merge_required_missing",
+        )
+    )
+
+
+def mark_adoption_state(
+    project: dict[str, Any], intake: dict[str, Any], dispositions: dict[str, list[str]]
+) -> int:
+    unresolved = adoption_gap_count(dispositions)
+    adoption_ready = unresolved == 0
+    context_ready = not intake.get("missing_essential_fields")
+    intake["context_readiness"] = "sufficient" if context_ready else "provisional"
+    project["project"]["lifecycle"] = "adopt"
+    project["project"]["status"] = "active" if adoption_ready and context_ready else "provisional"
+    intake["adoption"] = {
+        "status": project["project"]["status"],
+        "reconciliation_status": "complete" if adoption_ready else "provisional",
+        "gap_count": unresolved,
+        "dispositions": {key: len(value) for key, value in dispositions.items() if key != "copied"},
+    }
+    if unresolved:
+        project["open_questions"].append(
+            f"Resolve {unresolved} harness adoption reconciliation gaps"
+        )
+    return unresolved
 
 
 def main() -> int:
@@ -608,13 +645,23 @@ def main() -> int:
         "answers": merged,
         "contradictions": existing_record.get("contradictions", []),
         "missing_essential_fields": missing,
+        "context_readiness": "provisional" if missing else "sufficient",
     }
 
     if not args.apply:
+        if adopting_existing:
+            dispositions, _copy_plan = plan_adoption(source, target)
+            mark_adoption_state(rendered_project, intake, dispositions)
         print("dry run; no files written")
         print(
             json.dumps(
-                {"target": str(target), "missing": missing, "project": rendered_project}, indent=2
+                {
+                    "target": str(target),
+                    "missing": missing,
+                    "project": rendered_project,
+                    "intake": intake,
+                },
+                indent=2,
             )
         )
         return 0
@@ -630,6 +677,7 @@ def main() -> int:
     if adopting_existing:
         adoption_outputs = adoption_output_paths(target)
         dispositions = copy_missing_for_adoption(source, target)
+        mark_adoption_state(rendered_project, intake, dispositions)
     elif not target_exists:
         copy_template(source, target)
     project_target = (
@@ -676,19 +724,27 @@ def main() -> int:
     else:
         print("context readiness: sufficient for bounded planning")
     if adopting_existing:
-        unresolved = sum(
-            len(dispositions[key])
-            for key in (
-                "upstream_collisions",
-                "adoption_deferred",
-                "merge_required_existing",
-                "merge_required_missing",
-            )
-        )
+        unresolved = adoption_gap_count(dispositions)
         print(
             f"copied {len(dispositions['copied'])} upstream-owned files; "
             f"preserved {unresolved} reconciliation gaps; "
             f"see {adoption_outputs['adoption_report'].relative_to(target).as_posix()}"
+        )
+        print(
+            "harness reconciliation: "
+            + (
+                "complete"
+                if intake["adoption"]["reconciliation_status"] == "complete"
+                else "provisional; gaps remain"
+            )
+        )
+        print(
+            "harness activation: "
+            + (
+                "active"
+                if rendered_project["project"]["status"] == "active"
+                else "provisional; reconciliation and intake must both be ready"
+            )
         )
     return 0
 
