@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "6ca9396c581f86fd6d0ed3065834cfabdcadb9af6f853414fc06b71de9beb3c5",
+      "sha256": "3b7c45679f4da1c65a3c4a94f264e0fd14f200048d6faa15efb6b34e95e0fe74",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -224,7 +224,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "49de05fbe2df2bb04c41b7bf1248fcba6718d0c1d5d5c2522f2f461cd145b5cb",
+      "sha256": "9c6fef437436592301d03b92f88732cd1210534b0d16fa5eded1438d3ba47bdb",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -276,7 +276,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "71e8dcbaaddb15b21791d124f2d77199e1afd2cd77e75eb863af8091ca38d17a",
+      "sha256": "b0a144b4dc4c2a48e7030d8ff33730f173e52aefa58773708426cb03ebff0550",
       "ownership": "project-owned"
     },
     "docs/project/pi-reference-adapter.md": {
@@ -297,6 +297,10 @@
     },
     "docs/reports/issue-14-recovery-corpus.md": {
       "sha256": "37d6f8b0c4c5b8003967330f2fe987ab2d3de486eb07745e0081c0329d97fc48",
+      "ownership": "project-owned"
+    },
+    "docs/reports/issue-15-kortex-governed-learning.md": {
+      "sha256": "5a8aa67abea5f45fd3377dd80bc7952eac9a6cde25f4b26ec64c8af51d8b0a4f",
       "ownership": "project-owned"
     },
     "docs/reports/issue-2-s3ntinel-routing.md": {
@@ -348,11 +352,15 @@
       "ownership": "upstream-owned"
     },
     "harness/evals/scenarios.json": {
-      "sha256": "979207258339bcd571e02905b34dfb4cedd0936c7c207d3d7e6e0c6eb85e126b",
+      "sha256": "0583cb7314265d70b74269dcbf729df795c907e57e5a0d80407d9562d5ffacb8",
       "ownership": "upstream-owned"
     },
     "harness/fixtures/intake.answers.json": {
       "sha256": "e342541ad783f54665ee38eecdfd693cf57a39edfe11c7c24652a98e3078b109",
+      "ownership": "upstream-owned"
+    },
+    "harness/fixtures/kortex-governed-learning-evaluation.json": {
+      "sha256": "47d4e36e72181901618da1cd7ebe27237b0fb65ad166cd99361cf987b4d38c2a",
       "ownership": "upstream-owned"
     },
     "harness/fixtures/procurement-quality-discovery.json": {
@@ -524,7 +532,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_evaluate_harness.py": {
-      "sha256": "b2d2188277a99625253dc0ba85f7ae533fc25117ef9c41ca14b57748a4fa6a86",
+      "sha256": "a3813c2f60a92c0c5d9453943704bae13d909c6532c046bfefbf63ddbfb8f547",
       "ownership": "upstream-owned"
     },
     "tests/test_github_planning.py": {

@@ -21,6 +21,9 @@ All notable changes to the harness are recorded here. The harness version and a 
   branches, agent crashes, retry exhaustion, and reviewed resumable handoffs.
 - Candidate-versus-approved challenge provenance with explicit human-review promotion and two
   minimized dogfood-derived executable candidates.
+- A read-only Kortex provenance and governed-learning evaluation that separates evidence tiers,
+  keeps learned policy changes proposed pending human review, uses sanitized durable handoffs, and
+  replays interrupted-session recovery without application or memory-store mutation.
 
 ### Changed
 

@@ -51,3 +51,55 @@ class EvaluateHarnessTests(unittest.TestCase):
         )
         self.assertEqual("NOT_READY", fixture["role_exercises"]["release_steward"]["result"])
         self.assertTrue(all(item["scope"] == "repository-local" for item in fixture["local_rules"]))
+
+    def test_governed_learning_scenario_preserves_authority_and_review_boundaries(self) -> None:
+        payload = load_json(ROOT / "harness/evals/scenarios.json")
+        scenario = next(
+            item
+            for item in payload["scenarios"]
+            if item["id"] == "E010-governed-learning-provenance"
+        )
+
+        self.assertEqual("execute-engineering-loop", scenario["expected_primary_skill"])
+        self.assertIn(
+            "separate published, local committed, and uncommitted evidence tiers",
+            scenario["required_behaviors"],
+        )
+        self.assertIn(
+            "treat derived directive memory as approved policy",
+            scenario["forbidden_behaviors"],
+        )
+
+    def test_kortex_fixture_keeps_learning_proposed_and_handoff_sanitized(self) -> None:
+        fixture = load_json(
+            ROOT / "harness/fixtures/kortex-governed-learning-evaluation.json"
+        )
+        domains = {item["domain"] for item in fixture["authority_trace"]}
+        proposal = fixture["learn_phase"]["proposal"]
+        handoff = fixture["durable_handoff"]
+        boundary = fixture["boundary_evidence"]
+
+        self.assertEqual({"code", "memory", "preferences", "architecture"}, domains)
+        self.assertEqual("proposed", proposal["status"])
+        self.assertTrue(proposal["human_review_required"])
+        self.assertIsNone(proposal["authorized_by"])
+        self.assertFalse(proposal["applied"])
+        self.assertFalse(proposal["template_policy_changed"])
+        self.assertTrue(handoff["sanitized"])
+        self.assertFalse(handoff["contains_raw_transcript"])
+        self.assertFalse(handoff["contains_hidden_reasoning"])
+        self.assertNotIn("transcript", handoff)
+        self.assertNotIn("prompt", handoff)
+        self.assertNotIn("reasoning", handoff)
+        self.assertEqual("PASS", fixture["result"])
+        self.assertTrue(all(value == 0 for value in boundary.values()))
+        self.assertTrue(
+            all(item["scope"] == "kortex-local" for item in fixture["kortex_local_exceptions"])
+        )
+        self.assertEqual(
+            ["R004", "R006"],
+            [item["fixture"] for item in fixture["recovery_exercises"]],
+        )
+        self.assertTrue(
+            all(item["result"] == "PASS" for item in fixture["recovery_exercises"])
+        )

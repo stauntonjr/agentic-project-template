@@ -283,6 +283,15 @@ and generated-architecture rules local while routing the bounded change through
 write, merge, or release authority. The pinned evaluation is in
 `harness/fixtures/s3ntinel-routing-evaluation.json`.
 
+Governed learning follows the same boundary. The Kortex evaluation separates published Git,
+local committed, and uncommitted evidence; traces code, memory, preference, and architecture
+authority; and keeps an observed directive-review improvement as an unapplied Kortex-local
+proposal. Its durable handoff is sanitized and its recovery exercises run only in disposable
+template repositories. No Kortex file, model, service, GitHub object, transcript, or memory store
+is mutated by the evaluation. See
+`harness/fixtures/kortex-governed-learning-evaluation.json` and
+`docs/reports/issue-15-kortex-governed-learning.md`.
+
 ## Design influences
 
 The research snapshot in `docs/research/landscape.md` records the current ecosystem, sources, licenses, and what this template borrows conceptually. It intentionally reimplements a small coherent control plane rather than copying another framework.
