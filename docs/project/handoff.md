@@ -14,10 +14,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Latest implemented harness change: Issue #14 enforces the three-failure stop, reviewed handoff
-  resume, and a sanitized six-class recovery matrix. Issue #2 validates layered domain routing on
-  S3NTINEL without mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime
-  imports, and test application quality discovery.
+- Latest implemented harness changes: Issue #14 enforces the three-failure stop, reviewed handoff
+  resume, and a sanitized six-class recovery matrix. Issue #15 adds a read-only Kortex provenance
+  and governed-learning evaluation. Issue #2 validates layered domain routing on S3NTINEL without
+  mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime imports, and test
+  application quality discovery.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -30,7 +31,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Dependency-free validators, intake rendering, loop evidence, reporting, and GitHub audit/dry-run tools.
 - Criterion-linked completion gates with revision-bound verifier verdicts and content-aware baseline/write-scope enforcement.
 - Provenance-locked, ownership-aware three-way upgrade plans with explicit apply resolutions, receipts, and rollback.
-- Eight isolated forward-test scenarios covering routing, context gaps, evidence, and safety behavior.
+- Ten isolated forward-test scenarios covering routing, context gaps, evidence, safety behavior,
+  layered domain rules, and governed learning.
 - CI for the harness itself.
 - Separate harness and product version contracts with current-revision release-impact reporting.
 - Profile-driven quality capabilities, concrete Python defaults, repository hygiene files, and a shared local/CI command boundary.
@@ -89,6 +91,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   without attempt four; a `human:IDENTITY` handoff starts a new evidence revision and preserves
   partial bytes. Two minimized public dogfood failures are executable challenge candidates but are
   excluded from default replay until an owner reviews their exact promotion.
+- Issue #15 pins Kortex's public `master` at `e0bf62b` separately from a five-commit-ahead local
+  head and three pre-existing dirty paths. Its fixture traces code, memory, preference, and
+  architecture authority; keeps a directive-review lifecycle as an unapplied Kortex-local
+  proposal; and replays sanitized process-loss and human-reviewed recovery without touching
+  Kortex, deploying a model, or reading or writing memory stores.
 
 ## Refresh protocol
 
