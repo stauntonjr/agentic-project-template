@@ -20,8 +20,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime imports, and test
   application quality discovery. Issue #17 adds opt-in local outcome telemetry with explicit
   provenance, privacy and retention defaults, and a de-identified aggregation boundary.
-- Active Issue #18 packages the seven reusable workflows as a SemVer-versioned Codex plugin while
-  keeping repository-local skills canonical and project policy out of user configuration.
+- Issue #18 packages the seven reusable workflows as the installed SemVer-versioned
+  `agentic-engineering-harness` Codex plugin while keeping repository-local skills canonical and
+  project policy out of user configuration.
+- Recommended next loop: Agentic Repo Auditor Issue #8 runs the first packaged, read-only audit
+  against a pinned S3NTINEL revision and publishes its report only after owner review.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
