@@ -14,7 +14,7 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Active engineering loop: none.
+- Active engineering loop: Issue #3, Macro Technical Pulse isolated adoption dogfood.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -36,9 +36,20 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 ## Open decisions
 
-- The exact Macro Technical Pulse worktree and bounded Issue for the first full-loop dogfood.
-- Provider and spend authorization for the real Pi-authored comparison lane during that dogfood.
+- Macro Technical Pulse's license remains human-owned and unresolved; active adoption is blocked
+  until its owner selects one.
+- Whether a later Pi compatibility loop should add an empty-tools shim and an invalid-tool-call
+  retry ceiling for local OpenAI-compatible providers.
 - Which live GitHub security settings should be reconciled automatically after the first dogfood audit.
+
+## Active dogfood evidence
+
+- Macro Technical Pulse Issue #6 at `b41e3bc` is the isolated application snapshot.
+- Adoption preserved tracked application bytes, passed all 44 original tests, and emitted explicit
+  reconciliation gaps instead of copying merge-required policy.
+- Pi 0.84.1 ran intake-to-report through local SparkRun Qwen with no external spend or GitHub
+  writes; research accuracy, invalid tool calls, and empty-tools compatibility gaps are recorded in
+  `docs/reports/issue-3-macro-technical-pulse-dogfood.md`.
 
 ## Refresh protocol
 

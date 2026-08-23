@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import copy
+import fnmatch
 import json
+import os
 import re
 import shutil
 import sys
@@ -369,6 +371,7 @@ Generated from `harness/project.yaml` and {intake_source}.
 
 
 def copy_template(source: Path, target: Path) -> None:
+    safe_target_path(target, "harness/project.yaml")
     shutil.copytree(
         source,
         target,
@@ -381,8 +384,90 @@ def copy_template(source: Path, target: Path) -> None:
     )
 
 
-def copy_missing_for_adoption(source: Path, target: Path) -> list[str]:
-    collisions: list[str] = []
+def ownership_for(path: str, policy: dict[str, Any]) -> str:
+    for rule in policy.get("rules", []):
+        if fnmatch.fnmatchcase(path, rule["pattern"]):
+            return str(rule["ownership"])
+    return str(policy.get("default_ownership", "project-owned"))
+
+
+def safe_target_path(root: Path, relative: str) -> Path:
+    path = Path(relative)
+    if not relative or path.is_absolute() or ".." in path.parts or str(path) in {".", ""}:
+        raise ValueError(f"path must stay inside the target repository: {relative}")
+    lexical_root = root if root.is_absolute() else Path(os.path.abspath(root))
+    current_root = Path(lexical_root.anchor)
+    for part in lexical_root.parts[1:]:
+        current_root = current_root / part
+        if current_root.is_symlink():
+            raise ValueError(f"refusing symlink target repository: {root}")
+        if current_root.exists() and not current_root.is_dir():
+            if current_root == lexical_root:
+                raise ValueError(f"target repository must be a directory: {root}")
+            raise ValueError(f"refusing non-directory target ancestor: {root}")
+    candidate = root / path
+    current = root
+    for index, part in enumerate(path.parts):
+        current = current / part
+        if current.is_symlink():
+            raise ValueError(f"refusing target path through symlink: {relative}")
+        if index < len(path.parts) - 1 and current.exists() and not current.is_dir():
+            raise ValueError(
+                f"refusing target path through non-directory ancestor: {relative}"
+            )
+    return candidate
+
+
+def non_overwriting_output(root: Path, canonical: str, proposal: str | None = None) -> Path:
+    canonical_path = safe_target_path(root, canonical)
+    if not canonical_path.exists():
+        return canonical_path
+    if proposal is None:
+        raise ValueError(f"refusing to overwrite existing target path: {canonical}")
+    proposal_path = safe_target_path(root, proposal)
+    if proposal_path.exists():
+        raise ValueError(
+            f"refusing to overwrite existing target paths: {canonical} and {proposal}"
+        )
+    return proposal_path
+
+
+def adoption_output_paths(target: Path) -> dict[str, Path]:
+    return {
+        "project": non_overwriting_output(target, "harness/project.yaml"),
+        "intake": non_overwriting_output(
+            target,
+            "harness/intake.json",
+            "harness/intake.harness-proposed.json",
+        ),
+        "planning": non_overwriting_output(
+            target,
+            ".github/planning.json",
+            ".github/planning.harness-proposed.json",
+        ),
+        "charter": non_overwriting_output(
+            target,
+            "docs/project/charter.md",
+            "docs/project/charter.harness-proposed.md",
+        ),
+        "adoption_report": non_overwriting_output(
+            target,
+            "docs/project/adoption-gaps.md",
+            "docs/project/adoption-gaps.harness-proposed.md",
+        ),
+    }
+
+
+def copy_missing_for_adoption(source: Path, target: Path) -> dict[str, list[str]]:
+    policy = load_json(source / "harness/ownership.json")
+    result: dict[str, list[str]] = {
+        "copied": [],
+        "upstream_collisions": [],
+        "adoption_deferred": [],
+        "merge_required_existing": [],
+        "merge_required_missing": [],
+    }
+    copy_plan: list[tuple[Path, Path, str]] = []
     for source_path in sorted(source.rglob("*")):
         relative = source_path.relative_to(source)
         if (
@@ -391,25 +476,62 @@ def copy_missing_for_adoption(source: Path, target: Path) -> list[str]:
             or source_path.suffix == ".pyc"
         ):
             continue
-        target_path = target / relative
         if source_path.is_dir():
-            target_path.mkdir(parents=True, exist_ok=True)
+            continue
+        relative_text = relative.as_posix()
+        ownership = ownership_for(relative_text, policy)
+        target_path = safe_target_path(target, relative_text)
+        if relative_text.startswith("tests/"):
+            result["adoption_deferred"].append(relative_text)
+            continue
+        if ownership == "project-owned":
+            continue
+        if ownership == "merge-required":
+            key = "merge_required_existing" if target_path.exists() else "merge_required_missing"
+            result[key].append(relative_text)
             continue
         if target_path.exists():
-            collisions.append(str(relative))
+            result["upstream_collisions"].append(relative_text)
             continue
+        copy_plan.append((source_path, target_path, relative_text))
+        result["copied"].append(relative_text)
+    for source_path, target_path, _relative_text in copy_plan:
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
-    return collisions
+    return result
 
 
-def adoption_gap_report(collisions: list[str]) -> str:
-    lines = "\n".join(f"- `{path}`" for path in collisions) or "- None."
+def adoption_gap_report(dispositions: dict[str, list[str]]) -> str:
+    def lines(key: str) -> str:
+        return "\n".join(f"- `{path}`" for path in dispositions.get(key, [])) or "- None."
+
     return f"""# Harness adoption gaps
 
-The adopter preserved every pre-existing file. The following paths collided with template paths and require deliberate human reconciliation:
+The adopter preserved every pre-existing file. It copied only paths classified as `upstream-owned` by `harness/ownership.json`. Licensing, policy, CI, planning, dependency, and other `merge-required` surfaces were not activated automatically.
 
-{lines}
+## Upstream-owned collisions
+
+These application paths collide with harness internals. The application copy remains authoritative until a deliberate namespace or merge decision is made:
+
+{lines("upstream_collisions")}
+
+## Adoption-deferred paths
+
+These upstream paths were not copied because activating a harness test suite inside an existing application's discovery namespace can change or break its authoritative test command. Reconcile them into a separate harness-test boundary before adoption is active:
+
+{lines("adoption_deferred")}
+
+## Existing merge-required paths
+
+These existing application paths require a deliberate three-way reconciliation:
+
+{lines("merge_required_existing")}
+
+## Missing merge-required paths
+
+These template paths were intentionally not copied into the application. Review the pinned upstream revision before adding or adapting any of them:
+
+{lines("merge_required_missing")}
 
 ## Required review
 
@@ -418,7 +540,8 @@ The adopter preserved every pre-existing file. The following paths collided with
 3. Reconcile product version, public contract, dependency lock, coverage policy, and release notes with the existing package or deployment system.
 4. Reconcile existing GitHub templates, security settings, workflows, and planning state; never overwrite live conventions blindly.
 5. Confirm ignored local runtime paths include `.harness/runs/`, `.harness/challenge-results/`, and `.harness/preferences.local.json`.
-6. Run `python3 tools/harness_check.py` and resolve every error before calling adoption complete.
+6. Resolve every upstream-owned collision before relying on copied tools or tests.
+7. Run `python3 tools/harness_check.py` and resolve every error before calling adoption complete.
 """
 
 
@@ -432,7 +555,7 @@ def main() -> int:
     args = parser.parse_args()
 
     source = repository_root(Path(__file__).parent)
-    target = args.target.resolve() if args.target else source
+    target = Path(os.path.abspath(args.target)) if args.target else source
     source_project = load_json(source / "harness/project.yaml")
     if target != source and not source_project.get("template_mode", False):
         print(
@@ -496,27 +619,53 @@ def main() -> int:
         )
         return 0
 
-    collisions: list[str] = []
+    dispositions: dict[str, list[str]] = {
+        "copied": [],
+        "upstream_collisions": [],
+        "adoption_deferred": [],
+        "merge_required_existing": [],
+        "merge_required_missing": [],
+    }
+    adoption_outputs: dict[str, Path] | None = None
     if adopting_existing:
-        collisions = copy_missing_for_adoption(source, target)
+        adoption_outputs = adoption_output_paths(target)
+        dispositions = copy_missing_for_adoption(source, target)
     elif not target_exists:
         copy_template(source, target)
-    write_json(target / "harness/project.yaml", rendered_project)
-    write_json(target / "harness/intake.json", intake)
-    planning_target = target / ".github/planning.json"
-    if adopting_existing and ".github/planning.json" in collisions:
-        planning_target = target / ".github/planning.harness-proposed.json"
+    project_target = (
+        adoption_outputs["project"]
+        if adoption_outputs is not None
+        else safe_target_path(target, "harness/project.yaml")
+    )
+    intake_target = (
+        adoption_outputs["intake"]
+        if adoption_outputs is not None
+        else safe_target_path(target, "harness/intake.json")
+    )
+    planning_target = (
+        adoption_outputs["planning"]
+        if adoption_outputs is not None
+        else safe_target_path(target, ".github/planning.json")
+    )
+    charter_target = (
+        adoption_outputs["charter"]
+        if adoption_outputs is not None
+        else safe_target_path(target, "docs/project/charter.md")
+    )
+    write_json(project_target, rendered_project)
+    write_json(intake_target, intake)
     write_json(planning_target, rendered_planning)
-    charter_target = target / "docs/project/charter.md"
-    if adopting_existing and "docs/project/charter.md" in collisions:
-        charter_target = target / "docs/project/charter.harness-proposed.md"
+    charter_target.parent.mkdir(parents=True, exist_ok=True)
+    intake_reference = f"`{intake_target.relative_to(target).as_posix()}`"
     charter_target.write_text(
-        render_charter(rendered_project, "`harness/intake.json`"),
+        render_charter(rendered_project, intake_reference),
         encoding="utf-8",
     )
-    if adopting_existing:
-        (target / "docs/project/adoption-gaps.md").write_text(
-            adoption_gap_report(collisions),
+    if adoption_outputs is not None:
+        adoption_report = adoption_outputs["adoption_report"]
+        adoption_report.parent.mkdir(parents=True, exist_ok=True)
+        adoption_report.write_text(
+            adoption_gap_report(dispositions),
             encoding="utf-8",
         )
     print(f"rendered project intake at {target}")
@@ -526,8 +675,21 @@ def main() -> int:
             print(f"  - {field}")
     else:
         print("context readiness: sufficient for bounded planning")
-    if collisions:
-        print(f"preserved {len(collisions)} colliding files; see docs/project/adoption-gaps.md")
+    if adopting_existing:
+        unresolved = sum(
+            len(dispositions[key])
+            for key in (
+                "upstream_collisions",
+                "adoption_deferred",
+                "merge_required_existing",
+                "merge_required_missing",
+            )
+        )
+        print(
+            f"copied {len(dispositions['copied'])} upstream-owned files; "
+            f"preserved {unresolved} reconciliation gaps; "
+            f"see {adoption_outputs['adoption_report'].relative_to(target).as_posix()}"
+        )
     return 0
 
 

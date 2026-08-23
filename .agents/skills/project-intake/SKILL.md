@@ -36,6 +36,8 @@ Read `references/question-bank.md` before interviewing. Read the chosen profile 
 11. Run `make smoke` and inspect the diff.
 12. Present the charter, scope, nonfunctional requirements, product-version contract, quality/tooling contract, autonomy boundary, open decisions, GitHub plan, assumptions, and generated files for explicit acceptance.
 
+For `adopt`, the overlay may copy only paths classified as `upstream-owned` in `harness/ownership.json`. Never activate a template license, release policy, dependency lock, GitHub workflow, planning contract, provider preference, or other `merge-required` surface merely because the application lacks that path. Record both existing collisions and missing merge-required paths in `docs/project/adoption-gaps.md`; provisional adoption is not active adoption.
+
 ## Required outputs
 
 - `harness/intake.json` with status, source, and date for each answer.

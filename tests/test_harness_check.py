@@ -3,9 +3,10 @@ import json
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.common import load_json, write_json
-from tools.harness_check import check
+from tools.harness_check import Result, check, validate_planning
 from tools.project_intake import normalize_answer, render
 
 
@@ -42,6 +43,37 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_project_owned_planning_loader_is_supported_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            planning = root / ".github/planning.json"
+            planning.parent.mkdir(parents=True)
+            planning.write_text('{"projects": []}\n', encoding="utf-8")
+
+            result = Result()
+            with (
+                patch("tools.harness_check.validate_planning_contract", None),
+                patch(
+                    "tools.harness_check.load_project_planning_contract",
+                    side_effect=lambda path: {"loaded": path.name},
+                ),
+            ):
+                validate_planning(root, result)
+            self.assertTrue(result.ok)
+            self.assertIn("project-owned validator", result.warnings[0])
+
+            rejected = Result()
+            with (
+                patch("tools.harness_check.validate_planning_contract", None),
+                patch(
+                    "tools.harness_check.load_project_planning_contract",
+                    side_effect=ValueError("invalid application topology"),
+                ),
+            ):
+                validate_planning(root, rejected)
+            self.assertFalse(rejected.ok)
+            self.assertIn("invalid application topology", rejected.errors[0])
+
     def test_template_is_valid(self) -> None:
         result = check(ROOT)
         self.assertTrue(result.ok, result.errors)

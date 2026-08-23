@@ -22,7 +22,6 @@ try:
         validate_manifest,
         validate_ownership_policy,
     )
-    from .github_planning import validate_contract as validate_planning_contract
     from .product_version import product_version_status
     from .run_quality import command_argv
 except ImportError:  # Direct script execution.
@@ -35,9 +34,17 @@ except ImportError:  # Direct script execution.
         validate_manifest,
         validate_ownership_policy,
     )
-    from github_planning import validate_contract as validate_planning_contract
     from product_version import product_version_status
     from run_quality import command_argv
+
+try:
+    from . import github_planning as planning_module
+except ImportError:  # Direct script execution or an adopted application module.
+    import github_planning as planning_module
+
+
+validate_planning_contract = getattr(planning_module, "validate_contract", None)
+load_project_planning_contract = getattr(planning_module, "load_config", None)
 
 
 REQUIRED_PATHS = (
@@ -520,9 +527,28 @@ def validate_pi_adapter(root: Path, result: Result) -> None:
 
 
 def validate_planning(root: Path, result: Result) -> None:
-    planning = load_json(root / ".github/planning.json")
-    for error in validate_planning_contract(planning):
-        result.errors.append(f"planning contract: {error}")
+    planning_path = root / ".github/planning.json"
+    planning = load_json(planning_path)
+    if callable(validate_planning_contract):
+        for error in validate_planning_contract(planning):
+            result.errors.append(f"planning contract: {error}")
+    elif callable(load_project_planning_contract):
+        try:
+            loaded = load_project_planning_contract(planning_path)
+        except (KeyError, TypeError, ValueError) as exc:
+            result.errors.append(f"project-owned planning contract: {exc}")
+        else:
+            result.require(
+                isinstance(loaded, dict),
+                "project-owned planning validator must return an object",
+            )
+            result.warnings.append(
+                "GitHub planning uses the trusted application's project-owned validator"
+            )
+    else:
+        result.errors.append(
+            "planning module must expose validate_contract(config) or load_config(path)"
+        )
     for collection, key in (("labels", "name"), ("milestones", "title"), ("fields", "name")):
         values = [item.get(key) for item in planning.get(collection, [])]
         result.require(len(values) == len(set(values)), f"duplicate {collection} in planning.json")

@@ -7,7 +7,13 @@ import tempfile
 import unittest
 
 from tools.common import load_json
-from tools.project_intake import copy_template, normalize_answer, render
+from tools.project_intake import (
+    adoption_output_paths,
+    copy_missing_for_adoption,
+    copy_template,
+    normalize_answer,
+    render,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -265,6 +271,16 @@ class ProjectIntakeTests(unittest.TestCase):
             target.mkdir()
             (target / "README.md").write_text("existing readme\n", encoding="utf-8")
             (target / "AGENTS.md").write_text("# Existing rules\n", encoding="utf-8")
+            generated = {
+                "harness/intake.json": "existing intake\n",
+                ".github/planning.json": "existing planning\n",
+                "docs/project/charter.md": "existing charter\n",
+                "docs/project/adoption-gaps.md": "existing adoption report\n",
+            }
+            for relative, content in generated.items():
+                path = target / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
             result = subprocess.run(
                 [
                     sys.executable,
@@ -293,9 +309,178 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertEqual("# Existing rules\n", (target / "AGENTS.md").read_text())
             self.assertTrue((target / "harness/project.yaml").is_file())
             self.assertTrue((target / ".pi/extensions/context-readiness.ts").is_file())
-            gaps = (target / "docs/project/adoption-gaps.md").read_text()
+            self.assertFalse((target / "LICENSE").exists())
+            self.assertFalse((target / "CHANGELOG.md").exists())
+            self.assertFalse((target / ".github/workflows/harness.yml").exists())
+            for relative, content in generated.items():
+                self.assertEqual(content, (target / relative).read_text())
+            self.assertTrue((target / "harness/intake.harness-proposed.json").is_file())
+            self.assertTrue((target / ".github/planning.harness-proposed.json").is_file())
+            self.assertTrue((target / "docs/project/charter.harness-proposed.md").is_file())
+            gaps = (target / "docs/project/adoption-gaps.harness-proposed.md").read_text()
             self.assertIn("README.md", gaps)
             self.assertIn("AGENTS.md", gaps)
+            self.assertIn("Missing merge-required paths", gaps)
+            self.assertIn("LICENSE", gaps)
+            self.assertIn(".github/workflows/harness.yml", gaps)
+
+    def test_adoption_copies_only_upstream_owned_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            target.mkdir()
+            (target / "tools").mkdir()
+            existing_tool = target / "tools/github_planning.py"
+            existing_tool.write_bytes(b"application planning\x00bytes\n")
+
+            dispositions = copy_missing_for_adoption(ROOT, target)
+
+            self.assertEqual(b"application planning\x00bytes\n", existing_tool.read_bytes())
+            self.assertIn("tools/github_planning.py", dispositions["merge_required_existing"])
+            self.assertIn("tests/test_github_planning.py", dispositions["adoption_deferred"])
+            self.assertIn("tests/test_loop.py", dispositions["adoption_deferred"])
+            self.assertIn("LICENSE", dispositions["merge_required_missing"])
+            self.assertIn(".github/workflows/harness.yml", dispositions["merge_required_missing"])
+            self.assertTrue((target / "tools/loop.py").is_file())
+            self.assertTrue((target / "harness/loops/engineering-loop.yaml").is_file())
+            self.assertTrue((target / "harness.lock").is_file())
+            self.assertFalse((target / "LICENSE").exists())
+            self.assertFalse((target / ".github/workflows/harness.yml").exists())
+
+    def test_adoption_refuses_symlink_escape_before_copying_anything(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            outside = Path(directory) / "outside"
+            target.mkdir()
+            outside.mkdir()
+            (target / "tools").symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "through symlink"):
+                copy_missing_for_adoption(ROOT, target)
+
+            self.assertEqual([], list(outside.iterdir()))
+            self.assertFalse((target / ".agents").exists())
+
+    def test_adoption_refuses_symlink_root_before_copying_anything(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            target = Path(directory) / "existing"
+            target.symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaisesRegex(ValueError, "symlink target repository"):
+                copy_missing_for_adoption(ROOT, target)
+
+            self.assertEqual([], list(outside.iterdir()))
+
+    def test_adoption_cli_refuses_symlink_root_before_copying_anything(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            target = Path(directory) / "existing"
+            target.symlink_to(outside, target_is_directory=True)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools/project_intake.py"),
+                    "--answers",
+                    str(ROOT / "harness/fixtures/intake.answers.json"),
+                    "--target",
+                    str(target),
+                    "--mode",
+                    "adopt",
+                    "--apply",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("symlink target repository", result.stderr)
+            self.assertEqual([], list(outside.iterdir()))
+
+    def test_new_project_cli_refuses_symlinked_parent_before_copying_anything(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            parent = Path(directory) / "parent"
+            parent.symlink_to(outside, target_is_directory=True)
+            target = parent / "new-project"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools/project_intake.py"),
+                    "--answers",
+                    str(ROOT / "harness/fixtures/intake.answers.json"),
+                    "--target",
+                    str(target),
+                    "--mode",
+                    "new",
+                    "--apply",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("symlink target repository", result.stderr)
+            self.assertEqual([], list(outside.iterdir()))
+
+    def test_adoption_refuses_non_directory_ancestor_before_copying_anything(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            target.mkdir()
+            (target / "tools").write_text("application file\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "non-directory ancestor"):
+                copy_missing_for_adoption(ROOT, target)
+
+            self.assertEqual("application file\n", (target / "tools").read_text())
+            self.assertEqual(["tools"], sorted(path.name for path in target.iterdir()))
+
+    def test_adoption_preserves_generated_artifacts_and_refuses_second_proposal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "existing"
+            originals = {
+                "harness/intake.json": b"application intake\x00bytes\n",
+                ".github/planning.json": b"application planning\x00bytes\n",
+                "docs/project/charter.md": b"application charter\x00bytes\n",
+                "docs/project/adoption-gaps.md": b"application report\x00bytes\n",
+            }
+            for relative, content in originals.items():
+                path = target / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+
+            outputs = adoption_output_paths(target)
+
+            self.assertEqual(
+                target / "harness/intake.harness-proposed.json",
+                outputs["intake"],
+            )
+            self.assertEqual(
+                target / ".github/planning.harness-proposed.json",
+                outputs["planning"],
+            )
+            self.assertEqual(
+                target / "docs/project/charter.harness-proposed.md",
+                outputs["charter"],
+            )
+            self.assertEqual(
+                target / "docs/project/adoption-gaps.harness-proposed.md",
+                outputs["adoption_report"],
+            )
+            for relative, content in originals.items():
+                self.assertEqual(content, (target / relative).read_bytes())
+
+            outputs["planning"].write_text("existing proposal\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
+                adoption_output_paths(target)
 
 
 if __name__ == "__main__":

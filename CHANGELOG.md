@@ -19,6 +19,19 @@ All notable changes to the harness are recorded here. The harness version and a 
   one-time copy bootstrap; adopters may explicitly select a shared Project instead.
 - The planning contract now requires `topology` and `canonical_source`. Existing derived
   repositories must review and add these keys before upgrading.
+- Existing-repository adoption now copies only upstream-owned harness internals and records
+  merge-required, workflow, test, license, changelog, and dependency-lock paths
+  for explicit reconciliation instead of silently overwriting application policy.
+
+### Fixed
+
+- Harness validation can use a trusted application-owned GitHub planning loader when the
+  application intentionally retains its own planning implementation.
+- Adoption preflights every target path, rejects symlink traversal and non-directory ancestors
+  before copying, preserves existing generated artifacts under non-overwriting proposal names,
+  and refuses a second proposal collision.
+- Greenfield template copies apply the same lexical target-root preflight before creating any
+  project files.
 
 ## [0.4.1] - 2026-08-22
 
