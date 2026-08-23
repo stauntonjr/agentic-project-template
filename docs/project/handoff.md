@@ -14,9 +14,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Latest implemented harness change: Issue #27 adds explicit before/after application quality
-  discovery and conforms copied Python sources to Procurement's locked Ruff boundary. Issues #25
-  and #26 keep adoption fail-closed and isolate copied runtime imports.
+- Latest implemented harness change: Issue #2 validates layered domain routing on S3NTINEL without
+  mutating it. Issue #27 adds before/after application quality discovery; Issues #25 and #26 keep
+  adoption fail-closed and isolate copied runtime imports.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -78,6 +78,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   checks pass at `0f9d1a4`; adoption records status `compatible`, while the separate 44-gap
   reconciliation state correctly remains provisional. The reusable copied Python paths also pass
   its locked Ruff 0.16.3 format and lint commands without application policy changes.
+- Issue #2 pins S3NTINEL main `14ba0416` and draft PR #54 head `356281f`. A local SparkRun Pi
+  routing probe read the reusable loop skill plus S3NTINEL's `AGENTS.md` and `pyproject.toml`, then
+  kept its Spark execution rules repository-local. Separate zero-tool verifier and release-steward
+  sessions approved inspected PR content only and returned `NOT_READY` for release. Projects #3,
+  #4, and #5 have disjoint Issue membership for proposal, implementation, and GPU-migration work.
 
 ## Refresh protocol
 

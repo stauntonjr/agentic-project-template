@@ -263,6 +263,15 @@ Dogfood a new profile on one repository before making it a template default. A u
 4. Convert escaped defects into challenge manifests.
 5. Measure human corrections, retries, escaped defects, cycle time, and accepted-change cost.
 
+Cross-repository routing is layered, not copied wholesale. The reusable skill supplies the
+governance workflow; the target repository's `AGENTS.md`, accepted Issues, code contracts, and
+validation evidence supply domain authority. For example, the S3NTINEL routing evaluation keeps
+its conda environment, Spark storage format, host profiling, Py4J elevation, canonical Spark path,
+and generated-architecture rules local while routing the bounded change through
+`execute-engineering-loop`. Project membership is an operational view and never grants repository
+write, merge, or release authority. The pinned evaluation is in
+`harness/fixtures/s3ntinel-routing-evaluation.json`.
+
 ## Design influences
 
 The research snapshot in `docs/research/landscape.md` records the current ecosystem, sources, licenses, and what this template borrows conceptually. It intentionally reimplements a small coherent control plane rather than copying another framework.
