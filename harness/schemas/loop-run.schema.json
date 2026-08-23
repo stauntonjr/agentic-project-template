@@ -7,6 +7,7 @@
     "run_id",
     "revision",
     "attempt_id",
+    "retry_policy",
     "objective_seed",
     "objective",
     "acceptance_criteria",
@@ -76,6 +77,28 @@
       ]
     },
     "agent_handoffs": {"type": "array"},
+    "attempt_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["revision", "attempt_id", "ended_at", "reason", "outcome"],
+        "properties": {
+          "revision": {"type": "integer", "minimum": 1},
+          "attempt_id": {"type": "integer", "minimum": 1},
+          "ended_at": {"type": "string"},
+          "reason": {"type": "string", "minLength": 1},
+          "outcome": {"const": "failed"}
+        }
+      }
+    },
+    "retry_policy": {
+      "type": "object",
+      "required": ["maximum_consecutive_failures", "on_exhaustion"],
+      "properties": {
+        "maximum_consecutive_failures": {"type": "integer", "minimum": 1},
+        "on_exhaustion": {"const": "stop-and-escalate"}
+      }
+    },
     "decisions": {"type": "array"},
     "risks": {"type": "array"}
   },

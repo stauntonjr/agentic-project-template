@@ -27,6 +27,8 @@ VERDICTS = ("approve", "revise", "reject")
 RELEASE_IMPACTS = ("none", "patch", "minor", "major")
 FINAL_STATES = ("reported", "blocked", "abandoned")
 RUN_SCHEMA_VERSION = "1.2"
+RESUME_HANDOFF_SCHEMA_VERSION = "1.0"
+DEFAULT_MAXIMUM_CONSECUTIVE_FAILURES = 3
 
 
 def git_text(root: Path, *args: str) -> str:
@@ -445,6 +447,10 @@ def start_run(
         "release_impact": None,
         "revision_history": [],
         "attempt_history": [],
+        "retry_policy": {
+            "maximum_consecutive_failures": configured_retry_limit(root),
+            "on_exhaustion": "stop-and-escalate",
+        },
         "agent_handoffs": [],
         "decisions": [],
         "risks": [],
@@ -605,6 +611,10 @@ def revise_run(
     if not reason.strip():
         raise ValueError("revision reason is required")
     path, record = load_run(root, run_id)
+    if record.get("state") == "blocked" and consecutive_failures(record) >= retry_limit(
+        root, record
+    ):
+        raise ValueError("retry-exhausted runs must use reviewed resume instead of revise")
     record["revision_history"].append(
         {
             "revision": record["revision"],
@@ -632,21 +642,179 @@ def revise_run(
     return record
 
 
+def configured_retry_limit(root: Path) -> int:
+    path = root / "harness/loops/engineering-loop.yaml"
+    loop = load_json(path) if path.is_file() else {}
+    value = loop.get("retry_policy", {}).get(
+        "maximum_consecutive_failures", DEFAULT_MAXIMUM_CONSECUTIVE_FAILURES
+    )
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError("maximum_consecutive_failures must be a positive integer")
+    return value
+
+
+def retry_limit(root: Path, record: dict[str, Any]) -> int:
+    value = record.get("retry_policy", {}).get("maximum_consecutive_failures")
+    if value is None:
+        value = configured_retry_limit(root)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError("recorded maximum_consecutive_failures must be a positive integer")
+    return value
+
+
+def consecutive_failures(record: dict[str, Any]) -> int:
+    revision = record.get("revision")
+    count = 0
+    for attempt in reversed(record.get("attempt_history", [])):
+        if attempt.get("revision") != revision or attempt.get("outcome") != "failed":
+            break
+        count += 1
+    return count
+
+
 def new_attempt(root: Path, run_id: str, reason: str) -> dict[str, Any]:
     if not reason.strip():
         raise ValueError("attempt reason is required")
     path, record = load_run(root, run_id)
+    if record.get("state") in FINAL_STATES:
+        raise ValueError(f"cannot retry a terminal run in state {record.get('state')}")
     record["attempt_history"].append(
         {
             "revision": record["revision"],
             "attempt_id": record["attempt_id"],
             "ended_at": utc_now(),
             "reason": reason,
+            "outcome": "failed",
         }
     )
+    failures = consecutive_failures(record)
+    limit = retry_limit(root, record)
+    if failures >= limit:
+        record["state"] = "blocked"
+        record.setdefault("telemetry", {})["retry_exhaustion"] = {
+            "revision": record["revision"],
+            "attempt_id": record["attempt_id"],
+            "consecutive_failures": failures,
+            "limit": limit,
+            "recorded_at": utc_now(),
+        }
+        write_json(path, record)
+        raise RuntimeError(
+            f"retry ceiling reached after {failures} consecutive failures; "
+            "run is blocked and requires an explicit reviewed handoff"
+        )
     record["attempt_id"] += 1
     write_json(path, record)
     return record
+
+
+def validate_resume_handoff(data: Any) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(data, dict):
+        return ["resume handoff must be an object"]
+    required = ("schema_version", "summary", "failure_boundary", "preserved_paths", "next_action")
+    for key in required:
+        if key not in data:
+            errors.append(f"resume handoff is missing {key}")
+    if data.get("schema_version") != RESUME_HANDOFF_SCHEMA_VERSION:
+        errors.append(f"resume handoff schema_version must be {RESUME_HANDOFF_SCHEMA_VERSION}")
+    for key in ("summary", "failure_boundary", "next_action"):
+        if not isinstance(data.get(key), str) or not data.get(key, "").strip():
+            errors.append(f"resume handoff {key} must be a non-empty string")
+    preserved = data.get("preserved_paths")
+    if not isinstance(preserved, list) or not all(
+        isinstance(item, str) and item.strip() for item in preserved
+    ):
+        errors.append("resume handoff preserved_paths must be a string list")
+    else:
+        if len(preserved) != len(set(preserved)):
+            errors.append("resume handoff preserved_paths must be unique")
+        for item in preserved:
+            try:
+                normalize_repository_path(item, kind="preserved path")
+            except ValueError as exc:
+                errors.append(str(exc))
+    forbidden = {"transcript", "prompt", "hidden_reasoning", "secret", "token"}
+    if forbidden.intersection(data):
+        errors.append("resume handoff contains a forbidden transcript, reasoning, or secret field")
+    unexpected = sorted(set(data) - set(required))
+    if unexpected:
+        errors.append(f"resume handoff contains unexpected fields: {', '.join(unexpected)}")
+    return errors
+
+
+def resume_run(
+    root: Path,
+    run_id: str,
+    *,
+    handoff: dict[str, Any],
+    authorized_by: str,
+) -> dict[str, Any]:
+    authorized_by = authorized_by.strip()
+    if not authorized_by.startswith("human:") or not authorized_by.removeprefix("human:").strip():
+        raise ValueError("retry-exhausted resume requires --by human:IDENTITY")
+    errors = validate_resume_handoff(handoff)
+    if errors:
+        raise ValueError("; ".join(errors))
+    path, record = load_run(root, run_id)
+    if record.get("state") != "blocked" or consecutive_failures(record) < retry_limit(root, record):
+        raise ValueError("only a retry-exhausted blocked run can be resumed")
+
+    record["revision_history"].append(
+        {
+            "revision": record["revision"],
+            "objective": record["objective"],
+            "acceptance_criteria": record["acceptance_criteria"],
+            "declared_write_set": record["declared_write_set"],
+            "superseded_at": utc_now(),
+            "reason": f"human-authorized recovery: {handoff['summary'].strip()}",
+        }
+    )
+    record["revision"] += 1
+    record["attempt_id"] = 1
+    record["state"] = "understand"
+    record["finished_at"] = None
+    record["end_commit"] = None
+    record["agent_handoffs"].append(
+        {
+            **handoff,
+            "authorized_by": authorized_by,
+            "recorded_at": utc_now(),
+            "resume_revision": record["revision"],
+        }
+    )
+    write_json(path, record)
+    return record
+
+
+def recovery_status(root: Path, run_id: str, integration_ref: str | None = None) -> dict[str, Any]:
+    _, record = load_run(root, run_id)
+    current = current_commit(root)
+    scope = scope_evidence(root, record)
+    status: dict[str, Any] = {
+        "run_id": run_id,
+        "state": record.get("state"),
+        "revision": record.get("revision"),
+        "attempt_id": record.get("attempt_id"),
+        "consecutive_failures": consecutive_failures(record),
+        "retry_limit": retry_limit(root, record),
+        "baseline_relative_changes_present": bool(scope["delta"]),
+        "changed_paths": [item["path"] for item in scope["delta"]],
+        "scope_violations": scope["violations"],
+        "integration_ref": integration_ref,
+        "integration_ref_commit": None,
+        "branch_stale": None,
+    }
+    if integration_ref:
+        ref_commit = git_text(root, "rev-parse", "--verify", integration_ref)
+        if not ref_commit:
+            raise ValueError(f"integration ref does not exist: {integration_ref}")
+        ancestry = git(root, "merge-base", "--is-ancestor", ref_commit, current, check=False)
+        if ancestry.returncode not in (0, 1):
+            raise RuntimeError(ancestry.stderr.strip() or "could not compare integration ancestry")
+        status["integration_ref_commit"] = ref_commit
+        status["branch_stale"] = ancestry.returncode == 1
+    return status
 
 
 def waive_criterion(
@@ -684,6 +852,10 @@ def set_state(root: Path, run_id: str, state: str) -> dict[str, Any]:
     if state not in valid:
         raise ValueError(f"unknown loop state: {state}")
     path, record = load_run(root, run_id)
+    if record.get("state") in FINAL_STATES and state != record.get("state"):
+        raise ValueError(
+            f"cannot leave terminal state {record.get('state')} with set-state; use reviewed recovery"
+        )
     record["state"] = state
     write_json(path, record)
     return record
@@ -1003,6 +1175,15 @@ def main() -> int:
     attempt.add_argument("--run", required=True)
     attempt.add_argument("--reason", required=True)
 
+    resume = subparsers.add_parser("resume")
+    resume.add_argument("--run", required=True)
+    resume.add_argument("--handoff", type=Path, required=True)
+    resume.add_argument("--by", required=True)
+
+    recovery = subparsers.add_parser("recovery-status")
+    recovery.add_argument("--run", required=True)
+    recovery.add_argument("--integration-ref")
+
     waiver = subparsers.add_parser("waive-criterion")
     waiver.add_argument("--run", required=True)
     waiver.add_argument("--criterion", required=True)
@@ -1087,6 +1268,16 @@ def main() -> int:
         elif args.action == "new-attempt":
             record = new_attempt(root, args.run, args.reason)
             print(f"started attempt {record['attempt_id']} for {args.run}")
+        elif args.action == "resume":
+            record = resume_run(
+                root,
+                args.run,
+                handoff=load_json(args.handoff),
+                authorized_by=args.by,
+            )
+            print(f"resumed {args.run} at revision {record['revision']}")
+        elif args.action == "recovery-status":
+            print(json.dumps(recovery_status(root, args.run, args.integration_ref), indent=2))
         elif args.action == "waive-criterion":
             waive_criterion(
                 root,

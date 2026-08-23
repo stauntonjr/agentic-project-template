@@ -8,7 +8,7 @@
   },
   "files": {
     ".agents/skills/execute-engineering-loop/SKILL.md": {
-      "sha256": "18302862e708d9821547758723320fb3d43a504305e0cace9e4fc0194c6550e1",
+      "sha256": "dd451dd325eb937a1fc8d7f52b8e27a0715b38b7dd4e2677290c27ddf7878e32",
       "ownership": "upstream-owned"
     },
     ".agents/skills/execute-engineering-loop/agents/openai.yaml": {
@@ -208,7 +208,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "17a9b0a0c606340b9308d01a8ac67b50c5b3773112808b79c7085a6b52288425",
+      "sha256": "6ca9396c581f86fd6d0ed3065834cfabdcadb9af6f853414fc06b71de9beb3c5",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -220,11 +220,11 @@
       "ownership": "merge-required"
     },
     "Makefile": {
-      "sha256": "c3b31d66cf2c0944b872a62b8bc98ea40b2ee90ccdcd205ada2dc9b2086c173c",
+      "sha256": "563e96b6f23e3fc502bbcab7bdaa36ab143e44ebf7398547ecbddd1ec0fafc12",
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "70684c5ac712aa4555f0a9f24f2187ff9b144889afc8a6dee649a7822d7dfe5d",
+      "sha256": "49de05fbe2df2bb04c41b7bf1248fcba6718d0c1d5d5c2522f2f461cd145b5cb",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -259,6 +259,10 @@
       "sha256": "894e07d9200a66977a3a2e90910cc2921915184a4d678ba7c18cf87fb45b2719",
       "ownership": "project-owned"
     },
+    "docs/adr/0007-recovery-semantics-and-challenge-promotion.md": {
+      "sha256": "2ddd7c0eeba23a583945d0be00e352168fa43363579a1f6ed7bed30db8e2f79a",
+      "ownership": "project-owned"
+    },
     "docs/project/charter.md": {
       "sha256": "84417172242fd0777a9a3d1fefd3e2d706d915e54ec6d11c35dc7945acdbd3ea",
       "ownership": "project-owned"
@@ -272,11 +276,15 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "6bcc86ac4d7d0561a9588320e8d559ced64a910d6c1a23a82256b7ba9dfb1c04",
+      "sha256": "71e8dcbaaddb15b21791d124f2d77199e1afd2cd77e75eb863af8091ca38d17a",
       "ownership": "project-owned"
     },
     "docs/project/pi-reference-adapter.md": {
       "sha256": "93690b3c5dc40c0b4b8be32e0dda394517ca9e668911fe7388b993941bcd495b",
+      "ownership": "project-owned"
+    },
+    "docs/project/recovery-matrix.md": {
+      "sha256": "d4585d1d7eb6939609eb7a8b14a04e8d5a383cd7677d28f1119c2a9e3754cc44",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -285,6 +293,10 @@
     },
     "docs/reports/issue-11-procurement-intelligence-lab-dogfood.md": {
       "sha256": "6bb44a7a04ec44ea8a3bdf04c8480a80a5589b1a9cd441ea7f1cb9e956a60699",
+      "ownership": "project-owned"
+    },
+    "docs/reports/issue-14-recovery-corpus.md": {
+      "sha256": "37d6f8b0c4c5b8003967330f2fe987ab2d3de486eb07745e0081c0329d97fc48",
       "ownership": "project-owned"
     },
     "docs/reports/issue-2-s3ntinel-routing.md": {
@@ -323,8 +335,16 @@
       "sha256": "02dde2f46f4aea865ebacb2544bb34e2b903f8068f72a690c9852426f38b2f43",
       "ownership": "upstream-owned"
     },
+    "harness/challenges/C001.json": {
+      "sha256": "e656cb31813fc2a3af097943353cbf499618f1c10b265390160d43e8ce5d4680",
+      "ownership": "project-owned"
+    },
+    "harness/challenges/C002.json": {
+      "sha256": "fc2aaca497389eab5cfdca66053dacfb811a92dd3473612e942321df3fee8274",
+      "ownership": "project-owned"
+    },
     "harness/challenges/CHALLENGE_TEMPLATE.json": {
-      "sha256": "424ac0d26e06e1d504e9da433eb9c9d291e7b2169fdd888cdede0076bedcf5c5",
+      "sha256": "da37a75cd145c5b4b1347dc77562415ac43dece28c9ea2761a6ee6db482612f0",
       "ownership": "upstream-owned"
     },
     "harness/evals/scenarios.json": {
@@ -348,7 +368,7 @@
       "ownership": "upstream-owned"
     },
     "harness/loops/engineering-loop.yaml": {
-      "sha256": "56a51186161323d8b2041debaed1a29f9cfb6ebb6d4ee57e0148b8412348f413",
+      "sha256": "ad8857e8609d6cf282a428f4a363eed482bc4d3c7fbe30b55062615586d8964e",
       "ownership": "upstream-owned"
     },
     "harness/migrations/0.4.1-to-0.5.0.json": {
@@ -360,7 +380,7 @@
       "ownership": "upstream-owned"
     },
     "harness/ownership.json": {
-      "sha256": "526bc8cbd50bf8a9656729c0c0bcad8a6a9ef060914a5d4ce990c4ebe1e5d663",
+      "sha256": "5c492e0414de78ebbd6ef79bd655646faf8ea8ac973c4e142ca097ed57981f60",
       "ownership": "upstream-owned"
     },
     "harness/preferences.example.json": {
@@ -386,6 +406,30 @@
     "harness/project.yaml": {
       "sha256": "54e727aef6af3ff02d72c36aa7ac674f55a82255ac30db66f3e6a4a54c15bd12",
       "ownership": "project-owned"
+    },
+    "harness/recovery/R001.json": {
+      "sha256": "bae064a87d0c79d4bca721d5370be5c03d6a1b7aa68bb48961799fb152a9a19d",
+      "ownership": "upstream-owned"
+    },
+    "harness/recovery/R002.json": {
+      "sha256": "7acd9562fbd73c6e6bee472df71bdc403a999d1da9e51ed22406ff15f36a2359",
+      "ownership": "upstream-owned"
+    },
+    "harness/recovery/R003.json": {
+      "sha256": "46c85d864c1903a4e02bf997b6fc8b7dcb0dfb3facbb1d0f1a045aadd2726b17",
+      "ownership": "upstream-owned"
+    },
+    "harness/recovery/R004.json": {
+      "sha256": "a4935e25eaeabf5d67b152434db53626cef5a9d20f29995aac4de440ec915f9b",
+      "ownership": "upstream-owned"
+    },
+    "harness/recovery/R005.json": {
+      "sha256": "690d18d5287203c341d0028c671773daa6ad5cf592d3cf448561c4ff1056a2c4",
+      "ownership": "upstream-owned"
+    },
+    "harness/recovery/R006.json": {
+      "sha256": "1ee6da32bbd0c077fd78a9187431126adfa3fcf0ce7b0734bbcd50f2cb5f9b32",
+      "ownership": "upstream-owned"
     },
     "harness/roles/explorer.md": {
       "sha256": "983ccc488c6c6f270ab5ed088ef0d56ffb0f88785acd67736747f5104c34b809",
@@ -420,7 +464,7 @@
       "ownership": "upstream-owned"
     },
     "harness/schemas/challenge.schema.json": {
-      "sha256": "ed231c41e61c02d9358c670def1a6245130f896caea14db9d025513f43d055bb",
+      "sha256": "6739ae63f0123ec50d6c898682afc7c764fdd2d3bff7f3c7ec6ebcd90c675593",
       "ownership": "upstream-owned"
     },
     "harness/schemas/eval-scenarios.schema.json": {
@@ -440,7 +484,7 @@
       "ownership": "upstream-owned"
     },
     "harness/schemas/loop-run.schema.json": {
-      "sha256": "d3f2ae9007c331ddf4626e12ccb544214b81faac1603a21cbef1d49ae5017be3",
+      "sha256": "37f5e6c136134458ebdf30f5ad4a28cb9392e6e8474eccb667409aea9a63d8dc",
       "ownership": "upstream-owned"
     },
     "harness/schemas/migration.schema.json": {
@@ -476,7 +520,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_challenges.py": {
-      "sha256": "d84d496abd34b59d2bfc576adf7b8de10c99e98501da5a8bfef7e1f9f75ac7c1",
+      "sha256": "fe7d8ac45658a058d0b60a18b148ac144b9bfb8faf8bb626401139f52d5eab4a",
       "ownership": "upstream-owned"
     },
     "tests/test_evaluate_harness.py": {
@@ -488,7 +532,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
-      "sha256": "9d5b6ee66a06ef940d6605cd7971c01e884f2c4c5d9e22737bb5949f70228695",
+      "sha256": "2f56291628e893912e7cf122b7c2e11d195ab5fb9a23fdb395b746cf0cb5b37f",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_upgrade.py": {
@@ -496,7 +540,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_loop.py": {
-      "sha256": "16d91f2f513320c8b6cd8a55d8a3eb52e81ea76e98b5a2190b46fa0ee5311e62",
+      "sha256": "5f0469283ba08aa1bbbfb723c4b78dfd0caa3ab4f03687a1d8c17f5874db14b7",
       "ownership": "upstream-owned"
     },
     "tests/test_pi_adapter_check.py": {
@@ -513,6 +557,10 @@
     },
     "tests/test_project_intake.py": {
       "sha256": "44b530717da39036d9e1a83d4cecef93b3900d63541d01d05b9fb8484850249e",
+      "ownership": "upstream-owned"
+    },
+    "tests/test_recovery_scenarios.py": {
+      "sha256": "038f2c482956962b3dd23ee607eaa6077d01c48487752f3d5f52958801c8ca84",
       "ownership": "upstream-owned"
     },
     "tests/test_run_quality.py": {
@@ -540,7 +588,7 @@
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {
-      "sha256": "36e00496ef1b50853ff27ca089ccac836080396bcb17d35af64062a54ec16982",
+      "sha256": "156447eb3905e6c713b68157510421ea05079e16cbaefa78a41aabee312a0240",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -548,7 +596,7 @@
       "ownership": "upstream-owned"
     },
     "tools/loop.py": {
-      "sha256": "6ac2441699474c9af914e1ef750edd7943a514f336e253af613e0e37aa5aad2f",
+      "sha256": "3564a81e3a4b2b303a66f0de43bf6a0d133266fb1069a0da03ef85291e14856e",
       "ownership": "upstream-owned"
     },
     "tools/pi_adapter_check.py": {
@@ -571,8 +619,12 @@
       "sha256": "8f6529dd63966bf1eaf4911d4e23a5602614e0ce96615325770e85065821501c",
       "ownership": "upstream-owned"
     },
+    "tools/recovery_scenarios.py": {
+      "sha256": "18fd40e9432c63bdb107764b8448245b5dafe3b354d772f9c7ead942ec0d2f1f",
+      "ownership": "upstream-owned"
+    },
     "tools/run_challenges.py": {
-      "sha256": "ce3be8d083e4fc332ef0d87566de06c1e6796fa1eb9db164de5f415d5136ac12",
+      "sha256": "8d5bd33ba4fb063e67fbdf31dd0d7447b95c4b404443effe3e88cd0517e12e66",
       "ownership": "upstream-owned"
     },
     "tools/run_quality.py": {

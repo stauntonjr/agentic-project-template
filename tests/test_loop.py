@@ -1,23 +1,27 @@
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 from tools.loop import (
     finish_run,
+    load_run,
     make_write_set,
+    new_attempt,
     parse_criteria,
     record_check,
     record_release_impact,
     record_verdict,
+    recovery_status,
+    resume_run,
     revise_run,
+    set_state,
     start_run,
     waive_criterion,
 )
 from tools.project_intake import mark_adoption_state
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -64,8 +68,7 @@ def init_repository_with_submodule(base: Path) -> tuple[Path, Path]:
         ],
         cwd=root,
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "commit", "-am", "add child"], cwd=root, check=True, stdout=subprocess.PIPE
@@ -125,6 +128,132 @@ def approve_current(root: Path, run_id: str = "test-run") -> None:
 
 
 class LoopTests(unittest.TestCase):
+    def test_three_consecutive_failures_block_without_starting_a_fourth_attempt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+
+            self.assertEqual(2, new_attempt(root, "test-run", "first failure")["attempt_id"])
+            self.assertEqual(3, new_attempt(root, "test-run", "second failure")["attempt_id"])
+            with self.assertRaisesRegex(RuntimeError, "retry ceiling reached after 3"):
+                new_attempt(root, "test-run", "third failure")
+
+            _, record = load_run(root, "test-run")
+            self.assertEqual("blocked", record["state"])
+            self.assertEqual(3, record["attempt_id"])
+            self.assertEqual(3, len(record["attempt_history"]))
+            self.assertEqual(
+                ["failed", "failed", "failed"],
+                [item["outcome"] for item in record["attempt_history"]],
+            )
+            self.assertEqual(3, record["telemetry"]["retry_exhaustion"]["limit"])
+
+    def test_retry_exhaustion_resumes_only_with_human_reviewed_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            tracked.write_text("preserved partial work\n", encoding="utf-8")
+            new_attempt(root, "test-run", "first failure")
+            new_attempt(root, "test-run", "second failure")
+            with self.assertRaises(RuntimeError):
+                new_attempt(root, "test-run", "third failure")
+            handoff = {
+                "schema_version": "1.0",
+                "summary": "Change the recovery approach",
+                "failure_boundary": "Three attempts failed at the same deterministic check",
+                "preserved_paths": ["artifact.txt"],
+                "next_action": "Re-enter understand and inspect the preserved candidate",
+            }
+
+            with self.assertRaisesRegex(ValueError, "human:IDENTITY"):
+                resume_run(root, "test-run", handoff=handoff, authorized_by="agent:planner")
+            with self.assertRaisesRegex(ValueError, "reviewed resume"):
+                revise_run(root, "test-run", reason="Bypass reviewed recovery")
+            loop_contract = root / "harness/loops/engineering-loop.yaml"
+            loop_contract.parent.mkdir(parents=True)
+            loop_contract.write_bytes((ROOT / "harness/loops/engineering-loop.yaml").read_bytes())
+            with self.assertRaisesRegex(ValueError, "cannot leave terminal state blocked"):
+                set_state(root, "test-run", "understand")
+            resumed = resume_run(
+                root,
+                "test-run",
+                handoff=handoff,
+                authorized_by="human:owner",
+            )
+
+            self.assertEqual(2, resumed["revision"])
+            self.assertEqual(1, resumed["attempt_id"])
+            self.assertEqual("understand", resumed["state"])
+            self.assertEqual("preserved partial work\n", tracked.read_text(encoding="utf-8"))
+            self.assertEqual("human:owner", resumed["agent_handoffs"][-1]["authorized_by"])
+
+    def test_invalid_resume_handoff_fails_before_mutating_blocked_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            new_attempt(root, "test-run", "first failure")
+            new_attempt(root, "test-run", "second failure")
+            with self.assertRaises(RuntimeError):
+                new_attempt(root, "test-run", "third failure")
+            before = (root / ".harness/runs/test-run/run.json").read_bytes()
+
+            with self.assertRaisesRegex(ValueError, "forbidden"):
+                resume_run(
+                    root,
+                    "test-run",
+                    handoff={
+                        "schema_version": "1.0",
+                        "summary": "Unsafe handoff",
+                        "failure_boundary": "retry",
+                        "preserved_paths": [],
+                        "next_action": "continue",
+                        "transcript": "raw model history",
+                    },
+                    authorized_by="human:owner",
+                )
+
+            self.assertEqual(before, (root / ".harness/runs/test-run/run.json").read_bytes())
+            with self.assertRaisesRegex(ValueError, "invalid declared preserved path"):
+                resume_run(
+                    root,
+                    "test-run",
+                    handoff={
+                        "schema_version": "1.0",
+                        "summary": "Escaping handoff",
+                        "failure_boundary": "retry",
+                        "preserved_paths": ["../outside"],
+                        "next_action": "continue",
+                    },
+                    authorized_by="human:owner",
+                )
+            self.assertEqual(before, (root / ".harness/runs/test-run/run.json").read_bytes())
+
+    def test_recovery_status_detects_branch_stale_against_integration_ref(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            subprocess.run(["git", "switch", "-c", "feature"], cwd=root, check=True)
+            start_test_run(root)
+            subprocess.run(["git", "branch", "integration", "main"], cwd=root, check=True)
+            subprocess.run(["git", "switch", "integration"], cwd=root, check=True)
+            (root / "integration.txt").write_text("advanced\n", encoding="utf-8")
+            subprocess.run(["git", "add", "integration.txt"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "advance integration"],
+                cwd=root,
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            subprocess.run(["git", "switch", "feature"], cwd=root, check=True)
+
+            status = recovery_status(root, "test-run", "integration")
+
+            self.assertTrue(status["branch_stale"])
+            self.assertEqual([], status["scope_violations"])
+
     def test_context_incomplete_zero_gap_adoption_cannot_report_completion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -241,8 +370,7 @@ class LoopTests(unittest.TestCase):
                 cwd=ROOT,
                 check=False,
                 text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
             )
             self.assertEqual(0, recorded.returncode, recorded.stdout + recorded.stderr)
             run = json.loads((root / ".harness/runs/cli-run/run.json").read_text(encoding="utf-8"))

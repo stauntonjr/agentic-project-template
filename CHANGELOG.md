@@ -17,6 +17,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 - A layered domain-routing forward scenario and pinned S3NTINEL evaluation that keep repository
   Spark rules local while exercising reusable loop, verifier, release-steward, and Project
   ownership boundaries.
+- Six sanitized disposable recovery fixtures covering dirty worktrees, partial loops, stale
+  branches, agent crashes, retry exhaustion, and reviewed resumable handoffs.
+- Candidate-versus-approved challenge provenance with explicit human-review promotion and two
+  minimized dogfood-derived executable candidates.
 
 ### Changed
 
@@ -27,6 +31,9 @@ All notable changes to the harness are recorded here. The harness version and a 
 - Existing-repository adoption now copies only upstream-owned harness internals and records
   merge-required, workflow, test, license, changelog, and dependency-lock paths
   for explicit reconciliation instead of silently overwriting application policy.
+- Engineering-loop retries now persist the third consecutive failure as `blocked` without creating
+  attempt four. A retry-exhausted resume preserves partial work and starts a new evidence revision
+  only from a structured `human:IDENTITY` handoff.
 
 ### Fixed
 

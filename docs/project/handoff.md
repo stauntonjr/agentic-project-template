@@ -14,9 +14,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Latest implemented harness change: Issue #2 validates layered domain routing on S3NTINEL without
-  mutating it. Issue #27 adds before/after application quality discovery; Issues #25 and #26 keep
-  adoption fail-closed and isolate copied runtime imports.
+- Latest implemented harness change: Issue #14 enforces the three-failure stop, reviewed handoff
+  resume, and a sanitized six-class recovery matrix. Issue #2 validates layered domain routing on
+  S3NTINEL without mutating it; Issues #25-#27 keep adoption fail-closed, isolate copied runtime
+  imports, and test application quality discovery.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -83,6 +84,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   kept its Spark execution rules repository-local. Separate zero-tool verifier and release-steward
   sessions approved inspected PR content only and returned `NOT_READY` for release. Projects #3,
   #4, and #5 have disjoint Issue membership for proposal, implementation, and GPU-migration work.
+- Issue #14 adds disposable dirty-worktree, partial-loop, stale-branch, process-loss,
+  retry-exhaustion, and resumable-handoff fixtures. The third failure now persists `blocked`
+  without attempt four; a `human:IDENTITY` handoff starts a new evidence revision and preserves
+  partial bytes. Two minimized public dogfood failures are executable challenge candidates but are
+  excluded from default replay until an owner reviews their exact promotion.
 
 ## Refresh protocol
 
