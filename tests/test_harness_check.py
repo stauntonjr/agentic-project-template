@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from tools.common import load_json, write_json
-from tools.harness_check import Result, check, validate_planning
+from tools.harness_check import Result, check, validate_model_stress, validate_planning
 from tools.project_intake import normalize_answer, render
 
 
@@ -46,6 +46,24 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_model_stress_corpus_requires_exact_distinct_classes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            corpus = target / "harness/model-stress/tasks"
+            corpus.mkdir(parents=True)
+            shutil.copy2(ROOT / "harness/model-stress.json", target / "harness/model-stress.json")
+            for source in (ROOT / "harness/model-stress/tasks").glob("*.json"):
+                shutil.copy2(source, corpus / source.name)
+            duplicate = load_json(corpus / "retry-after-repair-v1.json")
+            duplicate["task_class"] = "implementation"
+            write_json(corpus / "retry-after-repair-v1.json", duplicate)
+            result = Result()
+            validate_model_stress(target, result)
+            self.assertIn(
+                "model-stress task corpus identities or classes are invalid",
+                result.errors,
+            )
+
     def test_adopted_validator_ignores_incompatible_application_supply_chain_module(
         self,
     ) -> None:

@@ -203,3 +203,33 @@ failure exposes an escaped defect with a deterministic oracle, create a candidat
   rejection, pre-invocation output validation, and truthful post-invocation failure output.
 - Prevention: acceptance-candidate evidence must come from the repaired runner and independent
   review; the first smoke cannot be promoted or used as the accepted baseline.
+
+## LOCAL-RUNNER-006: read-only Pi config triggered a credential-lock startup failure
+
+- Date: 2026-08-24.
+- Workflow: begin the three-task, three-trial paired Qwen acceptance-candidate run.
+- Provenance: sanitized runner result, host vLLM access log, and disposable zero-tool Pi probes.
+- Failed approach: relied only on the synthetic `apiKey` in generated `models.json` while mounting
+  the generated Pi configuration read-only. Pi 0.84.1 still consulted its credential store and
+  attempted to create `auth.json.lock`, then exited before contacting the provider.
+- Error signature: all six initial diagnostic lanes returned exit 1 in under one second, produced
+  no edits, usage, settled event, or stable tool error, and generated no request in the vLLM log.
+- Mutation check: the invalidated runs changed no candidate file, container, model service, GitHub
+  object, or external repository; their sanitized ignored result is diagnostic only.
+- Classification: Pi startup/configuration incompatibility, not model quality or endpoint failure.
+- Corrected path:
+  1. Confirm the existing SparkRun job, container, listener, and `/v1/models` response from the host.
+  2. Reproduce the failure in a disposable zero-tool Bubblewrap session using the same read-only
+     generated configuration.
+  3. Pass Pi the explicit synthetic `--api-key not-needed` argument so it need not consult a
+     credential store; never substitute or expose a real credential.
+  4. Require a zero-tool Bubblewrap probe to settle and reach the loopback provider before rerunning
+     any scored task.
+  5. Invalidate every trial produced by the failed startup path rather than counting it as model
+     evidence or retrying it as though the model had answered.
+- Verification: the direct provider probe and the matching read-only-config Bubblewrap probe both
+  settled against `Intel/Qwen3-Coder-Next-int4-AutoRound`; the latter succeeded only after the
+  explicit synthetic API-key argument was supplied.
+- Prevention: the lane-command regression requires the synthetic argument while retaining the
+  read-only config mount; future reports must distinguish a Pi process start from a provider-backed,
+  settled model response.

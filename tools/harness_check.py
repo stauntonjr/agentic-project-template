@@ -22,6 +22,7 @@ from harness.runtime.model_stress import (  # noqa: E402
     validate_contract as validate_model_stress_contract,
 )
 from harness.runtime.model_stress_runner import (  # noqa: E402
+    CORPUS_TASK_CLASSES,
     load_task as load_model_stress_task,
 )
 
@@ -107,6 +108,8 @@ REQUIRED_PATHS = (
     "harness/evals/scenarios.json",
     "harness/model-stress.json",
     "harness/model-stress/tasks/identifier-canonicalization-v1.json",
+    "harness/model-stress/tasks/retry-after-repair-v1.json",
+    "harness/model-stress/tasks/release-policy-integration-v1.json",
     "harness/telemetry.json",
     "harness/version.json",
     "harness/ownership.json",
@@ -707,11 +710,25 @@ def validate_model_stress(root: Path, result: Result) -> None:
     for error in validate_model_stress_contract(contract):
         result.errors.append(f"model-stress contract: {error}")
     result.checked.append("supplemental model-stress policy")
-    task, digest = load_model_stress_task(
-        root / "harness/model-stress/tasks/identifier-canonicalization-v1.json"
+    task_paths = sorted((root / "harness/model-stress/tasks").glob("*.json"))
+    observed: dict[str, str] = {}
+    for path in task_paths:
+        try:
+            task, digest = load_model_stress_task(path, root=root)
+        except (OSError, ValueError) as exc:
+            result.errors.append(f"{path.name}: invalid model-stress task: {exc}")
+            continue
+        task_id = task.get("id")
+        task_class = task.get("task_class")
+        result.require(bool(digest), f"{path.name}: model-stress task digest is missing")
+        result.require(task_id == path.stem, f"{path.name}: model-stress task id mismatch")
+        if isinstance(task_id, str) and isinstance(task_class, str):
+            observed[task_id] = task_class
+    result.require(
+        observed == CORPUS_TASK_CLASSES,
+        "model-stress task corpus identities or classes are invalid",
     )
-    result.require(bool(digest) and task.get("id") == "identifier-canonicalization-v1", "model-stress held-out task identity is invalid")
-    result.checked.append("held-out model-stress task")
+    result.checked.append("3-class held-out model-stress corpus")
 
 
 def validate_engineering_tooling(root: Path, result: Result) -> None:
