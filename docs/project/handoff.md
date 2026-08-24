@@ -23,6 +23,15 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Issue #18 packages the seven reusable workflows as the installed SemVer-versioned
   `agentic-engineering-harness` Codex plugin while keeping repository-local skills canonical and
   project policy out of user configuration.
+- Issue #21 now has an accepted local Qwen model-diversity policy, an exact machine-readable due
+  contract, a dependency-free status command, and a bounded paired runner. Its versioned first
+  task keeps the executable oracle outside the model-visible repository, gives identical
+  disposable inputs to bare and harness-enabled Pi lanes, and retains only sanitized evidence.
+  The first one-trial smoke produced no passing lane: bare timed out after 79 unavailable `run`
+  calls and passed 6/7 cases; harness settled in 15.333 seconds with no unavailable-tool loop and
+  passed 5/7. Review then found invalid prompt provenance and an exposed-oracle boundary in that
+  first runner. The runner is repaired, but the old run remains diagnostic negative history—not an
+  accepted, contract-valid baseline or harness-lift claim—and no replacement model run was made.
 - Agentic Repo Auditor Issue #8 published the first packaged, read-only audit against pinned
   S3NTINEL commit `14ba0416` through Auditor PR #15. The exact installed CLI output is deterministic,
   the target fingerprint remained unchanged, and the report explicitly excludes application and
@@ -44,9 +53,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Auditor Issue #20 captures the run's one reproduced product defect: concrete confidentiality,
   authorization, token, and non-deletion guardrails are not recognized as the instruction safety
   signal without literal `safe` / `safely` / `safety` vocabulary.
-- Recommended next loop: repair Auditor Issue #20, then use both existing-repository dogfood
-  datasets to choose among authenticated GitHub evidence, SARIF, baselining, and the separate
-  full-application companion already governed by Auditor Issue #11.
+- Recommended next harness loop: after the one-shot Issue #21 smoke is independently reviewed,
+  add at least two more held-out task classes before considering a three-trial acceptance-candidate
+  run. Auditor Issue #20 and its application-report roadmap remain separate Agentic Repo Auditor
+  work.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -70,6 +80,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   and keeps written summaries local and caller-managed.
 - A repository marketplace and generated `agentic-engineering-harness` plugin whose per-file
   provenance binds canonical skill sources to collision-safe namespaced distribution files.
+- A sanitized correction ledger and dry-run-first Projects v2 item-membership path prevent agents
+  from repeating deprecated classic-Projects command routing.
+- ADR-0008 and `harness/model-stress.json` make a paired local Qwen canary due after ten loops,
+  agent-control changes, or minor/major release assessment. The offline status gate and disposable
+  paired runner are implemented; live evidence remains supplemental and cannot self-approve.
 
 ## Open decisions
 

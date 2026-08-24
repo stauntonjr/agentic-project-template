@@ -17,7 +17,13 @@ if str(ROOT) in sys.path:
     sys.path.remove(str(ROOT))
 sys.path.insert(0, str(ROOT))
 
-from harness.runtime.actions_supply_chain import check_workflows
+from harness.runtime.actions_supply_chain import check_workflows  # noqa: E402
+from harness.runtime.model_stress import (  # noqa: E402
+    validate_contract as validate_model_stress_contract,
+)
+from harness.runtime.model_stress_runner import (  # noqa: E402
+    load_task as load_model_stress_task,
+)
 
 try:
     from .common import load_json, repository_root
@@ -75,6 +81,8 @@ REQUIRED_PATHS = (
     "tools/run_challenges.py",
     "tools/run_quality.py",
     "tools/loop_telemetry.py",
+    "tools/model_stress.py",
+    "tools/model_stress_runner.py",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",
@@ -91,9 +99,14 @@ REQUIRED_PATHS = (
     "harness/schemas/telemetry-input.schema.json",
     "harness/schemas/loop-telemetry.schema.json",
     "harness/schemas/telemetry-aggregate.schema.json",
+    "harness/schemas/model-stress.schema.json",
+    "harness/schemas/model-stress-task.schema.json",
+    "harness/schemas/model-stress-result.schema.json",
     "harness/adapters/codex.json",
     "harness/adapters/pi.json",
     "harness/evals/scenarios.json",
+    "harness/model-stress.json",
+    "harness/model-stress/tasks/identifier-canonicalization-v1.json",
     "harness/telemetry.json",
     "harness/version.json",
     "harness/ownership.json",
@@ -689,6 +702,18 @@ def validate_telemetry(root: Path, result: Result) -> None:
     result.checked.append("outcome telemetry privacy defaults")
 
 
+def validate_model_stress(root: Path, result: Result) -> None:
+    contract = load_json(root / "harness/model-stress.json")
+    for error in validate_model_stress_contract(contract):
+        result.errors.append(f"model-stress contract: {error}")
+    result.checked.append("supplemental model-stress policy")
+    task, digest = load_model_stress_task(
+        root / "harness/model-stress/tasks/identifier-canonicalization-v1.json"
+    )
+    result.require(bool(digest) and task.get("id") == "identifier-canonicalization-v1", "model-stress held-out task identity is invalid")
+    result.checked.append("held-out model-stress task")
+
+
 def validate_engineering_tooling(root: Path, result: Result) -> None:
     for path in sorted((root / "harness/profiles").glob("*.json")):
         profile = load_json(path)
@@ -726,6 +751,7 @@ def check(root: Path) -> Result:
         validate_planning(root, result)
         validate_json_assets(root, result)
         validate_telemetry(root, result)
+        validate_model_stress(root, result)
         validate_engineering_tooling(root, result)
     except (ValueError, OSError) as exc:
         result.errors.append(str(exc))

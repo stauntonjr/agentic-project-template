@@ -96,3 +96,9 @@ Record exact commands and outcomes in the loop run. Before independent approval,
 ## Learning boundary
 
 Convert escaped defects into deterministic challenge manifests when possible. The Learn phase may propose updates to skills, roles, profiles, or instructions, but must never promote an observation into permanent policy without human review.
+
+When an agent or tool chooses a repeatable failed path, preserve a sanitized correction in
+`docs/project/correction-log.md`: failed approach, short error signature, mutation status,
+corrected path, verification, and the durable guard that prevents recurrence. Do not store raw
+transcripts, hidden reasoning, credentials, or unverified folklore. A failure remains a failure in
+the record even after its correction succeeds.

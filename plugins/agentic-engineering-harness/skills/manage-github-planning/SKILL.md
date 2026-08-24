@@ -20,6 +20,25 @@ Treat `.github/planning.json` as desired topology, Issues as canonical work obje
 
 Read `references/safety.md` before live writes.
 
+## Projects v2 work-item membership
+
+Do not pass `--project` to `gh issue create` or `gh pr create`. That shortcut resolves deprecated
+Projects (classic), not the configured Projects v2 roadmap.
+
+Use this sequence instead:
+
+1. Create the Issue or pull request without `--project` and capture its exact URL.
+2. Preview `python3 tools/github_planning.py add-item --url URL`.
+3. Explain the Project v2 membership write and obtain authorization.
+4. Run `python3 tools/github_planning.py add-item --url URL --yes`.
+5. Re-read the Project items and the work item's `projectItems` membership.
+
+The wrapper pre-reads membership, returns without a write when one exact item already exists,
+rejects duplicates, uses `gh project item-add` only when absent, and refuses success until one exact
+URL match with a valid Project item ID is returned. If any step fails, inspect whether the work
+item was created before retrying and record a reusable correction in
+`docs/project/correction-log.md`.
+
 ## Work-item rules
 
 - Search for duplicates before creating an Issue.
@@ -32,4 +51,8 @@ Read `references/safety.md` before live writes.
 
 Report exact object names, URLs or IDs when available, counts, writes performed, and residual drift. A successful command exit is not sufficient; re-read the changed objects.
 
-The tool can create or copy a Project, link it to the repository, and create missing fields and basic saved views. It creates or updates labels and milestones separately. Existing field/view mismatches and complex view layout settings remain manual because replacing them could destroy values or human layout intent. Read `docs/project/github-planning.md` for the shared-versus-dedicated decision and exact boundary.
+The tool can create or copy a Project, link it to the repository, add an existing Issue or pull
+request to Projects v2, and create missing fields and basic saved views. It creates or updates
+labels and milestones separately. Existing field/view mismatches and complex view layout settings
+remain manual because replacing them could destroy values or human layout intent. Read
+`docs/project/github-planning.md` for the shared-versus-dedicated decision and exact boundary.

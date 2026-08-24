@@ -81,10 +81,13 @@ the copied harness validator does not import it merely because the names match.
 | `tools/` | Dependency-free intake, validation, loop evidence, report, and GitHub audit tools |
 | `.github/planning.json` | Selected GitHub Project topology plus expected labels, milestones, fields, views, and repository link |
 | `harness/challenges/` | Executable historical failure-case contract |
+| `docs/project/correction-log.md` | Sanitized repeatable failures, verified correction paths, and recurrence guards |
 | `harness/version.json` | Version and dry-run migration boundary for derived repositories |
 | `harness.lock` | Pinned upstream release, commit, per-file checksums, and ownership classes |
 | `harness/ownership.json` | Upgrade policy separating upstream-owned, project-owned, and merge-required paths |
 | `harness/evals/` | Forward-test scenarios for skill routing and safety behavior |
+| `harness/model-stress.json` | Supplemental local-model canary, cadence, paired-lane, and evidence contract |
+| `harness/model-stress/tasks/` | Versioned held-out task inputs and executable oracle contracts for paired model trials |
 | `harness/telemetry.json` | Disabled-by-default, content-free outcome telemetry and retention contract |
 | `docs/project/handoff.md` | Concise orientation index for fresh humans and agents |
 | `docs/project/engineering-baseline.md` | Portable capability contract and profile-selected tooling boundary |
@@ -146,6 +149,8 @@ make smoke                 # Contracts, Actions, compilation, tests, and selecte
 python3 tools/github_planning.py audit --offline
 python3 tools/github_planning.py bootstrap-project       # Dry run
 python3 tools/github_planning.py bootstrap-project --yes # Explicit create/copy
+python3 tools/github_planning.py add-item --url ISSUE_URL       # Projects v2 dry run
+python3 tools/github_planning.py add-item --url ISSUE_URL --yes # Authorized membership write
 python3 tools/github_planning.py audit
 python3 tools/github_planning.py apply       # Dry run
 python3 tools/github_planning.py apply --yes # Explicit live mutation
@@ -153,6 +158,9 @@ python3 tools/harness_upgrade.py status
 python3 tools/product_version.py           # Product source/contract drift
 python3 tools/product_version.py --tag v1.2.3
 python3 tools/evaluate_harness.py
+python3 tools/model_stress.py check  # Validate supplemental Qwen canary policy
+python3 tools/model_stress.py status # Report whether a live paired run is due; invokes no model
+python3 tools/model_stress_runner.py check # Validate held-out task and runner capability; invokes no model
 python3 tools/recovery_scenarios.py       # Six disposable recovery fixtures
 python3 tools/run_challenges.py           # Validate candidates and approved challenges
 python3 tools/run_challenges.py --run --include-candidates # Review-only candidate replay
@@ -160,6 +168,13 @@ python3 tools/loop_telemetry.py summarize --run RUN_ID # Opt-in, stdout-only by 
 make pi-runtime-check       # Optional: offline Pi resource-load test, no model call
 make plugin-check           # Plugin mirror, provenance, and marketplace validation
 ```
+
+The live model-stress runner is deliberately separate from `make smoke`. It creates identical
+disposable bare and harness-enabled repositories, limits Pi to `read` and `edit`, sanitizes its
+environment, and evaluates generated code in a networkless resource-bounded Bubblewrap oracle.
+It retains no raw model transcript. A one-trial run is only smoke evidence; release-candidate use
+requires at least three paired trials plus independent review and human acceptance. See
+[Local model-diversity canary](docs/project/model-stress.md).
 
 Outcome telemetry is never collected automatically. The local CLI derives only loop-record facts,
 accepts optional strictly allowlisted observations, distinguishes measured, provider-reported,

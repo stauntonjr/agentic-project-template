@@ -36,6 +36,12 @@ Follow the state order and gates in the loop contract.
 - Use a verifier who did not author the reviewed work.
 - Stop after three consecutive failures at the same boundary and escalate with preserved evidence.
 - Obtain required human approval before external side effects.
+- Treat a failed network or loopback probe inside a restricted runtime as indeterminate, not as
+  proof that a credential, API, container, or host service is unavailable. Before classifying a
+  local service outage, use the approved host-permission path to inspect its supervisor, candidate
+  container/process, listener, and health or discovery endpoint. If host verification is not
+  available, report the boundary as unverified. Inspect before starting or restarting a workload;
+  never launch a possible duplicate first, especially for GPU- or port-exclusive services.
 
 Record exact checks as they finish:
 
@@ -94,6 +100,13 @@ Use `references/handoff-contract.md` for every agent handoff.
 1. Reconcile implementation, tests, docs, ADRs, handoff, Issue, and Project state.
 2. Run `make smoke`, `git diff --check`, and `git status --short`.
 3. Invoke `$loop-report` or run `python3 tools/loop.py finish --run RUN_ID`. A `reported` finish refuses missing criterion evidence, missing or stale release impact, stale or non-independent approval, and writes outside the declared scope. Use `--state blocked` or `--state abandoned` to preserve an incomplete run truthfully.
-4. In Learn, propose challenge, skill, profile, or instruction updates. Do not apply policy changes without human review.
+4. In Learn, inspect every failed command, rejected approach, retry, and human correction. For a
+   repeatable failure, add a sanitized entry to `docs/project/correction-log.md` containing the
+   failed path, short error signature, mutation status, corrected path, verification, and durable
+   prevention surface. Preserve the original failure even after correction. Never retain secrets,
+   raw transcripts, private prompts, or hidden reasoning.
+5. Convert deterministic escaped defects into challenge candidates when possible. Use a skill,
+   test, or tool guard for command-routing mistakes that cannot be replayed safely without live
+   side effects. Do not apply policy changes without human review.
 
 A loop is not complete because code exists. It is complete only when the accepted boundary is verified, independently reviewed where required, reconciled, and reported.
