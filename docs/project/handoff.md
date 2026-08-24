@@ -37,9 +37,16 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   declare an exact non-executed primary-check command and safe repository-relative provenance
   source, or an explicit reasoned disposition. It retains automatic harness detection and does not
   infer authority from prose or CI presence.
-- Recommended next loop: audit a second existing repository with the portable evidence contract,
-  then use the resulting evidence to decide authenticated GitHub evidence, SARIF, baselining, and
-  the separate full-application companion.
+- Agentic Repo Auditor Issue #19 merged through PR #21 at `2365676`: the installed schema-1.2
+  Auditor audited Procurement Intelligence Lab commit `0f9d1a45` with `make check` / `Makefile`
+  provenance, produced byte-identical JSON and Markdown with 9 pass and 4 warn findings, and left
+  the complete target snapshot unchanged. The report explicitly excludes application assessment.
+- Auditor Issue #20 captures the run's one reproduced product defect: concrete confidentiality,
+  authorization, token, and non-deletion guardrails are not recognized as the instruction safety
+  signal without literal `safe` / `safely` / `safety` vocabulary.
+- Recommended next loop: repair Auditor Issue #20, then use both existing-repository dogfood
+  datasets to choose among authenticated GitHub evidence, SARIF, baselining, and the separate
+  full-application companion already governed by Auditor Issue #11.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -126,6 +133,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   #13 resolves the literal-keyword false warning; Issues #12 and #14 resolve the template-specific
   evidence limitations through explicit, fail-closed configuration. The audit changed no S3NTINEL
   file or planning state and does not claim full-application review.
+- Agentic Repo Auditor Issue #19 pins Procurement Intelligence Lab at `0f9d1a45`, exercises the
+  schema-1.2 primary-check declaration, and publishes canonical JSON and Markdown with 9 pass and
+  4 warn findings. Three warnings remain target governance/security decisions; the false
+  instruction warning is isolated in Auditor Issue #20. Neither the authoritative Procurement
+  checkout, its separate wiki, nor Procurement GitHub state changed.
 
 ## Refresh protocol
 
