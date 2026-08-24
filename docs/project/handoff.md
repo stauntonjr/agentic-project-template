@@ -30,8 +30,16 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Agentic Repo Auditor Issue #13 is repaired through Auditor PR #16 at `b0fa931a`: instruction
   coverage now uses a documented token-bounded vocabulary and exact matched-term evidence while
   explicitly denying semantic-understanding claims.
-- Recommended next decision: choose satisfiable portable project-contract evidence for Auditor
-  Issue #12, then portable primary-check declarations for Issue #14. Both remain `Needs Input`.
+- Agentic Repo Auditor Issue #12 merged through PR #17 at `a0dc7a9`: configuration schema 1.1 can
+  declare a safe repository-relative JSON/YAML project contract or an explicit reasoned
+  not-applicable disposition while retaining automatic harness compatibility.
+- Agentic Repo Auditor Issue #14 merged through PR #18 at `09e02e9`: configuration schema 1.2 can
+  declare an exact non-executed primary-check command and safe repository-relative provenance
+  source, or an explicit reasoned disposition. It retains automatic harness detection and does not
+  infer authority from prose or CI presence.
+- Recommended next loop: audit a second existing repository with the portable evidence contract,
+  then use the resulting evidence to decide authenticated GitHub evidence, SARIF, baselining, and
+  the separate full-application companion.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 
@@ -115,9 +123,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   Kortex, deploying a model, or reading or writing memory stores.
 - Agentic Repo Auditor Issue #8 pins S3NTINEL at `14ba0416`, publishes canonical JSON and Markdown
   with 4 pass, 8 warn, and 1 fail findings, and triages all nine non-pass results. Follow-up Issue
-  #13 resolves the literal-keyword false warning; Issues #12 and #14 retain the template-specific
-  evidence decisions. The audit changed no S3NTINEL file or planning state and does not claim
-  full-application review.
+  #13 resolves the literal-keyword false warning; Issues #12 and #14 resolve the template-specific
+  evidence limitations through explicit, fail-closed configuration. The audit changed no S3NTINEL
+  file or planning state and does not claim full-application review.
 
 ## Refresh protocol
 
