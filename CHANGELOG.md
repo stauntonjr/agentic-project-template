@@ -38,6 +38,9 @@ All notable changes to the harness are recorded here. The harness version and a 
   clones one byte-verified seed Git repository for every lane and trial, with explicit bare versus
   harness resource loading, `read`/`edit`-only Pi authority,
   sanitized evidence, and a separate networkless resource-bounded executable oracle.
+- A schema-1.1 three-class held-out corpus covering bounded implementation, defect repair, and
+  cross-file integration, with task-class provenance in every sanitized runner result and
+  multi-entrypoint oracle coverage that directly tests both modules in the cross-file task.
 - The first one-trial paired Qwen smoke as explicitly negative evidence: neither lane passed the
   oracle; bare timed out in an unavailable-tool loop while the harness lane settled without that
   loop. No accepted baseline or general harness-lift claim is recorded.
@@ -47,6 +50,11 @@ All notable changes to the harness are recorded here. The harness version and a 
   is produced, closes result relationships, sanitizes tool identities, records the frozen resource
   digest, rejects symlinked task/resource roots and ancestors, and reports invocation truthfully;
   the model was not rerun as part of the repair.
+- A provider-backed three-class acceptance candidate with three trials per lane and task: bare
+  passed 0/9 and harness-enabled passed 1/9, an observed +1 confined to implementation. The result
+  stays supplemental, unaccepted, and explicitly makes no general harness-lift claim. A Pi 0.84.1
+  read-only-config credential-lock startup failure is preserved as invalidated diagnostic evidence;
+  the runner now supplies an explicit non-secret synthetic API-key override.
 
 ### Changed
 

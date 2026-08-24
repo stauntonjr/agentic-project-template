@@ -54,6 +54,7 @@ def main() -> int:
                         "ok": True,
                         "model_invoked": False,
                         "task_id": task["id"],
+                        "task_class": task["task_class"],
                         "task_digest": digest,
                         "evidence_level_if_run": level,
                         "capabilities": {

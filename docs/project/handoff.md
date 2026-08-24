@@ -31,7 +31,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   calls and passed 6/7 cases; harness settled in 15.333 seconds with no unavailable-tool loop and
   passed 5/7. Review then found invalid prompt provenance and an exposed-oracle boundary in that
   first runner. The runner is repaired, but the old run remains diagnostic negative history—not an
-  accepted, contract-valid baseline or harness-lift claim—and no replacement model run was made.
+  accepted, contract-valid baseline or harness-lift claim. A replacement three-class,
+  three-trial-per-lane acceptance candidate is now complete: bare passed 0/9 and harness-enabled
+  passed 1/9, with the only pass on the implementation task. The observed +1 is not a general
+  harness-lift claim and remains unaccepted pending a separate human decision.
 - Agentic Repo Auditor Issue #8 published the first packaged, read-only audit against pinned
   S3NTINEL commit `14ba0416` through Auditor PR #15. The exact installed CLI output is deterministic,
   the target fingerprint remained unchanged, and the report explicitly excludes application and
@@ -53,10 +56,11 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Auditor Issue #20 captures the run's one reproduced product defect: concrete confidentiality,
   authorization, token, and non-deletion guardrails are not recognized as the instruction safety
   signal without literal `safe` / `safely` / `safety` vocabulary.
-- Recommended next harness loop: after the one-shot Issue #21 smoke is independently reviewed,
-  add at least two more held-out task classes before considering a three-trial acceptance-candidate
-  run. Auditor Issue #20 and its application-report roadmap remain separate Agentic Repo Auditor
-  work.
+- Active harness loop: Issue #21 has completed the held-out implementation, defect-repair, and
+  cross-file-integration acceptance candidate. All 18 scored trials were provider-backed and in
+  scope; one bare cross-file trial timed out. Independent post-run verification and a separate human
+  accept/reject decision remain. Auditor Issue #20 and its application-report roadmap remain
+  separate Agentic Repo Auditor work.
 - Release state: not applicable.
 - Publication target: public GitHub template `stauntonjr/agentic-project-template`.
 

@@ -29,6 +29,12 @@ LANES = ("bare", "harness")
 TOOLS = ["read", "edit"]
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 TASK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+CORPUS_TASK_CLASSES = {
+    "identifier-canonicalization-v1": "implementation",
+    "retry-after-repair-v1": "defect-repair",
+    "release-policy-integration-v1": "cross-file-integration",
+}
+TASK_CLASSES = set(CORPUS_TASK_CLASSES.values())
 RESULT_DIRECTORY = Path(".harness/model-stress")
 RESOURCE_PATHS = (
     "AGENTS.md",
@@ -242,6 +248,12 @@ def _json_scalar(value: Any) -> bool:
     )
 
 
+def _json_return_value(value: Any) -> bool:
+    return _json_scalar(value) or (
+        isinstance(value, list) and len(value) <= 8 and all(_json_scalar(item) for item in value)
+    )
+
+
 def validate_task(task: Any) -> list[str]:
     try:
         _validate_task(task)
@@ -256,6 +268,7 @@ def _validate_task(task: Any) -> None:
     expected = {
         "schema_version",
         "id",
+        "task_class",
         "prompt",
         "initial_files",
         "writable_paths",
@@ -264,11 +277,15 @@ def _validate_task(task: Any) -> None:
     }
     if set(task) != expected:
         raise RunnerError("task has missing or unknown top-level keys")
-    if task["schema_version"] != "1.0":
-        raise RunnerError("task schema_version must be 1.0")
+    if task["schema_version"] != "1.1":
+        raise RunnerError("task schema_version must be 1.1")
     task_id = task["id"]
     if not isinstance(task_id, str) or len(task_id) > 80 or not TASK_ID.fullmatch(task_id):
         raise RunnerError("task id is invalid")
+    if task["task_class"] not in TASK_CLASSES:
+        raise RunnerError("task class is invalid")
+    if task_id in CORPUS_TASK_CLASSES and task["task_class"] != CORPUS_TASK_CLASSES[task_id]:
+        raise RunnerError("task id and class are inconsistent")
     prompt = task["prompt"]
     if (
         not isinstance(prompt, str)
@@ -321,49 +338,65 @@ def _validate_task(task: Any) -> None:
         raise RunnerError("writable_paths must be unique initial-file paths")
 
     oracle = task["oracle"]
-    if not isinstance(oracle, dict) or set(oracle) != {"module", "function", "cases", "raises"}:
-        raise RunnerError("oracle must define only module, function, cases, and raises")
-    for key in ("module", "function"):
-        value = oracle[key]
-        if not isinstance(value, str) or len(value) > 80 or not IDENTIFIER.fullmatch(value):
-            raise RunnerError(f"oracle {key} is invalid")
-    module_path = oracle["module"] + ".py"
-    if module_path not in paths:
-        raise RunnerError("oracle module must name an initial top-level Python file")
+    if not isinstance(oracle, dict) or set(oracle) != {"targets"}:
+        raise RunnerError("oracle must define only targets")
+    targets = oracle["targets"]
+    if not isinstance(targets, list) or not 1 <= len(targets) <= 5:
+        raise RunnerError("oracle targets must contain 1 to 5 entries")
     case_ids: list[str] = []
-    for key, required_key in (("cases", "expected"), ("raises", "exception")):
-        records = oracle[key]
-        maximum = 50 if key == "cases" else 20
-        if (
-            not isinstance(records, list)
-            or (key == "cases" and not records)
-            or len(records) > maximum
-        ):
-            raise RunnerError(f"oracle {key} has an invalid count")
-        expected_keys = {"id", "args", required_key}
-        for record in records:
-            if not isinstance(record, dict) or set(record) != expected_keys:
-                raise RunnerError(f"oracle {key} entry has an invalid shape")
-            if not isinstance(record["id"], str) or not TASK_ID.fullmatch(record["id"]):
-                raise RunnerError(f"oracle {key} id is invalid")
-            if len(record["id"]) > 80:
-                raise RunnerError(f"oracle {key} id exceeds 80 characters")
-            if (
-                not isinstance(record["args"], list)
-                or len(record["args"]) > 8
-                or not all(_json_scalar(arg) for arg in record["args"])
-            ):
-                raise RunnerError(f"oracle {key} args must be JSON scalars")
-            if required_key == "expected" and not _json_scalar(record[required_key]):
-                raise RunnerError("oracle expected values must be JSON scalars")
-            if required_key == "exception" and record[required_key] not in {
-                "TypeError",
-                "ValueError",
-            }:
-                raise RunnerError("oracle exception must be TypeError or ValueError")
-            case_ids.append(record["id"])
+    target_ids: list[tuple[str, str]] = []
+    for target in targets:
+        if not isinstance(target, dict) or set(target) != {
+            "module",
+            "function",
+            "cases",
+            "raises",
+        }:
+            raise RunnerError("each oracle target must define module, function, cases, and raises")
+        for key in ("module", "function"):
+            value = target[key]
+            if not isinstance(value, str) or len(value) > 80 or not IDENTIFIER.fullmatch(value):
+                raise RunnerError(f"oracle target {key} is invalid")
+        target_id = (target["module"], target["function"])
+        target_ids.append(target_id)
+        module_path = target["module"] + ".py"
+        if module_path not in paths:
+            raise RunnerError("oracle target module must name an initial top-level Python file")
+        if not target["cases"] and not target["raises"]:
+            raise RunnerError("each oracle target must contain at least one case")
+        for key, required_key in (("cases", "expected"), ("raises", "exception")):
+            records = target[key]
+            maximum = 50
+            if not isinstance(records, list) or len(records) > maximum:
+                raise RunnerError(f"oracle target {key} has an invalid count")
+            expected_keys = {"id", "args", required_key}
+            for record in records:
+                if not isinstance(record, dict) or set(record) != expected_keys:
+                    raise RunnerError(f"oracle target {key} entry has an invalid shape")
+                if not isinstance(record["id"], str) or not TASK_ID.fullmatch(record["id"]):
+                    raise RunnerError(f"oracle target {key} id is invalid")
+                if len(record["id"]) > 80:
+                    raise RunnerError(f"oracle target {key} id exceeds 80 characters")
+                if (
+                    not isinstance(record["args"], list)
+                    or len(record["args"]) > 8
+                    or not all(_json_scalar(arg) for arg in record["args"])
+                ):
+                    raise RunnerError(f"oracle target {key} args must be JSON scalars")
+                if required_key == "expected" and not _json_return_value(record[required_key]):
+                    raise RunnerError("oracle expected values must be JSON scalars or scalar arrays")
+                if required_key == "exception" and record[required_key] not in {
+                    "TypeError",
+                    "ValueError",
+                }:
+                    raise RunnerError("oracle exception must be TypeError or ValueError")
+                case_ids.append(record["id"])
+    if len(set(target_ids)) != len(target_ids):
+        raise RunnerError("oracle targets must be unique")
     if len(set(case_ids)) != len(case_ids):
         raise RunnerError("oracle case ids must be unique")
+    if len(case_ids) > 70:
+        raise RunnerError("oracle must contain at most 70 cases")
 
     limits = task["limits"]
     expected_limits = {
@@ -402,10 +435,11 @@ def validate_trials(value: int) -> str:
     return "smoke" if value == 1 else "acceptance-candidate"
 
 
-def trial_passed(record: dict[str, Any]) -> bool:
+def trial_passed(record: dict[str, Any], required_paths: list[str]) -> bool:
     return (
         record["test_result"]["ok"]
         and record["scope_result"]["ok"]
+        and set(record["changed_paths"]) == set(required_paths)
         and record["returncode"] == 0
         and record["settled"]
         and record["event_limit_ok"]
@@ -439,7 +473,7 @@ def _validate_result(payload: Any) -> None:
     }
     if set(payload) != expected:
         raise RunnerError("result has missing or unknown top-level keys")
-    if payload["schema_version"] != "1.0" or payload["authority"] != "supplemental":
+    if payload["schema_version"] != "1.1" or payload["authority"] != "supplemental":
         raise RunnerError("result identity or authority is invalid")
     if payload["accepted_baseline"] is not False or payload["model_invoked"] is not True:
         raise RunnerError(
@@ -476,6 +510,7 @@ def _validate_result(payload: Any) -> None:
     task = payload["task"]
     task_keys = {
         "id",
+        "task_class",
         "task_digest",
         "prompt_digest",
         "tool_set",
@@ -486,8 +521,19 @@ def _validate_result(payload: Any) -> None:
     }
     if not isinstance(task, dict) or set(task) != task_keys:
         raise RunnerError("result task identity is invalid")
-    if not isinstance(task["id"], str) or not TASK_ID.fullmatch(task["id"]):
+    if (
+        not isinstance(task["id"], str)
+        or len(task["id"]) > 80
+        or not TASK_ID.fullmatch(task["id"])
+    ):
         raise RunnerError("result task id is invalid")
+    if task["task_class"] not in TASK_CLASSES:
+        raise RunnerError("result task class is invalid")
+    if (
+        task["id"] in CORPUS_TASK_CLASSES
+        and task["task_class"] != CORPUS_TASK_CLASSES[task["id"]]
+    ):
+        raise RunnerError("result task id and class are inconsistent")
     for key in ("task_digest", "prompt_digest"):
         if not isinstance(task[key], str) or not re.fullmatch(r"[0-9a-f]{64}", task[key]):
             raise RunnerError(f"result {key} is invalid")
@@ -699,7 +745,9 @@ def _validate_result(payload: Any) -> None:
                 raise RunnerError(f"result {lane} test state is inconsistent")
         if observed_trials != set(range(1, trials + 1)):
             raise RunnerError(f"result {lane} trial identities are incomplete")
-        if passed_trials != sum(1 for record in records if trial_passed(record)):
+        if passed_trials != sum(
+            1 for record in records if trial_passed(record, normalized_writable)
+        ):
             raise RunnerError(f"result {lane} pass count is inconsistent")
     comparison = payload["comparison"]
     if (
@@ -1007,6 +1055,8 @@ def build_pi_command(
             provider,
             "--model",
             model,
+            "--api-key",
+            "not-needed",
             "--approve",
             "--offline",
             "--no-session",
@@ -1202,6 +1252,16 @@ def _oracle_preexec(nproc_limit: int, maximum_output_bytes: int) -> None:
     resource.setrlimit(resource.RLIMIT_NPROC, (nproc_limit, nproc_limit))
 
 
+def _oracle_records(
+    task: dict[str, Any],
+) -> list[tuple[dict[str, Any], dict[str, Any], str]]:
+    records: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    for target in task["oracle"]["targets"]:
+        records.extend((target, record, "expected") for record in target["cases"])
+        records.extend((target, record, "exception") for record in target["raises"])
+    return records
+
+
 def _run_oracle(task: dict[str, Any], repo: Path) -> dict[str, Any]:
     script = """
 import importlib, json, os, sys
@@ -1225,20 +1285,18 @@ write(1,(encode(result,sort_keys=True,separators=(',',':'))+'\\n').encode('utf-8
     failed: list[str] = []
     passed = 0
     timed_out = False
-    records = [(record, "expected") for record in task["oracle"]["cases"]] + [
-        (record, "exception") for record in task["oracle"]["raises"]
-    ]
+    records = _oracle_records(task)
     deadline = started + task["limits"]["oracle_timeout_seconds"]
-    for index, (record, expectation) in enumerate(records):
+    for index, (target, record, expectation) in enumerate(records):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             timed_out = True
-            failed.extend(item[0]["id"] for item in records[index:])
+            failed.extend(item[1]["id"] for item in records[index:])
             break
         call = json.dumps(
             {
-                "module": task["oracle"]["module"],
-                "function": task["oracle"]["function"],
+                "module": target["module"],
+                "function": target["function"],
                 "args": record["args"],
             },
             ensure_ascii=False,
@@ -1301,7 +1359,7 @@ write(1,(encode(result,sort_keys=True,separators=(',',':'))+'\\n').encode('utf-8
                 )
             except subprocess.TimeoutExpired:
                 timed_out = True
-                failed.extend(item[0]["id"] for item in records[index:])
+                failed.extend(item[1]["id"] for item in records[index:])
                 break
             output_file.seek(0)
             output = output_file.read(maximum_output_bytes)
@@ -1332,7 +1390,7 @@ write(1,(encode(result,sort_keys=True,separators=(',',':'))+'\\n').encode('utf-8
         else:
             failed.append(record["id"])
     elapsed = round(time.monotonic() - started, 3)
-    total = len(task["oracle"]["cases"]) + len(task["oracle"]["raises"])
+    total = len(records)
     return {
         "ok": passed == total and not failed,
         "passed": passed,
@@ -1491,7 +1549,7 @@ def run_paired(
                     lane_results[lane].append(result)
         lane_summary: dict[str, Any] = {}
         for lane, results in lane_results.items():
-            passed = sum(1 for item in results if trial_passed(item))
+            passed = sum(1 for item in results if trial_passed(item, task["writable_paths"]))
             lane_summary[lane] = {
                 "passed_trials": passed,
                 "total_trials": trials,
@@ -1500,7 +1558,7 @@ def run_paired(
         bare_passed = lane_summary["bare"]["passed_trials"]
         harness_passed = lane_summary["harness"]["passed_trials"]
         return {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "authority": "supplemental",
             "evidence_level": level,
             "accepted_baseline": False,
@@ -1515,13 +1573,12 @@ def run_paired(
             },
             "task": {
                 "id": task["id"],
+                "task_class": task["task_class"],
                 "task_digest": task_digest,
                 "prompt_digest": sha256_bytes(task["prompt"].encode("utf-8")),
                 "tool_set": TOOLS,
-                "oracle_case_count": len(task["oracle"]["cases"]) + len(task["oracle"]["raises"]),
-                "oracle_case_ids": [
-                    record["id"] for record in task["oracle"]["cases"] + task["oracle"]["raises"]
-                ],
+                "oracle_case_count": len(_oracle_records(task)),
+                "oracle_case_ids": [record["id"] for _, record, _ in _oracle_records(task)],
                 "resource_bundle_digest": resource_bundle_digest,
                 "writable_paths": sorted(task["writable_paths"]),
             },

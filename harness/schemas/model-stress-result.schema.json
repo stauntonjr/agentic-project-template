@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schema_version", "authority", "evidence_level", "accepted_baseline", "model_invoked", "provenance", "task", "limits", "trial_count", "lanes", "comparison"],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "authority": {"const": "supplemental"},
     "evidence_level": {"enum": ["smoke", "acceptance-candidate"]},
     "accepted_baseline": {"const": false},
@@ -25,9 +25,10 @@
     },
     "task": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "task_digest", "prompt_digest", "tool_set", "oracle_case_count", "oracle_case_ids", "resource_bundle_digest", "writable_paths"],
+      "required": ["id", "task_class", "task_digest", "prompt_digest", "tool_set", "oracle_case_count", "oracle_case_ids", "resource_bundle_digest", "writable_paths"],
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 80},
+        "task_class": {"enum": ["implementation", "defect-repair", "cross-file-integration"]},
         "task_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "prompt_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "tool_set": {"const": ["read", "edit"]},
@@ -41,7 +42,21 @@
           "type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1, "maxLength": 160}
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"id": {"const": "identifier-canonicalization-v1"}}, "required": ["id"]},
+          "then": {"properties": {"task_class": {"const": "implementation"}}}
+        },
+        {
+          "if": {"properties": {"id": {"const": "retry-after-repair-v1"}}, "required": ["id"]},
+          "then": {"properties": {"task_class": {"const": "defect-repair"}}}
+        },
+        {
+          "if": {"properties": {"id": {"const": "release-policy-integration-v1"}}, "required": ["id"]},
+          "then": {"properties": {"task_class": {"const": "cross-file-integration"}}}
+        }
+      ]
     },
     "limits": {"$ref": "#/$defs/limits"},
     "trial_count": {"type": "integer", "minimum": 1, "maximum": 10, "not": {"const": 2}},

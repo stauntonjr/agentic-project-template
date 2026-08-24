@@ -1,6 +1,7 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "id": "identifier-canonicalization-v1",
+  "task_class": "implementation",
   "prompt": "Implement canonical_identifier(value) in identifier.py. The function must require a string, apply Unicode casefolding, replace each run of one or more non-alphanumeric characters with one ASCII hyphen, remove leading and trailing hyphens, preserve casefolded Unicode letters and digits, and raise ValueError when no alphanumeric character remains. Do not change any other file.",
   "initial_files": [
     {
@@ -14,18 +15,22 @@
   ],
   "writable_paths": ["identifier.py"],
   "oracle": {
-    "module": "identifier",
-    "function": "canonical_identifier",
-    "cases": [
-      {"id": "plain", "args": ["Alpha Beta"], "expected": "alpha-beta"},
-      {"id": "runs", "args": ["  Alpha___Beta...42  "], "expected": "alpha-beta-42"},
-      {"id": "casefold", "args": ["Straße"], "expected": "strasse"},
-      {"id": "unicode", "args": ["CAFÉ déjà"], "expected": "café-déjà"},
-      {"id": "digits", "args": ["版本 ２"], "expected": "版本-２"}
-    ],
-    "raises": [
-      {"id": "empty", "args": ["---___..."], "exception": "ValueError"},
-      {"id": "wrong-type", "args": [42], "exception": "TypeError"}
+    "targets": [
+      {
+        "module": "identifier",
+        "function": "canonical_identifier",
+        "cases": [
+          {"id": "plain", "args": ["Alpha Beta"], "expected": "alpha-beta"},
+          {"id": "runs", "args": ["  Alpha___Beta...42  "], "expected": "alpha-beta-42"},
+          {"id": "casefold", "args": ["Straße"], "expected": "strasse"},
+          {"id": "unicode", "args": ["CAFÉ déjà"], "expected": "café-déjà"},
+          {"id": "digits", "args": ["版本 ２"], "expected": "版本-２"}
+        ],
+        "raises": [
+          {"id": "empty", "args": ["---___..."], "exception": "ValueError"},
+          {"id": "wrong-type", "args": [42], "exception": "TypeError"}
+        ]
+      }
     ]
   },
   "limits": {

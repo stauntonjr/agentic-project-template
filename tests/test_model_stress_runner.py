@@ -35,10 +35,17 @@ from harness.runtime.model_stress_runner import (
     validate_result,
     validate_task,
     validate_trials,
+    trial_passed,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK_PATH = ROOT / "harness/model-stress/tasks/identifier-canonicalization-v1.json"
+TASK_DIRECTORY = ROOT / "harness/model-stress/tasks"
+EXPECTED_TASK_CLASSES = {
+    "identifier-canonicalization-v1": "implementation",
+    "retry-after-repair-v1": "defect-repair",
+    "release-policy-integration-v1": "cross-file-integration",
+}
 
 
 def valid_result() -> dict[str, Any]:
@@ -68,7 +75,7 @@ def valid_result() -> dict[str, Any]:
         },
     }
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "authority": "supplemental",
         "evidence_level": "smoke",
         "accepted_baseline": False,
@@ -83,6 +90,7 @@ def valid_result() -> dict[str, Any]:
         },
         "task": {
             "id": "identifier-canonicalization-v1",
+            "task_class": "implementation",
             "task_digest": "a" * 64,
             "prompt_digest": "b" * 64,
             "tool_set": ["read", "edit"],
@@ -167,10 +175,25 @@ class ModelStressRunnerTests(unittest.TestCase):
         self.assertNotIn("oracle.json", visible)
         self.assertEqual(["identifier.py"], task["writable_paths"])
 
+    def test_repository_corpus_has_three_distinct_valid_task_classes(self) -> None:
+        observed = {}
+        for path in sorted(TASK_DIRECTORY.glob("*.json")):
+            task, digest = load_task(path, root=ROOT)
+            self.assertEqual([], validate_task(task), path.name)
+            self.assertEqual(64, len(digest))
+            self.assertEqual(path.stem, task["id"])
+            observed[task["id"]] = task["task_class"]
+            self.assertNotIn("oracle.json", {item["path"] for item in task["initial_files"]})
+        self.assertEqual(EXPECTED_TASK_CLASSES, observed)
+        self.assertEqual(3, len(set(observed.values())))
+
     def test_malformed_and_unsafe_tasks_fail_closed(self) -> None:
         mutations = []
         candidate = copy.deepcopy(self.task)
         candidate["unknown"] = True
+        mutations.append(candidate)
+        candidate = copy.deepcopy(self.task)
+        candidate["task_class"] = "algorithm"
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
         candidate["initial_files"][0]["path"] = "../escape"
@@ -179,10 +202,20 @@ class ModelStressRunnerTests(unittest.TestCase):
         candidate["writable_paths"] = ["missing.py"]
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
-        candidate["oracle"]["module"] = "pkg.module"
+        candidate["oracle"]["targets"][0]["module"] = "pkg.module"
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
-        candidate["oracle"]["cases"][0]["args"] = [[]]
+        candidate["oracle"]["targets"] = []
+        mutations.append(candidate)
+        candidate = copy.deepcopy(self.task)
+        candidate["oracle"]["targets"].append(copy.deepcopy(candidate["oracle"]["targets"][0]))
+        mutations.append(candidate)
+        candidate = copy.deepcopy(self.task)
+        candidate["oracle"]["targets"][0]["cases"] = []
+        candidate["oracle"]["targets"][0]["raises"] = []
+        mutations.append(candidate)
+        candidate = copy.deepcopy(self.task)
+        candidate["oracle"]["targets"][0]["cases"][0]["args"] = [[]]
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
         candidate["initial_files"][0]["path"] = "AGENTS.md"
@@ -203,13 +236,13 @@ class ModelStressRunnerTests(unittest.TestCase):
         candidate["prompt"] = "bad\x00prompt"
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
-        candidate["oracle"]["cases"][0]["expected"] = math.nan
+        candidate["oracle"]["targets"][0]["cases"][0]["expected"] = math.nan
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
         candidate["initial_files"][0]["path"] = "a" * 158 + ".py"
         mutations.append(candidate)
         candidate = copy.deepcopy(self.task)
-        candidate["oracle"]["cases"][0]["id"] = "a" * 81
+        candidate["oracle"]["targets"][0]["cases"][0]["id"] = "a" * 81
         mutations.append(candidate)
         for value in mutations:
             with self.subTest(value=value):
@@ -282,6 +315,7 @@ class ModelStressRunnerTests(unittest.TestCase):
             self.assertNotIn("write", command)
             self.assertIn("--no-session", command)
             self.assertIn("--offline", command)
+            self.assertEqual("not-needed", command[command.index("--api-key") + 1])
             self.assertEqual(self.task["prompt"], command[-1])
         self.assertIn("--no-context-files", bare)
         self.assertNotIn("--no-context-files", harness)
@@ -290,6 +324,8 @@ class ModelStressRunnerTests(unittest.TestCase):
         self.assertNotIn("--skill", bare)
         agent_mount = bare.index("/home/canary/.pi/agent")
         self.assertEqual("--ro-bind", bare[agent_mount - 2])
+        correction = (ROOT / "docs/project/correction-log.md").read_text(encoding="utf-8")
+        self.assertIn("LOCAL-RUNNER-006", correction)
 
     def test_sanitized_metrics_never_retain_transcript_or_error_text(self) -> None:
         events = [
@@ -356,6 +392,15 @@ class ModelStressRunnerTests(unittest.TestCase):
         mutations.append(payload)
         payload = valid_result()
         payload["task"]["task_digest"] = "not-a-digest"
+        mutations.append(payload)
+        payload = valid_result()
+        payload["task"]["task_class"] = "unknown"
+        mutations.append(payload)
+        payload = valid_result()
+        payload["task"]["id"] = "a" * 81
+        mutations.append(payload)
+        payload = valid_result()
+        payload["task"]["id"] = "retry-after-repair-v1"
         mutations.append(payload)
         payload = valid_result()
         payload["lanes"]["bare"]["trials"][0]["settled"] = 1
@@ -525,7 +570,8 @@ class ModelStressRunnerTests(unittest.TestCase):
                 "passed": 0,
                 "failed_case_ids": [
                     record["id"]
-                    for record in self.task["oracle"]["cases"] + self.task["oracle"]["raises"]
+                    for target in self.task["oracle"]["targets"]
+                    for record in target["cases"] + target["raises"]
                 ],
                 "elapsed_seconds": 0.01,
                 "timed_out": False,
@@ -604,6 +650,202 @@ class ModelStressRunnerTests(unittest.TestCase):
             self.assertTrue(good["ok"], good)
             self.assertEqual(7, good["passed"])
             self.assertFalse(good["timed_out"])
+
+    @unittest.skipUnless(
+        bubblewrap_available(), "unprivileged Bubblewrap unavailable in this test boundary"
+    )
+    def test_every_corpus_oracle_rejects_seed_and_accepts_reference_solution(self) -> None:
+        reference_solutions = {
+            "identifier-canonicalization-v1": {
+                "identifier.py": """def canonical_identifier(value):
+    if not isinstance(value, str):
+        raise TypeError
+    result = []
+    separator = False
+    for character in value.casefold():
+        if character.isalnum():
+            if separator and result:
+                result.append('-')
+            result.append(character)
+            separator = False
+        else:
+            separator = True
+    if not result:
+        raise ValueError
+    return ''.join(result)
+""",
+            },
+            "retry-after-repair-v1": {
+                "retry_after.py": """from datetime import datetime, timezone
+import re
+
+
+def retry_delay(value, now_epoch):
+    if not isinstance(value, str) or type(now_epoch) is not int:
+        raise TypeError
+    value = value.strip()
+    if re.fullmatch(r'[0-9]+', value):
+        return int(value)
+    try:
+        parsed = datetime.strptime(value, '%a, %d %b %Y %H:%M:%S GMT')
+    except ValueError:
+        raise ValueError from None
+    if parsed.strftime('%a, %d %b %Y %H:%M:%S GMT') != value:
+        raise ValueError
+    return max(0, int(parsed.replace(tzinfo=timezone.utc).timestamp()) - now_epoch)
+""",
+            },
+            "release-policy-integration-v1": {
+                "policy.py": """import re
+
+
+def parse_version(value):
+    if not isinstance(value, str):
+        raise TypeError
+    if not re.fullmatch(r'(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)', value):
+        raise ValueError
+    return tuple(int(part) for part in value.split('.'))
+""",
+                "release.py": """from policy import parse_version
+
+
+def release_decision(current, candidate, checks_passed, approved):
+    if type(checks_passed) is not bool or type(approved) is not bool:
+        raise TypeError
+    current_version = parse_version(current)
+    candidate_version = parse_version(candidate)
+    if not checks_passed:
+        return 'deny:checks'
+    if candidate_version <= current_version:
+        return 'deny:not-forward'
+    if candidate_version[0] != current_version[0] and not approved:
+        return 'deny:approval'
+    return 'allow'
+""",
+            },
+        }
+        resources, _ = _load_resource_bundle(ROOT)
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            for path in sorted(TASK_DIRECTORY.glob("*.json")):
+                task, _ = load_task(path, root=ROOT)
+                repo = root / task["id"] / "repo"
+                _write_initial_repository(task, repo, resources)
+                bad = _run_oracle(task, repo)
+                self.assertFalse(bad["ok"], task["id"])
+                if task["id"] == "release-policy-integration-v1":
+                    (repo / "policy.py").write_text(
+                        (repo / "policy.py").read_text(encoding="utf-8") + "\n# touched only\n",
+                        encoding="utf-8",
+                    )
+                    (repo / "release.py").write_text(
+                        """import re
+
+
+def release_decision(current, candidate, checks_passed, approved):
+    pattern = r'(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)'
+    if not isinstance(current, str) or not isinstance(candidate, str):
+        raise TypeError
+    if not re.fullmatch(pattern, current) or not re.fullmatch(pattern, candidate):
+        raise ValueError
+    current_version = tuple(int(part) for part in current.split('.'))
+    candidate_version = tuple(int(part) for part in candidate.split('.'))
+    if not checks_passed:
+        return 'deny:checks'
+    if candidate_version <= current_version:
+        return 'deny:not-forward'
+    if candidate_version[0] != current_version[0] and not approved:
+        return 'deny:approval'
+    return 'allow'
+""",
+                        encoding="utf-8",
+                    )
+                    bypass = _run_oracle(task, repo)
+                    self.assertFalse(bypass["ok"], bypass)
+                    (repo / "policy.py").write_text(
+                        """def parse_version(value):
+    if not isinstance(value, str):
+        raise TypeError
+    parts = value.split('.')
+    if any(len(part) > 1 and part.startswith('0') for part in parts):
+        raise ValueError
+    return tuple(int(part) for part in parts)
+""",
+                        encoding="utf-8",
+                    )
+                    (repo / "release.py").write_text(
+                        """from policy import parse_version
+
+
+def release_decision(current, candidate, checks_passed, approved):
+    if type(checks_passed) is not bool or type(approved) is not bool:
+        raise TypeError
+    current_version = parse_version(current)
+    candidate_version = parse_version(candidate)
+    if not checks_passed:
+        return 'deny:checks'
+    if candidate_version <= current_version:
+        return 'deny:not-forward'
+    if candidate_version[0] != current_version[0] and not approved:
+        return 'deny:approval'
+    return 'allow'
+""",
+                        encoding="utf-8",
+                    )
+                    shape_bypass = _run_oracle(task, repo)
+                    self.assertFalse(shape_bypass["ok"], shape_bypass)
+                    (repo / "policy.py").write_text(
+                        reference_solutions[task["id"]]["policy.py"], encoding="utf-8"
+                    )
+                    (repo / "release.py").write_text(
+                        """import re
+
+
+def release_decision(current, candidate, checks_passed, approved):
+    if not isinstance(current, str) or not isinstance(candidate, str):
+        raise TypeError
+    if type(checks_passed) is not bool or type(approved) is not bool:
+        raise TypeError
+    if not re.fullmatch(r'[0-9]+(?:\\.[0-9]+)+', current):
+        raise ValueError
+    if not re.fullmatch(r'[0-9]+(?:\\.[0-9]+)+', candidate):
+        raise ValueError
+    current_version = tuple(int(part) for part in current.split('.'))
+    candidate_version = tuple(int(part) for part in candidate.split('.'))
+    if not checks_passed:
+        return 'deny:checks'
+    if candidate_version <= current_version:
+        return 'deny:not-forward'
+    if candidate_version[0] != current_version[0] and not approved:
+        return 'deny:approval'
+    return 'allow'
+""",
+                        encoding="utf-8",
+                    )
+                    seam_bypass = _run_oracle(task, repo)
+                    self.assertFalse(seam_bypass["ok"], seam_bypass)
+                for relative, content in reference_solutions[task["id"]].items():
+                    (repo / relative).write_text(content, encoding="utf-8")
+                good = _run_oracle(task, repo)
+                self.assertTrue(good["ok"], {"task": task["id"], "result": good})
+
+    def test_cross_file_trial_requires_every_declared_writable_path_to_change(self) -> None:
+        record = valid_result()["lanes"]["bare"]["trials"][0]
+        record["changed_paths"] = ["release.py"]
+        record["scope_result"] = {
+            "ok": True,
+            "allowed_paths": ["policy.py", "release.py"],
+        }
+        record["test_result"] = {
+            "ok": True,
+            "passed": 10,
+            "failed_case_ids": [],
+            "elapsed_seconds": 0.1,
+            "timed_out": False,
+        }
+        self.assertFalse(trial_passed(record, ["policy.py", "release.py"]))
+        record["changed_paths"] = ["policy.py", "release.py"]
+        self.assertTrue(trial_passed(record, ["policy.py", "release.py"]))
 
     @unittest.skipUnless(
         bubblewrap_available(), "unprivileged Bubblewrap unavailable in this test boundary"

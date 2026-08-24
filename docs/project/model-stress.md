@@ -25,7 +25,7 @@ The paired runner validates its held-out task without invoking a model:
 python3 tools/model_stress_runner.py check
 ```
 
-Its first task freezes one validated resource bundle, records that bundle's SHA-256 digest, builds
+Each task freezes one validated resource bundle, records that bundle's SHA-256 digest, builds
 one seed Git repository, and clones that exact seed for every lane and trial. Both lanes therefore
 receive the same initial bytes, public requirements, exact contract prompt, `read`/`edit` tools,
 token configuration, and executable oracle even if the source worktree changes during a long run. Oracle
@@ -33,7 +33,8 @@ expectations remain outside the model-visible repository. The bare lane disables
 skills, and extensions. The harness lane enables the repository `AGENTS.md`, canonical
 engineering-loop skill, and Pi context extension. Both lanes run in Bubblewrap with a sanitized
 environment, no credentials, a read-only host system runtime, a read-only Pi installation, a
-read-only generated Pi configuration, and no shell tool. The host home and source repository are
+read-only generated Pi configuration, an explicit non-secret `not-needed` API-key placeholder that
+prevents Pi from consulting a credential store, and no shell tool. The host home and source repository are
 not mounted. Only the disposable repository and ephemeral virtual filesystems are writable. Model
 event output is capped while the process runs, stderr is discarded, and the model output-token
 configuration is fixed at 4,096 tokens.
@@ -62,6 +63,28 @@ Accepted live evidence requires the same disposable engineering task in bare and
 Qwen lanes, at least three trials per lane, independent write-scope inspection, exact runtime
 provenance, and the deterministic gates. The runner never promotes its own output to an accepted
 baseline and never makes a general harness-lift claim.
+
+## Held-out corpus
+
+Task schema 1.1 requires one of three machine-readable classes, and the repository validator
+requires exactly one tracked task in each class:
+
+| Class | Task | Boundary |
+|---|---|---|
+| `implementation` | `identifier-canonicalization-v1` | Implement a Unicode-aware normalization contract in one file. |
+| `defect-repair` | `retry-after-repair-v1` | Repair a broken standard-library Retry-After parser while preserving strict error behavior. |
+| `cross-file-integration` | `release-policy-integration-v1` | Reconcile strict version parsing and release decisions across two writable modules. |
+
+The function-level scalar oracle is intentionally small enough for frequent local execution. It
+does not represent repository-scale architecture, UI, dependency, performance, or deployment work.
+Corpus changes require deterministic seed-failure and reference-pass checks before a live run. A
+trial counts as passed only when the oracle and scope checks pass and every declared writable path
+changed. For the cross-file task this establishes the structural two-file boundary; it does not by
+itself prove that every edit was semantically necessary, so the oracle results and changed-path
+evidence must still be reviewed together. Oracle schema 1.1 supports multiple named module/function
+targets in one task; the cross-file corpus therefore tests both `release.release_decision` and
+`policy.parse_version` directly instead of inferring the helper's correctness from a cosmetic file
+change.
 
 Before a live run, inspect the host's existing SparkRun/container state, listener, and `/v1/models`
 response through an approved host boundary. A loopback failure observed only inside a restricted

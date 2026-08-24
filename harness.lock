@@ -212,7 +212,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "aff41de150f3af811d5ac1cdcd5cff179fef2705866fb0cd0e9cb1d640d959b8",
+      "sha256": "3013edb4da86f3987d05659d67f9a5a3613a67906b027e237e64eb39198af922",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -276,7 +276,7 @@
       "ownership": "project-owned"
     },
     "docs/project/correction-log.md": {
-      "sha256": "fd7490f59465fad1d0ff1efc44f596de0cf1381c442c33f8482b460eeac3ff2d",
+      "sha256": "aaf262ee1d13a975026ca8b59bc16d95c691b2221ee9c93f73c4c72d2fa5e767",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
@@ -288,11 +288,11 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "83a390a792cd7f8766b701694a51f2ebbdd7d4fc0c84f886908ed4cbf62445eb",
+      "sha256": "36b743fcf432099e077482f70ff658c886c5f632092fce284a3ef2f9e2b91227",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
-      "sha256": "74c80804ae79c468db972b0098162db58fa7a080b2e093e874e7d2cca1b4c958",
+      "sha256": "b2ac88d06d598024347d1f5281059a5f493b1a41543e203ee46eb981ec9a023a",
       "ownership": "project-owned"
     },
     "docs/project/outcome-telemetry.md": {
@@ -337,6 +337,10 @@
     },
     "docs/reports/issue-2-s3ntinel-routing.md": {
       "sha256": "8e05ee4af6e490a16bfddb848ef2689796abf474d08925f63cccab909e1de702",
+      "ownership": "project-owned"
+    },
+    "docs/reports/issue-21-qwen-acceptance-candidate.md": {
+      "sha256": "1eceeb9878e0b0ef12d8f88fc2e4792d2cbf3fccaa12a27547647f1f35a86c5e",
       "ownership": "project-owned"
     },
     "docs/reports/issue-21-qwen-canary-smoke.md": {
@@ -432,7 +436,15 @@
       "ownership": "upstream-owned"
     },
     "harness/model-stress/tasks/identifier-canonicalization-v1.json": {
-      "sha256": "faa9aedd54a027c6fe9e996af59a2b0d03b088e810d5d081977623f54cc3b6f5",
+      "sha256": "66224d4af69cab2b5a936bf393700d1710fb2814a7b15af5688881bd94ae4db9",
+      "ownership": "project-owned"
+    },
+    "harness/model-stress/tasks/release-policy-integration-v1.json": {
+      "sha256": "76c9035a93db91b8bbc0e52032b57016496b97568f263f6a60b23bb788bc2a81",
+      "ownership": "project-owned"
+    },
+    "harness/model-stress/tasks/retry-after-repair-v1.json": {
+      "sha256": "90f9ae5fd79a00ae33fc59faa632eae2416d3ed91654f6af851140b00fc9cc9e",
       "ownership": "project-owned"
     },
     "harness/model-stress.json": {
@@ -528,7 +540,7 @@
       "ownership": "upstream-owned"
     },
     "harness/runtime/model_stress_runner.py": {
-      "sha256": "b97006a984947052443979b53fe1844cf3bb0fa4f73f312a12249cea0b025be2",
+      "sha256": "424e28fbaeb3647874c21016b15cb06b22c2d6334bc6a161a801fd76a47312cf",
       "ownership": "upstream-owned"
     },
     "harness/schemas/challenge.schema.json": {
@@ -564,11 +576,11 @@
       "ownership": "upstream-owned"
     },
     "harness/schemas/model-stress-result.schema.json": {
-      "sha256": "ef31b5cd66e3871556f94de6c8900cc466db6da146b80522752d48951f53a55e",
+      "sha256": "58617f35ee09dc018a120dcffe76a205faeee19f1b41ccad95c65a910d38dc49",
       "ownership": "upstream-owned"
     },
     "harness/schemas/model-stress-task.schema.json": {
-      "sha256": "c9329a981cc0cd4f19d4f154f701c7c94de007d4d7d2bc2d372f43e62728660f",
+      "sha256": "7cae51f9cc9838ec4bb4b09bad5fd15bb5dc0585634640e15ab96fbaff1a5671",
       "ownership": "upstream-owned"
     },
     "harness/schemas/model-stress.schema.json": {
@@ -728,7 +740,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
-      "sha256": "2f56291628e893912e7cf122b7c2e11d195ab5fb9a23fdb395b746cf0cb5b37f",
+      "sha256": "8f61a156a44bdd5f39cc0d8032db067713805c5aac77e08225121bfe015761a7",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_upgrade.py": {
@@ -748,7 +760,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_model_stress_runner.py": {
-      "sha256": "04fd9741ce7c0fd5240c70d52569757124c6f1bfdeb5c67e908d287c8d99aa12",
+      "sha256": "08567af962cbf75cb94eef2da1d01664fd31f52309b3072a2513b3180b385017",
       "ownership": "upstream-owned"
     },
     "tests/test_pi_adapter_check.py": {
@@ -800,7 +812,7 @@
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {
-      "sha256": "6b6cc2083ae7f59eef8955665701b6bf29082737494570922c59427d5bf5d6ba",
+      "sha256": "8ed6efd0325f7ea6257a52150f6ebd78b3ecc61dfebc684d7a35bc113763ab5a",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -820,7 +832,7 @@
       "ownership": "upstream-owned"
     },
     "tools/model_stress_runner.py": {
-      "sha256": "84b83ce2e7eec9eba2c2dd5e239ea63ddfa272be66d497945f0c3c051a6893c8",
+      "sha256": "aa77fc50a0495a9ec05a677b716d7d6fbf99b56fa73dc4a34be8025e0ffcca4d",
       "ownership": "upstream-owned"
     },
     "tools/pi_adapter_check.py": {
