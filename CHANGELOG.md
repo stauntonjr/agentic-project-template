@@ -31,7 +31,7 @@ All notable changes to the harness are recorded here. The harness version and a 
   workflow skills, generated from repository-local canonical sources with per-file provenance,
   collision-safe namespacing, and a repository marketplace entry.
 - A sanitized failure-correction log and dry-run-first Projects v2 work-item membership command
-  that verifies exact post-write membership.
+  that verifies exact post-write membership with bounded read-only retries for visibility lag.
 - An accepted local Qwen model-diversity canary policy, machine-readable cadence and evidence
   contract, and dependency-free due-status command that never invokes a model by default.
 - A fail-closed held-out task contract and paired Qwen runner that freezes one resource bundle and

@@ -50,7 +50,10 @@ Create Issues and pull requests without a `--project` option. In the GitHub CLI,
 routes through deprecated Projects (classic). The harness `add-item` command instead uses
 `gh project item-add` for Projects v2. It pre-reads the complete bounded item list, avoids a write
 when the exact item already exists, rejects duplicate membership, and requires one exact URL match
-with a valid Project item ID after a write.
+with a valid Project item ID after a write. Because GitHub can briefly return a stale item list
+after a successful mutation, post-write verification makes a bounded sequence of complete,
+read-only re-reads. It never repeats `item-add`; persistent absence, duplicates, truncation, or a
+malformed response fail closed for operator review.
 
 ## CLI and GraphQL boundary
 

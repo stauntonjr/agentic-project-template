@@ -44,6 +44,32 @@ failure exposes an escaped defect with a deterministic oracle, create a candidat
   command pre-reads membership, rejects duplicates, uses `gh project item-add` only when absent,
   and verifies post-write membership; unit tests assert each boundary.
 
+## GH-PLANNING-006: successful Project item write was immediately invisible
+
+- Date: 2026-08-24.
+- Workflow: add pull request #43 to the configured Projects v2 roadmap during publication.
+- Provenance: sanitized live GitHub CLI evidence from the agentic-project-template repository.
+- Failed approach: treated the first complete item-list response after `gh project item-add` as
+  immediately consistent.
+- Error signature: `Project v2 membership verification found 0 items ... expected 1`.
+- Mutation check: no retry of `item-add` occurred. Independent complete re-reads found exactly one
+  matching Project item, `PVTI_lAHOAiy8Ic4BhKnPzg30Ghk`, and the pull request's `projectItems`
+  field named the expected roadmap.
+- Classification: post-mutation read visibility lag, not a failed write, duplicate membership,
+  invalid authentication, or Projects-classic routing.
+- Corrected path:
+  1. Perform the complete pre-read and one authorized `item-add` exactly as before.
+  2. If the first complete post-write read has no exact match, retry only the complete read with
+     bounded delays.
+  3. Stop immediately on one match; fail closed on duplicates, truncation, malformed data, or
+     persistent absence.
+  4. Never repeat the mutation automatically; re-read live state before any operator retry.
+- Verification: unit regressions prove delayed visibility succeeds after one mutation and bounded
+  reads, while exhausted visibility fails after one mutation; live state contains exactly one pull
+  request #43 membership.
+- Prevention: the `add-item` implementation now separates its single mutation from bounded
+  post-write reads, and the GitHub-planning guide documents the eventual-consistency boundary.
+
 ## GH-AUTH-002: Sandboxed network failure reported as an invalid token
 
 - Date: 2026-08-24.

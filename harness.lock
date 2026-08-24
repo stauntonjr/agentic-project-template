@@ -212,7 +212,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "3dec41ff89352aa3476b69350e7e902419e93e3594bf8b90eba83190bd6c08eb",
+      "sha256": "aff41de150f3af811d5ac1cdcd5cff179fef2705866fb0cd0e9cb1d640d959b8",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -276,7 +276,7 @@
       "ownership": "project-owned"
     },
     "docs/project/correction-log.md": {
-      "sha256": "77cb2de38947241dbd1cc262930c985d28d2f906788801bfb81bbeb224bac76f",
+      "sha256": "bb312788eb687003813d5219bb5a9469413d58d9f30a5f99371698dcc30663a4",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
@@ -284,7 +284,7 @@
       "ownership": "project-owned"
     },
     "docs/project/github-planning.md": {
-      "sha256": "13e52d3c225bf628cf0f119a2ddb3113bf962dec1f7671c4318891210391b195",
+      "sha256": "999fe53fab90d28e9d7c49e240bbcfab53dc0817e8be712f7b50f900b7ee29d5",
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
@@ -724,7 +724,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_github_planning.py": {
-      "sha256": "3a40d60e231444063bb69ab202da66b786191ee27cb8aa97f5d1d95beb9b4cab",
+      "sha256": "a71dcbc6bcbd8d3a7b8de82998a612b3095cc99cf98835c53d89849a1cc52aec",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
@@ -796,7 +796,7 @@
       "ownership": "upstream-owned"
     },
     "tools/github_planning.py": {
-      "sha256": "df965a4d59831e7fd5f4574b0ebece184535ef5c4845894016e230c4d36a2994",
+      "sha256": "c56fa7580018cb0e643eb291c72e27044d7cc7d1cb5ec553ef6d9651563f1be4",
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {

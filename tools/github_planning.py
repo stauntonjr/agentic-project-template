@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ WORK_ITEM_URL = re.compile(
     r"(?P<repository>[A-Za-z0-9._-]{1,100})/"
     r"(?P<kind>issues|pull)/(?P<number>[1-9][0-9]*)$"
 )
+PROJECT_ITEM_VERIFICATION_DELAYS_SECONDS = (0.5, 1.0)
 
 
 def valid_login(value: Any) -> bool:
@@ -809,9 +811,15 @@ def add_project_item(root: Path, config: dict[str, Any], url: str) -> dict[str, 
         cwd=root,
     )
     matches = project_item_matches(root, owner=owner, number=number, url=url)
+    for delay_seconds in PROJECT_ITEM_VERIFICATION_DELAYS_SECONDS:
+        if matches:
+            break
+        time.sleep(delay_seconds)
+        matches = project_item_matches(root, owner=owner, number=number, url=url)
     if len(matches) != 1:
         raise RuntimeError(
-            f"Project v2 membership verification found {len(matches)} items for {url}, expected 1"
+            "Project v2 membership verification found "
+            f"{len(matches)} items for {url} after bounded read retries, expected 1"
         )
     return {
         "ok": True,

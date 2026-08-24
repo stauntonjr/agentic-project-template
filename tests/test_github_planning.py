@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from tools.common import load_json, write_json
 from tools.github_planning import (
@@ -182,6 +182,82 @@ class GitHubPlanningTests(unittest.TestCase):
         self.assertEqual(url, argv[argv.index("--url") + 1])
         self.assertIn("item-list", github_json.call_args.args)
 
+    def test_add_project_item_retries_only_reads_during_visibility_lag(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/pull/43"
+        item = {"id": "PVTI_example", "content": {"url": url}}
+        with (
+            patch(
+                "tools.github_planning.run",
+                return_value=CompletedProcess([], 0, "", ""),
+            ) as command,
+            patch(
+                "tools.github_planning.gh_json",
+                side_effect=[
+                    {"items": [], "totalCount": 0},
+                    {"items": [], "totalCount": 0},
+                    {"items": [], "totalCount": 0},
+                    {"items": [item], "totalCount": 1},
+                ],
+            ) as github_json,
+            patch("tools.github_planning.time.sleep") as sleep,
+        ):
+            result = add_project_item(ROOT, config, url)
+        self.assertEqual("PVTI_example", result["item_id"])
+        command.assert_called_once()
+        self.assertEqual(4, github_json.call_count)
+        self.assertEqual(
+            [call(0.5), call(1.0)],
+            sleep.call_args_list,
+        )
+
+    def test_add_project_item_exhausts_bounded_reads_without_repeating_write(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/pull/43"
+        with (
+            patch(
+                "tools.github_planning.run",
+                return_value=CompletedProcess([], 0, "", ""),
+            ) as command,
+            patch(
+                "tools.github_planning.gh_json",
+                return_value={"items": [], "totalCount": 0},
+            ) as github_json,
+            patch("tools.github_planning.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "after bounded read retries"):
+                add_project_item(ROOT, config, url)
+        command.assert_called_once()
+        self.assertEqual(4, github_json.call_count)
+        self.assertEqual(2, sleep.call_count)
+
+    def test_add_project_item_rejects_post_write_duplicates_without_retrying(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/pull/43"
+        item = {"id": "PVTI_example", "content": {"url": url}}
+        with (
+            patch(
+                "tools.github_planning.run",
+                return_value=CompletedProcess([], 0, "", ""),
+            ) as command,
+            patch(
+                "tools.github_planning.gh_json",
+                side_effect=[
+                    {"items": [], "totalCount": 0},
+                    {
+                        "items": [item, {**item, "id": "PVTI_duplicate"}],
+                        "totalCount": 2,
+                    },
+                ],
+            ) as github_json,
+            patch("tools.github_planning.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "found 2 items"):
+                add_project_item(ROOT, config, url)
+        command.assert_called_once()
+        self.assertEqual(2, github_json.call_count)
+        sleep.assert_not_called()
+
     def test_add_project_item_is_idempotent_and_rejects_duplicates_before_write(self) -> None:
         config = load_json(ROOT / ".github/planning.json")
         url = "https://github.com/example/repository/issues/42"
@@ -245,6 +321,7 @@ class GitHubPlanningTests(unittest.TestCase):
                     return_value=CompletedProcess([], 0, "", ""),
                 ),
                 patch("tools.github_planning.gh_json", return_value=payload),
+                patch("tools.github_planning.time.sleep"),
             ):
                 with self.assertRaisesRegex(RuntimeError, expected):
                     add_project_item(ROOT, config, url)
