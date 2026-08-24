@@ -9,11 +9,13 @@ from unittest.mock import patch
 
 from tools.common import load_json, write_json
 from tools.github_planning import (
+    add_project_item,
     bootstrap_project,
     create_project_view,
     diff_state,
     has_drift,
     project_bootstrap_plan,
+    project_item_plan,
     field_mismatches,
     flatten_pages,
     graphql_data,
@@ -24,6 +26,7 @@ from tools.github_planning import (
     validate_live_fields,
     validate_live_labels,
     validate_live_milestones,
+    valid_work_item_url,
 )
 
 
@@ -31,6 +34,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class GitHubPlanningTests(unittest.TestCase):
+    def test_skill_and_correction_log_preserve_projects_v2_recovery_path(self) -> None:
+        skill = (ROOT / ".agents/skills/manage-github-planning/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        correction = (ROOT / "docs/project/correction-log.md").read_text(encoding="utf-8")
+        planning = (ROOT / "docs/project/github-planning.md").read_text(encoding="utf-8")
+        self.assertIn("Do not pass `--project` to `gh issue create`", skill)
+        self.assertIn("tools/github_planning.py add-item --url URL --yes", skill)
+        self.assertIn("GH-PLANNING-001", correction)
+        self.assertIn("Mutation check", correction)
+        self.assertIn("gh api graphql", planning)
+        self.assertIn("gh project item-add", planning)
+
     def test_contract_is_valid(self) -> None:
         config = load_json(ROOT / ".github/planning.json")
         self.assertEqual([], validate_contract(config))
@@ -108,6 +124,181 @@ class GitHubPlanningTests(unittest.TestCase):
         self.assertEqual(13, plan["actions"][0]["source_number"])
         self.assertTrue(any(item["action"] == "ensure-field" for item in plan["actions"]))
         self.assertTrue(any(item["action"] == "ensure-view" for item in plan["actions"]))
+
+    def test_project_v2_item_plan_is_dry_run_and_rejects_classic_or_ambiguous_input(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/issues/42"
+        plan = project_item_plan(config, url)
+        self.assertTrue(plan["ok"])
+        self.assertTrue(plan["dry_run"])
+        self.assertEqual("add-project-v2-item", plan["actions"][0]["action"])
+        self.assertTrue(valid_work_item_url(url))
+        for invalid in (
+            "42",
+            "https://github.com/example/repository/issues/0",
+            "https://github.com/example/repository/projects/42",
+            "https://example.com/example/repository/issues/42",
+            "https://github.com/example/repository/issues/42?project=classic",
+        ):
+            with self.subTest(invalid=invalid):
+                invalid_plan = project_item_plan(config, invalid)
+                self.assertFalse(invalid_plan["ok"])
+                self.assertEqual([], invalid_plan["actions"])
+        config["project"]["number"] = None
+        self.assertIn(
+            "configured project number",
+            "; ".join(project_item_plan(config, url)["errors"]),
+        )
+
+    def test_add_project_item_uses_projects_v2_command_and_verifies_membership(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/issues/42"
+        payload = {
+            "totalCount": 1,
+            "items": [
+                {
+                    "id": "PVTI_example",
+                    "content": {"url": url, "type": "Issue"},
+                    "status": "Todo",
+                }
+            ],
+        }
+        with (
+            patch(
+                "tools.github_planning.run",
+                return_value=CompletedProcess([], 0, "", ""),
+            ) as command,
+            patch(
+                "tools.github_planning.gh_json",
+                side_effect=[{"items": [], "totalCount": 0}, payload],
+            ) as github_json,
+        ):
+            result = add_project_item(ROOT, config, url)
+        self.assertTrue(result["ok"])
+        self.assertEqual("PVTI_example", result["item_id"])
+        argv = command.call_args.args[0]
+        self.assertEqual(["gh", "project", "item-add"], argv[:3])
+        self.assertNotIn("--project", argv)
+        self.assertEqual(url, argv[argv.index("--url") + 1])
+        self.assertIn("item-list", github_json.call_args.args)
+
+    def test_add_project_item_is_idempotent_and_rejects_duplicates_before_write(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/issues/42"
+        item = {"id": "PVTI_example", "content": {"url": url}}
+        with (
+            patch("tools.github_planning.run") as command,
+            patch(
+                "tools.github_planning.gh_json",
+                return_value={"items": [item], "totalCount": 1},
+            ),
+        ):
+            result = add_project_item(ROOT, config, url)
+        command.assert_not_called()
+        self.assertIn("no write performed", result["operations"][0])
+
+        with (
+            patch("tools.github_planning.run") as command,
+            patch(
+                "tools.github_planning.gh_json",
+                return_value={
+                    "items": [item, {**item, "id": "PVTI_duplicate"}],
+                    "totalCount": 2,
+                },
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "preflight found 2 items"):
+                add_project_item(ROOT, config, url)
+        command.assert_not_called()
+
+    def test_add_project_item_fails_closed_when_membership_is_missing_or_malformed(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/pull/7"
+        for payload, expected in (
+            ({"items": [], "totalCount": 0}, "found 0 items"),
+            (
+                {
+                    "totalCount": 1,
+                    "items": [
+                        {
+                            "id": "PVTI_other",
+                            "content": {"url": "https://github.com/example/repository/issues/1"},
+                        }
+                    ],
+                },
+                "found 0 items",
+            ),
+            ({"items": [None], "totalCount": 1}, "entry 0 is invalid"),
+            (
+                {"items": [{"id": "PVTI_example", "content": []}], "totalCount": 1},
+                "content 0 is invalid",
+            ),
+            (
+                {"items": [{"id": "", "content": {"url": url}}], "totalCount": 1},
+                "without a valid ID",
+            ),
+        ):
+            with (
+                self.subTest(payload=payload),
+                patch(
+                    "tools.github_planning.run",
+                    return_value=CompletedProcess([], 0, "", ""),
+                ),
+                patch("tools.github_planning.gh_json", return_value=payload),
+            ):
+                with self.assertRaisesRegex(RuntimeError, expected):
+                    add_project_item(ROOT, config, url)
+
+    def test_add_project_item_rejects_truncated_membership_reads(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/issues/42"
+        item = {"id": "PVTI_example", "content": {"url": url}}
+
+        with (
+            patch("tools.github_planning.run") as command,
+            patch(
+                "tools.github_planning.gh_json",
+                return_value={"items": [], "totalCount": 1001},
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "was truncated"):
+                add_project_item(ROOT, config, url)
+        command.assert_not_called()
+
+        with (
+            patch(
+                "tools.github_planning.run",
+                return_value=CompletedProcess([], 0, "", ""),
+            ) as command,
+            patch(
+                "tools.github_planning.gh_json",
+                side_effect=[
+                    {"items": [], "totalCount": 0},
+                    {"items": [item], "totalCount": 1001},
+                ],
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "was truncated"):
+                add_project_item(ROOT, config, url)
+        command.assert_called_once()
+
+    def test_add_project_item_rejects_invalid_total_count_before_write(self) -> None:
+        config = load_json(ROOT / ".github/planning.json")
+        url = "https://github.com/example/repository/issues/42"
+        for payload in (
+            {"items": []},
+            {"items": [], "totalCount": True},
+            {"items": [], "totalCount": -1},
+            {"items": [], "totalCount": "0"},
+        ):
+            with (
+                self.subTest(payload=payload),
+                patch("tools.github_planning.run") as command,
+                patch("tools.github_planning.gh_json", return_value=payload),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "invalid totalCount"):
+                    add_project_item(ROOT, config, url)
+            command.assert_not_called()
 
     def test_contract_rejects_shared_project_without_number_and_duplicate_views(self) -> None:
         config = load_json(ROOT / ".github/planning.json")
@@ -323,7 +514,10 @@ class GitHubPlanningTests(unittest.TestCase):
         payload = {"errors": [{"message": "partial failure"}], "data": {"user": {}}}
         with self.assertRaisesRegex(RuntimeError, "GraphQL errors"):
             graphql_data(payload, operation="Project example/1")
-        self.assertEqual({"user": {}}, graphql_data({"errors": [], "data": {"user": {}}}, operation="Project example/1"))
+        self.assertEqual(
+            {"user": {}},
+            graphql_data({"errors": [], "data": {"user": {}}}, operation="Project example/1"),
+        )
 
     def test_duplicate_managed_live_field_and_view_cannot_report_convergence(self) -> None:
         config = load_json(ROOT / ".github/planning.json")
@@ -368,8 +562,7 @@ class GitHubPlanningTests(unittest.TestCase):
         labels = [dict(item) for item in config["labels"]]
         labels.append(dict(config["labels"][0]))
         milestones = [
-            {"number": index, **item}
-            for index, item in enumerate(config["milestones"], start=1)
+            {"number": index, **item} for index, item in enumerate(config["milestones"], start=1)
         ]
         milestones.append({"number": 99, **config["milestones"][0]})
         diff = diff_state(
@@ -492,16 +685,17 @@ class GitHubPlanningTests(unittest.TestCase):
         value["data"]["user"]["projectV2"]["repositories"]["nodes"] = [None]
         mutations.append(("null repository node", summary, value))
         value = payload()
-        value["data"]["user"]["projectV2"]["repositories"]["nodes"] = [
-            {"nameWithOwner": 1}
-        ]
+        value["data"]["user"]["projectV2"]["repositories"]["nodes"] = [{"nameWithOwner": 1}]
         mutations.append(("non-string repository identity", summary, value))
         mutations.append(("invalid owner object", {"owner": []}, payload()))
 
         for name, owner_summary, project_payload in mutations:
-            with self.subTest(name=name), patch(
-                "tools.github_planning.gh_json",
-                side_effect=[owner_summary, project_payload],
+            with (
+                self.subTest(name=name),
+                patch(
+                    "tools.github_planning.gh_json",
+                    side_effect=[owner_summary, project_payload],
+                ),
             ):
                 with self.assertRaises((RuntimeError, ValueError)):
                     read_project(ROOT, owner="example", number=1)
@@ -518,16 +712,8 @@ class GitHubPlanningTests(unittest.TestCase):
                     validate_live_fields(fields)
 
     def test_create_project_view_uses_variables_and_sets_filter(self) -> None:
-        created = {
-            "data": {
-                "createProjectV2View": {"projectV2View": {"id": "PVTV_example"}}
-            }
-        }
-        updated = {
-            "data": {
-                "updateProjectV2View": {"projectV2View": {"id": "PVTV_example"}}
-            }
-        }
+        created = {"data": {"createProjectV2View": {"projectV2View": {"id": "PVTV_example"}}}}
+        updated = {"data": {"updateProjectV2View": {"projectV2View": {"id": "PVTV_example"}}}}
         with patch("tools.github_planning.gh_json", side_effect=[created, updated]) as github_json:
             view_id = create_project_view(
                 ROOT,
@@ -547,15 +733,14 @@ class GitHubPlanningTests(unittest.TestCase):
                 view={"name": "Active", "layout": "TABLE_LAYOUT", "filter": ""},
             )
         for returned_id in (1, "   "):
-            with self.subTest(returned_id=returned_id), patch(
-                "tools.github_planning.gh_json",
-                return_value={
-                    "data": {
-                        "createProjectV2View": {
-                            "projectV2View": {"id": returned_id}
-                        }
-                    }
-                },
+            with (
+                self.subTest(returned_id=returned_id),
+                patch(
+                    "tools.github_planning.gh_json",
+                    return_value={
+                        "data": {"createProjectV2View": {"projectV2View": {"id": returned_id}}}
+                    },
+                ),
             ):
                 with self.assertRaisesRegex(RuntimeError, "invalid Project view"):
                     create_project_view(

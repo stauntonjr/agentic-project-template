@@ -91,8 +91,8 @@
       "id": "learn",
       "owner": "orchestrator",
       "requires": ["report", "failures and corrections"],
-      "produces": ["proposed harness updates", "challenge candidates"],
-      "gate": "policy changes remain proposals pending human review",
+      "produces": ["sanitized correction-log entries", "proposed harness updates", "challenge candidates"],
+      "gate": "repeatable failed paths have a verified correction or explicit unresolved status; policy changes remain proposals pending human review",
       "next": ["reported"]
     }
   ]

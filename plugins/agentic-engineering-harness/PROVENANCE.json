@@ -31,8 +31,8 @@
   ],
   "files": {
     "execute-engineering-loop/SKILL.md": {
-      "source_sha256": "dd451dd325eb937a1fc8d7f52b8e27a0715b38b7dd4e2677290c27ddf7878e32",
-      "distribution_sha256": "95e9ce2f6e9896b22f62039c655a18a079765872dc19066cd2b02319be7417b9",
+      "source_sha256": "58f42f1368200ed65dfbeaafe483011ef547a2fb8422282d15315fb8a50627ad",
+      "distribution_sha256": "70cfdc3f26312a9d15154f6ca49e775e5fedeef9ad457b529a9511b62e5575ae",
       "transformation": "namespace-skill-references"
     },
     "execute-engineering-loop/agents/openai.yaml": {
@@ -61,8 +61,8 @@
       "transformation": "identity"
     },
     "manage-github-planning/SKILL.md": {
-      "source_sha256": "ece9292da8d821780f0cf146eca74dd117b0834bd3e147953b94e28d29f94e7f",
-      "distribution_sha256": "ece9292da8d821780f0cf146eca74dd117b0834bd3e147953b94e28d29f94e7f",
+      "source_sha256": "c5181921e717dc9c42a4caaea1eb6d8bb1806a38ad7d9f42c1b53c6c3daa4eff",
+      "distribution_sha256": "c5181921e717dc9c42a4caaea1eb6d8bb1806a38ad7d9f42c1b53c6c3daa4eff",
       "transformation": "identity"
     },
     "manage-github-planning/agents/openai.yaml": {
@@ -71,8 +71,8 @@
       "transformation": "namespace-skill-references"
     },
     "manage-github-planning/references/safety.md": {
-      "source_sha256": "729b4fe170ae0816f0ace67b8668fc796cf64073a7d0ba9d544070f1bbf95677",
-      "distribution_sha256": "729b4fe170ae0816f0ace67b8668fc796cf64073a7d0ba9d544070f1bbf95677",
+      "source_sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
+      "distribution_sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
       "transformation": "identity"
     },
     "project-intake/SKILL.md": {
@@ -106,8 +106,8 @@
       "transformation": "identity"
     },
     "release-readiness/SKILL.md": {
-      "source_sha256": "6e37d5c15cf8795fc1400a9ea91ec9ce1a86c21b5edd7373f69c7017bd907736",
-      "distribution_sha256": "6e37d5c15cf8795fc1400a9ea91ec9ce1a86c21b5edd7373f69c7017bd907736",
+      "source_sha256": "f23ba5a46d28be127043a01b8ce9795aff356f9263f2a2c6ef659abc3fa6a0d6",
+      "distribution_sha256": "f23ba5a46d28be127043a01b8ce9795aff356f9263f2a2c6ef659abc3fa6a0d6",
       "transformation": "identity"
     },
     "release-readiness/agents/openai.yaml": {

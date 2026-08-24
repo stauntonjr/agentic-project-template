@@ -30,6 +30,23 @@ All notable changes to the harness are recorded here. The harness version and a 
 - A SemVer-versioned `agentic-engineering-harness` Codex plugin containing the seven reusable
   workflow skills, generated from repository-local canonical sources with per-file provenance,
   collision-safe namespacing, and a repository marketplace entry.
+- A sanitized failure-correction log and dry-run-first Projects v2 work-item membership command
+  that verifies exact post-write membership.
+- An accepted local Qwen model-diversity canary policy, machine-readable cadence and evidence
+  contract, and dependency-free due-status command that never invokes a model by default.
+- A fail-closed held-out task contract and paired Qwen runner that freezes one resource bundle and
+  clones one byte-verified seed Git repository for every lane and trial, with explicit bare versus
+  harness resource loading, `read`/`edit`-only Pi authority,
+  sanitized evidence, and a separate networkless resource-bounded executable oracle.
+- The first one-trial paired Qwen smoke as explicitly negative evidence: neither lane passed the
+  oracle; bare timed out in an unavailable-tool loop while the harness lane settled without that
+  loop. No accepted baseline or general harness-lift claim is recorded.
+- Independent review downgraded that first smoke to diagnostic history because its recorded prompt
+  digest described an unsent field and its oracle exposed hidden answers. The runner now sends the
+  exact contract prompt, evaluates one answer-free oracle case per process, bounds output while it
+  is produced, closes result relationships, sanitizes tool identities, records the frozen resource
+  digest, rejects symlinked task/resource roots and ancestors, and reports invocation truthfully;
+  the model was not rerun as part of the repair.
 
 ### Changed
 
@@ -46,6 +63,12 @@ All notable changes to the harness are recorded here. The harness version and a 
 - Plugin packaging now deterministically qualifies cross-skill references while retaining
   progressively disclosed `SKILL.md` and reference files. Repository policy and application state
   remain outside the user-installed bundle.
+- GitHub planning instructions now reject the deprecated classic-Projects shortcut and document
+  the supported `gh project` versus typed Projects v2 GraphQL boundary.
+- Release readiness now treats due Qwen canary evidence as supplemental and conditional for
+  minor/major harness releases without weakening deterministic checks or human authority.
+- Model-stress evidence now labels one paired trial as smoke, rejects ambiguous two-trial runs,
+  treats three or more trials only as acceptance candidates, and cannot self-approve a baseline.
 
 ### Fixed
 

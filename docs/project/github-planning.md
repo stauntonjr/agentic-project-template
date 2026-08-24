@@ -38,11 +38,34 @@ python3 tools/github_planning.py bootstrap-project --yes # authorized bootstrap/
 python3 tools/github_planning.py audit                    # live read-only drift check
 python3 tools/github_planning.py apply                    # label/milestone/Project dry run
 python3 tools/github_planning.py apply --yes              # authorized additive reconciliation
+python3 tools/github_planning.py add-item --url ISSUE_URL # Projects v2 membership dry run
+python3 tools/github_planning.py add-item --url ISSUE_URL --yes
 ```
 
 `bootstrap-project --yes` records the newly created/copied Project number in `.github/planning.json`, creates missing fields and basic views, and links the repository. Repeating it against matching state performs no operations. `apply --yes` updates managed labels and milestone descriptions and adds missing Project fields, views, or the repository link. Neither command deletes unmanaged state.
 
 Offline validation rejects malformed or unsupported write-bearing values before any live read or mutation. A duplicate live identity for a managed label, milestone, field, or view is explicit drift; it can never be collapsed into a matching result.
+
+Create Issues and pull requests without a `--project` option. In the GitHub CLI, that option still
+routes through deprecated Projects (classic). The harness `add-item` command instead uses
+`gh project item-add` for Projects v2. It pre-reads the complete bounded item list, avoids a write
+when the exact item already exists, rejects duplicate membership, and requires one exact URL match
+with a valid Project item ID after a write.
+
+## CLI and GraphQL boundary
+
+`tools/github_planning.py` deliberately combines two current interfaces behind one fail-closed
+workflow:
+
+- supported `gh project` commands create or copy a Project v2, create fields, link a repository,
+  add work items, and list fields/items;
+- `gh api graphql` reads Project v2 identity, repositories, and saved views, and performs typed
+  saved-view create/update mutations because the supported CLI has no equivalent saved-view
+  commands.
+
+GraphQL responses containing errors, missing data, invalid IDs, unexpected node shapes, or an
+unsupported pagination boundary are rejected. Direct GraphQL is not a fallback for classic
+Projects and does not authorize a write; dry-run review and explicit `--yes` remain required.
 
 ## Manual settings and boundaries
 
@@ -57,3 +80,6 @@ These settings also remain manual because they are permission-bearing, destructi
 - removal, archival, renaming, or unlinking of any existing object.
 
 If the typed saved-view API is unavailable, the command fails without claiming convergence. Create the documented views in GitHub's UI, rerun the audit, and keep the evidence with the governing Issue.
+
+Repeatable planning-command failures and their verified correction paths belong in
+`docs/project/correction-log.md` so a later agent starts from the corrected interface boundary.

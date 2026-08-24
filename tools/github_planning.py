@@ -20,6 +20,12 @@ LOGIN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 REPOSITORY_NAME = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
 FIELD_TYPES = {"SINGLE_SELECT", "TEXT", "NUMBER", "DATE"}
+WORK_ITEM_URL = re.compile(
+    r"^https://github\.com/"
+    r"(?P<owner>[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)/"
+    r"(?P<repository>[A-Za-z0-9._-]{1,100})/"
+    r"(?P<kind>issues|pull)/(?P<number>[1-9][0-9]*)$"
+)
 
 
 def valid_login(value: Any) -> bool:
@@ -39,6 +45,10 @@ def valid_repository(value: Any) -> bool:
         return False
     owner, name = value.split("/", 1)
     return valid_login(owner) and REPOSITORY_NAME.fullmatch(name) is not None
+
+
+def valid_work_item_url(value: Any) -> bool:
+    return isinstance(value, str) and WORK_ITEM_URL.fullmatch(value) is not None
 
 
 def validate_contract(config: Any) -> list[str]:
@@ -74,9 +84,8 @@ def validate_contract(config: Any) -> list[str]:
         canonical = project.get("canonical_source")
         if not isinstance(canonical, dict):
             errors.append("project canonical_source must be an object")
-        elif (
-            not valid_login(canonical.get("owner"))
-            or not positive_integer(canonical.get("number"))
+        elif not valid_login(canonical.get("owner")) or not positive_integer(
+            canonical.get("number")
         ):
             errors.append("project canonical_source requires owner and number")
         views = project.get("views")
@@ -114,9 +123,7 @@ def validate_contract(config: Any) -> list[str]:
                 errors.append("project bootstrap link_repository must be boolean")
             if method == "copy":
                 canonical_owner = canonical.get("owner") if isinstance(canonical, dict) else None
-                canonical_number = (
-                    canonical.get("number") if isinstance(canonical, dict) else None
-                )
+                canonical_number = canonical.get("number") if isinstance(canonical, dict) else None
                 if (
                     bootstrap.get("source_owner") != canonical_owner
                     or bootstrap.get("source_number") != canonical_number
@@ -155,18 +162,12 @@ def validate_contract(config: Any) -> list[str]:
                 options = item.get("options")
                 if data_type == "SINGLE_SELECT":
                     if not isinstance(options, list) or not options:
-                        errors.append(
-                            f"single-select field {item.get('name')} requires options"
-                        )
+                        errors.append(f"single-select field {item.get('name')} requires options")
                     elif not all(
-                        isinstance(option, str)
-                        and bool(option.strip())
-                        and "," not in option
+                        isinstance(option, str) and bool(option.strip()) and "," not in option
                         for option in options
                     ):
-                        errors.append(
-                            f"single-select field {item.get('name')} has invalid options"
-                        )
+                        errors.append(f"single-select field {item.get('name')} has invalid options")
                     elif len(options) != len(set(options)):
                         errors.append(
                             f"single-select field {item.get('name')} has duplicate options"
@@ -294,11 +295,7 @@ def graphql_data(payload: Any, *, operation: str) -> dict[str, Any]:
 def mutation_view_id(payload: Any, *, mutation: str) -> str:
     data = graphql_data(payload, operation=mutation)
     mutation_payload = data.get(mutation) if isinstance(data, dict) else None
-    view = (
-        mutation_payload.get("projectV2View")
-        if isinstance(mutation_payload, dict)
-        else None
-    )
+    view = mutation_payload.get("projectV2View") if isinstance(mutation_payload, dict) else None
     view_id = view.get("id") if isinstance(view, dict) else None
     if not nonempty_string(view_id):
         raise RuntimeError(f"GitHub returned an invalid Project view from {mutation}")
@@ -372,10 +369,7 @@ def read_project(root: Path, *, owner: str, number: int) -> dict[str, Any]:
     owner_kind = owner_data.get("type")
     if not isinstance(owner_kind, str) or owner_kind not in {"User", "Organization"}:
         raise RuntimeError(f"unsupported Project owner type: {owner_kind}")
-    if (
-        not nonempty_string(owner_data.get("login"))
-        or owner_data["login"].lower() != owner.lower()
-    ):
+    if not nonempty_string(owner_data.get("login")) or owner_data["login"].lower() != owner.lower():
         raise RuntimeError("gh project view returned a different Project owner")
     query = PROJECT_VIEW_QUERY.replace(
         "OWNER_KIND", "user" if owner_kind == "User" else "organization"
@@ -425,8 +419,7 @@ def read_project(root: Path, *, owner: str, number: int) -> dict[str, Any]:
             or not positive_integer(view.get("number"))
             or not nonempty_string(view.get("name"))
             or not isinstance(view.get("layout"), str)
-            or view.get("layout")
-            not in {"TABLE_LAYOUT", "BOARD_LAYOUT", "ROADMAP_LAYOUT"}
+            or view.get("layout") not in {"TABLE_LAYOUT", "BOARD_LAYOUT", "ROADMAP_LAYOUT"}
             or view.get("filter") is not None
             and not isinstance(view.get("filter"), str)
         ):
@@ -491,9 +484,7 @@ def read_live(root: Path, config: dict[str, Any]) -> dict[str, Any]:
             owner=config["project"]["owner"],
             number=project_number,
         )
-    labels = validate_live_labels(
-        flatten_pages(label_pages, collection="GitHub labels")
-    )
+    labels = validate_live_labels(flatten_pages(label_pages, collection="GitHub labels"))
     milestones = validate_live_milestones(
         flatten_pages(milestone_pages, collection="GitHub milestones")
     )
@@ -512,9 +503,7 @@ def diff_state(config: dict[str, Any], live: dict[str, Any]) -> dict[str, Any]:
     desired_label_names = {item["name"] for item in config.get("labels", [])}
     desired_milestone_titles = {item["title"] for item in config.get("milestones", [])}
     desired_field_names = {item["name"] for item in config.get("fields", [])}
-    desired_view_names = {
-        item["name"] for item in config.get("project", {}).get("views", [])
-    }
+    desired_view_names = {item["name"] for item in config.get("project", {}).get("views", [])}
     live_labels, label_conflicts = group_live_identities(
         live.get("labels", []),
         key="name",
@@ -618,13 +607,10 @@ def diff_state(config: dict[str, Any], live: dict[str, Any]) -> dict[str, Any]:
         if isinstance(item, dict) and item.get("name") not in configured_names
     ]
     disallowed_unmanaged_views = (
-        []
-        if config.get("project", {}).get("allow_unmanaged_views", True)
-        else unmanaged_views
+        [] if config.get("project", {}).get("allow_unmanaged_views", True) else unmanaged_views
     )
     linked_repositories = {
-        item.get("nameWithOwner", "").lower()
-        for item in live_project.get("repositories", [])
+        item.get("nameWithOwner", "").lower() for item in live_project.get("repositories", [])
     }
     link_required = bool(
         config.get("project", {}).get("bootstrap", {}).get("link_repository", True)
@@ -635,8 +621,7 @@ def diff_state(config: dict[str, Any], live: dict[str, Any]) -> dict[str, Any]:
         and config.get("repository", "").lower() not in linked_repositories
     )
     title_mismatch = bool(
-        project_audited
-        and live_project.get("title") != config.get("project", {}).get("title")
+        project_audited and live_project.get("title") != config.get("project", {}).get("title")
     )
     warnings: list[str] = []
     if not project_audited:
@@ -723,6 +708,118 @@ def project_bootstrap_plan(config: dict[str, Any]) -> dict[str, Any]:
         actions.append({"action": "link-repository", "repository": config["repository"]})
     actions.extend({"action": "ensure-view", **view} for view in project.get("views", []))
     return {"ok": not errors, "errors": errors, "dry_run": True, "actions": actions}
+
+
+def project_item_plan(config: dict[str, Any], url: str) -> dict[str, Any]:
+    errors = validate_contract(config)
+    project = config.get("project") if isinstance(config, dict) else None
+    number = project.get("number") if isinstance(project, dict) else None
+    owner = project.get("owner") if isinstance(project, dict) else None
+    if not positive_integer(number):
+        errors.append("Project v2 item membership requires a configured project number")
+    if not valid_login(owner):
+        errors.append("Project v2 item membership requires a valid project owner")
+    if not valid_work_item_url(url):
+        errors.append("work item URL must be an exact GitHub Issue or pull request URL")
+    actions = (
+        [
+            {"action": "add-project-v2-item", "url": url},
+            {"action": "verify-project-v2-membership", "url": url},
+        ]
+        if not errors
+        else []
+    )
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "dry_run": True,
+        "project": {"owner": owner, "number": number},
+        "url": url,
+        "actions": actions,
+    }
+
+
+def project_item_matches(root: Path, *, owner: str, number: int, url: str) -> list[dict[str, Any]]:
+    payload = gh_json(
+        root,
+        "project",
+        "item-list",
+        str(number),
+        "--owner",
+        owner,
+        "--format",
+        "json",
+        "--limit",
+        "1000",
+    )
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        raise RuntimeError("gh project item-list returned an invalid JSON shape")
+    items = payload["items"]
+    total_count = payload.get("totalCount")
+    if not isinstance(total_count, int) or isinstance(total_count, bool) or total_count < 0:
+        raise RuntimeError("gh project item-list returned an invalid totalCount")
+    if total_count != len(items):
+        raise RuntimeError(
+            f"gh project item-list was truncated: received {len(items)} of {total_count} items"
+        )
+    matches: list[dict[str, Any]] = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise RuntimeError(f"gh project item-list entry {index} is invalid")
+        content = item.get("content")
+        if content is not None and not isinstance(content, dict):
+            raise RuntimeError(f"gh project item-list content {index} is invalid")
+        if isinstance(content, dict) and content.get("url") == url:
+            if not nonempty_string(item.get("id")):
+                raise RuntimeError("GitHub returned a matching Project item without a valid ID")
+            matches.append(item)
+    return matches
+
+
+def add_project_item(root: Path, config: dict[str, Any], url: str) -> dict[str, Any]:
+    plan = project_item_plan(config, url)
+    if not plan["ok"]:
+        raise ValueError("invalid Project v2 item plan: " + "; ".join(plan["errors"]))
+    owner = config["project"]["owner"]
+    number = config["project"]["number"]
+    existing = project_item_matches(root, owner=owner, number=number, url=url)
+    if len(existing) > 1:
+        raise RuntimeError(
+            f"Project v2 membership preflight found {len(existing)} items for {url}, expected at most 1"
+        )
+    if existing:
+        return {
+            "ok": True,
+            "project": {"owner": owner, "number": number},
+            "url": url,
+            "item_id": existing[0]["id"],
+            "operations": [f"verified existing Project v2 item {url}; no write performed"],
+        }
+    run(
+        [
+            "gh",
+            "project",
+            "item-add",
+            str(number),
+            "--owner",
+            owner,
+            "--url",
+            url,
+        ],
+        cwd=root,
+    )
+    matches = project_item_matches(root, owner=owner, number=number, url=url)
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Project v2 membership verification found {len(matches)} items for {url}, expected 1"
+        )
+    return {
+        "ok": True,
+        "project": {"owner": owner, "number": number},
+        "url": url,
+        "item_id": matches[0]["id"],
+        "operations": [f"added and verified Project v2 item {url}"],
+    }
 
 
 def create_project_view(root: Path, *, project_id: str, view: dict[str, Any]) -> str:
@@ -910,10 +1007,7 @@ def bootstrap_project(root: Path, config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(fields_data, dict):
         raise RuntimeError("gh project field-list returned an invalid JSON shape")
     fields = validate_live_fields(fields_data.get("fields"))
-    existing = {
-        item["name"]
-        for item in fields
-    }
+    existing = {item["name"] for item in fields}
     for field in config.get("fields", []):
         if field["name"] in existing:
             continue
@@ -943,8 +1037,7 @@ def bootstrap_project(root: Path, config: dict[str, Any]) -> dict[str, Any]:
             raise RuntimeError("gh project field-create returned a different field")
         operations.append(f"created Project field {field['name']}")
     linked = {
-        item.get("nameWithOwner", "").lower()
-        for item in project_state.get("repositories", [])
+        item.get("nameWithOwner", "").lower() for item in project_state.get("repositories", [])
     }
     if bootstrap.get("link_repository", True) and repository.lower() not in linked:
         run(
@@ -1097,6 +1190,11 @@ def main() -> int:
     bootstrap.add_argument(
         "--yes", action="store_true", help="Create or copy and configure a Project"
     )
+    add_item = subparsers.add_parser("add-item")
+    add_item.add_argument("--url", required=True, help="Exact GitHub Issue or pull request URL")
+    add_item.add_argument(
+        "--yes", action="store_true", help="Add the work item to the configured Project v2"
+    )
     args = parser.parse_args()
 
     root = args.root.resolve() if args.root else repository_root(Path(__file__).parent)
@@ -1125,6 +1223,19 @@ def main() -> int:
             result = bootstrap_project(root, config)
             print(json.dumps(result, indent=2))
             return 0 if result["ok"] else 1
+
+        if args.command == "add-item":
+            plan = project_item_plan(config, args.url)
+            if not plan["ok"]:
+                print(json.dumps(plan, indent=2))
+                return 1
+            if not args.yes:
+                print(json.dumps(plan, indent=2))
+                print("No GitHub writes performed. Re-run with --yes after reviewing the plan.")
+                return 0
+            result = add_project_item(root, config, args.url)
+            print(json.dumps(result, indent=2))
+            return 0
 
         live = read_live(root, config)
         diff = diff_state(config, live)
