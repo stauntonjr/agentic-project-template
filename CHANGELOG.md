@@ -14,6 +14,10 @@ All notable changes to the harness are recorded here. The harness version and a 
   drift for ambiguous duplicate live identities.
 - A reproducible live-model Pi tool-call probe covering strict questionnaire sampling, valid reads,
   unavailable-tool ceilings, zero-tool sessions, and least-authority continuations.
+- A credential-isolated ChatGPT Pro/Codex subscription control for GPT-5.6 Sol, with strict
+  duplicate-key, JWT-claim, and credential-header validation; fixed loopback routing; sanitized
+  upstream errors; non-secret canary substitution; and bounded request evidence without OpenAI
+  API-key use.
 - A layered domain-routing forward scenario and pinned S3NTINEL evaluation that keep repository
   Spark rules local while exercising reusable loop, verifier, release-steward, and Project
   ownership boundaries.
@@ -55,6 +59,11 @@ All notable changes to the harness are recorded here. The harness version and a 
   stays supplemental, unaccepted, and explicitly makes no general harness-lift claim. A Pi 0.84.1
   read-only-config credential-lock startup failure is preserved as invalidated diagnostic evidence;
   the runner now supplies an explicit non-secret synthetic API-key override.
+- An optional exact `openai-codex/gpt-5.6-sol` frontier control using the existing Codex ChatGPT
+  Pro subscription without an OpenAI API key. A loopback-only canary-authenticated relay keeps OAuth
+  out of Pi's sandbox, fixes the upstream host and path, bounds requests and request bytes, and
+  retains only sanitized provider and relay metrics. Result schema 1.3 distinguishes a token cap
+  sent in the provider request from Pi Codex's runner-configuration-only value.
 
 ### Changed
 
@@ -77,6 +86,9 @@ All notable changes to the harness are recorded here. The harness version and a 
   minor/major harness releases without weakening deterministic checks or human authority.
 - Model-stress evidence now labels one paired trial as smoke, rejects ambiguous two-trial runs,
   treats three or more trials only as acceptance candidates, and cannot self-approve a baseline.
+- Pi model-stress configuration is mounted as individually read-only files over an ephemeral
+  writable agent-state directory, allowing Pi 0.84.1 to synchronize only its non-secret runtime
+  canary without exposing a host credential store.
 
 ### Fixed
 

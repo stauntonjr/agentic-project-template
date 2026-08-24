@@ -1,21 +1,34 @@
 from __future__ import annotations
 
+import base64
 import copy
+import http.client
 import io
 import json
 import math
-import signal
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from harness.runtime.codex_subscription_proxy import (
+    CODEX_RESPONSES_PATH,
+    MAXIMUM_CODEX_AUTH_BYTES,
+    CodexSubscriptionCredential,
+    CodexSubscriptionProxy,
+    SubscriptionBudget,
+    codex_subscription_proxy,
+    load_codex_subscription,
+)
 from harness.runtime.model_stress_runner import (
+    CODEX_SOL_CONTROL_TARGET,
     RESOURCE_PATHS,
     RunnerError,
     RunnerExecutionError,
@@ -27,15 +40,18 @@ from harness.runtime.model_stress_runner import (
     _sanitized_event_metrics,
     _snapshot,
     _write_initial_repository,
+    _write_pi_config,
     build_pi_command,
+    codex_catalog_preflight,
+    codex_subscription_budget,
     load_task,
     pi_version,
     run_paired,
     safe_output_path,
+    trial_passed,
     validate_result,
     validate_task,
     validate_trials,
-    trial_passed,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +62,32 @@ EXPECTED_TASK_CLASSES = {
     "retry-after-repair-v1": "defect-repair",
     "release-policy-integration-v1": "cross-file-integration",
 }
+
+
+def codex_access_token(
+    account: str,
+    expires: int,
+    *,
+    auth_claim: Any | None = None,
+) -> str:
+    def encoded(value: dict[str, Any]) -> str:
+        raw = json.dumps(value, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    return ".".join(
+        (
+            encoded({"alg": "none"}),
+            encoded(
+                {
+                    "exp": expires,
+                    "https://api.openai.com/auth": (
+                        {"chatgpt_account_id": account} if auth_claim is None else auth_claim
+                    ),
+                }
+            ),
+            "",
+        )
+    )
 
 
 def valid_result() -> dict[str, Any]:
@@ -75,7 +117,7 @@ def valid_result() -> dict[str, Any]:
         },
     }
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.3",
         "authority": "supplemental",
         "evidence_level": "smoke",
         "accepted_baseline": False,
@@ -87,6 +129,16 @@ def valid_result() -> dict[str, Any]:
             "serving_runtime": "runtime",
             "serving_recipe": "recipe",
             "endpoint_class": "local-loopback-openai-compatible",
+        },
+        "provider_boundary": {
+            "execution_target": "local-qwen",
+            "reasoning_effort": "not-applicable",
+            "credential_delivery": "synthetic-placeholder",
+            "output_token_limit_enforcement": "provider-request",
+            "maximum_requests": 0,
+            "maximum_request_bytes": 0,
+            "observed_requests": 0,
+            "observed_request_bytes": 0,
         },
         "task": {
             "id": "identifier-canonicalization-v1",
@@ -322,10 +374,411 @@ class ModelStressRunnerTests(unittest.TestCase):
         self.assertIn("--skill", harness)
         self.assertIn("--extension", harness)
         self.assertNotIn("--skill", bare)
-        agent_mount = bare.index("/home/canary/.pi/agent")
-        self.assertEqual("--ro-bind", bare[agent_mount - 2])
+        for name in ("models.json", "settings.json"):
+            destination = f"/home/canary/.pi/agent/{name}"
+            mount = bare.index(destination)
+            self.assertEqual("--ro-bind", bare[mount - 2])
+        self.assertNotIn("/home/jrs/.codex", bare)
         correction = (ROOT / "docs/project/correction-log.md").read_text(encoding="utf-8")
         self.assertIn("LOCAL-RUNNER-006", correction)
+
+    def test_codex_subscription_config_uses_only_a_nonsecret_model_token(self) -> None:
+        expires = int(time.time()) + 7200
+        credential = CodexSubscriptionCredential(
+            access_token=codex_access_token("real-test-account", expires),
+            account_id="real-test-account",
+            expires_at=expires,
+        )
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name)
+            _write_pi_config(
+                home,
+                "openai-codex",
+                "gpt-5.6-sol",
+                "http://127.0.0.1:12345/backend-api",
+                execution_target=CODEX_SOL_CONTROL_TARGET,
+            )
+            models_text = (home / ".pi/agent/models.json").read_text(encoding="utf-8")
+            settings = json.loads((home / ".pi/agent/settings.json").read_text(encoding="utf-8"))
+            budget = SubscriptionBudget(
+                maximum_requests=1,
+                maximum_request_bytes=1024,
+                upstream_timeout_seconds=60,
+            )
+            proxy = CodexSubscriptionProxy(credential=credential, budget=budget)
+            command = build_pi_command(
+                lane="bare",
+                repo=Path("/tmp/repo"),
+                config_home=home,
+                pi_root=Path("/tmp/pi"),
+                provider="openai-codex",
+                model="gpt-5.6-sol",
+                prompt=self.task["prompt"],
+                execution_target=CODEX_SOL_CONTROL_TARGET,
+                auth_override=proxy.model_token,
+            )
+            model_token = proxy.model_token
+        self.assertNotIn(credential.access_token, models_text)
+        self.assertNotIn(credential.account_id, models_text)
+        self.assertNotIn(credential.access_token, command)
+        self.assertNotIn(credential.account_id, command)
+        self.assertEqual("sse", settings["transport"])
+        self.assertEqual(
+            model_token,
+            command[command.index("--api-key") + 1],
+        )
+        self.assertNotEqual("not-needed", model_token)
+        self.assertEqual(
+            "medium",
+            command[command.index("--thinking") + 1],
+        )
+        self.assertIn("/home/canary/.pi/agent/models.json", command)
+        self.assertIn("/home/canary/.pi/agent/settings.json", command)
+        self.assertNotIn("auth.json", command)
+
+    def test_codex_subscription_budget_is_bounded_for_every_allowed_trial_count(self) -> None:
+        smoke = codex_subscription_budget(trials=1, model_timeout_seconds=300)
+        self.assertEqual(10, smoke.maximum_requests)
+        self.assertEqual(512 * 1024, smoke.maximum_request_bytes)
+        maximum = codex_subscription_budget(trials=10, model_timeout_seconds=300)
+        maximum.validate()
+        self.assertEqual(100, maximum.maximum_requests)
+        self.assertEqual(5 * 1024 * 1024, maximum.maximum_request_bytes)
+
+    def test_codex_subscription_loader_requires_private_current_chatgpt_oauth(self) -> None:
+        account = "account-test"
+        access = codex_access_token(account, int(time.time()) + 7200)
+        payload = {
+            "auth_mode": "chatgpt",
+            "OPENAI_API_KEY": None,
+            "tokens": {
+                "access_token": access,
+                "refresh_token": "refresh-test",
+                "account_id": account,
+            },
+        }
+        with tempfile.TemporaryDirectory() as name:
+            auth = Path(name) / "auth.json"
+            auth.write_text(json.dumps(payload), encoding="utf-8")
+            auth.chmod(0o600)
+            credential = load_codex_subscription(auth)
+            self.assertEqual(account, credential.account_id)
+
+            payload["OPENAI_API_KEY"] = "prohibited"
+            auth.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "prohibited"):
+                load_codex_subscription(auth)
+            payload["OPENAI_API_KEY"] = None
+            payload["auth_mode"] = "apikey"
+            auth.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "not logged in with ChatGPT"):
+                load_codex_subscription(auth)
+
+    def test_codex_subscription_loader_rejects_unsafe_auth_files(self) -> None:
+        account = "account-test"
+        expires = int(time.time()) + 7200
+        payload = {
+            "auth_mode": "chatgpt",
+            "OPENAI_API_KEY": None,
+            "tokens": {
+                "access_token": codex_access_token(account, expires),
+                "refresh_token": "refresh-test",
+                "account_id": account,
+            },
+        }
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            auth = root / "auth.json"
+            auth.write_text(json.dumps(payload), encoding="utf-8")
+            auth.chmod(0o644)
+            with self.assertRaisesRegex(ValueError, "private bounded regular file"):
+                load_codex_subscription(auth)
+
+            auth.chmod(0o600)
+            linked = root / "linked-auth.json"
+            linked.symlink_to(auth)
+            with self.assertRaisesRegex(ValueError, "unavailable"):
+                load_codex_subscription(linked)
+
+            actual = root / "actual"
+            actual.mkdir()
+            nested_auth = actual / "auth.json"
+            nested_auth.write_text(json.dumps(payload), encoding="utf-8")
+            nested_auth.chmod(0o600)
+            linked_directory = root / "linked-directory"
+            linked_directory.symlink_to(actual, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "unavailable"):
+                load_codex_subscription(linked_directory / "auth.json")
+
+            oversized = root / "oversized.json"
+            with oversized.open("wb") as stream:
+                stream.truncate(MAXIMUM_CODEX_AUTH_BYTES + 1)
+            oversized.chmod(0o600)
+            with self.assertRaisesRegex(ValueError, "private bounded regular file"):
+                load_codex_subscription(oversized)
+
+    def test_codex_subscription_loader_rejects_ambiguous_or_malformed_json(self) -> None:
+        account = "account-test"
+        expires = int(time.time()) + 7200
+        with tempfile.TemporaryDirectory() as name:
+            auth = Path(name) / "auth.json"
+            valid_tail = json.dumps(
+                {
+                    "OPENAI_API_KEY": None,
+                    "tokens": {
+                        "access_token": codex_access_token(account, expires),
+                        "account_id": account,
+                    },
+                }
+            )[1:]
+            auth.write_text(
+                '{"auth_mode":"apikey","auth_mode":"chatgpt",' + valid_tail,
+                encoding="utf-8",
+            )
+            auth.chmod(0o600)
+            with self.assertRaisesRegex(ValueError, "duplicate JSON object key"):
+                load_codex_subscription(auth)
+
+            for bad_claim in ("not-an-object", ["not-an-object"]):
+                payload = {
+                    "auth_mode": "chatgpt",
+                    "OPENAI_API_KEY": None,
+                    "tokens": {
+                        "access_token": codex_access_token(
+                            account,
+                            expires,
+                            auth_claim=bad_claim,
+                        ),
+                        "account_id": account,
+                    },
+                }
+                auth.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "auth claim is invalid"):
+                    load_codex_subscription(auth)
+
+    def test_codex_subscription_loader_rejects_unsafe_header_values_without_echo(self) -> None:
+        account = "account-test"
+        expires = int(time.time()) + 7200
+        access = codex_access_token(account, expires)
+        cases = (
+            (access + "\nsecret-suffix", account, "access token"),
+            (access, account + "\rsecret-suffix", "account identity"),
+        )
+        with tempfile.TemporaryDirectory() as name:
+            auth = Path(name) / "auth.json"
+            for candidate_access, candidate_account, expected in cases:
+                payload = {
+                    "auth_mode": "chatgpt",
+                    "OPENAI_API_KEY": None,
+                    "tokens": {
+                        "access_token": candidate_access,
+                        "account_id": candidate_account,
+                    },
+                }
+                auth.write_text(json.dumps(payload), encoding="utf-8")
+                auth.chmod(0o600)
+                with self.assertRaisesRegex(ValueError, expected) as raised:
+                    load_codex_subscription(auth)
+                self.assertNotIn("secret-suffix", str(raised.exception))
+
+    def test_codex_subscription_proxy_rejects_inconsistent_credentials(self) -> None:
+        expires = int(time.time()) + 7200
+        credential = CodexSubscriptionCredential(
+            access_token=codex_access_token("claimed-account", expires),
+            account_id="different-account",
+            expires_at=expires,
+        )
+        budget = SubscriptionBudget(
+            maximum_requests=1,
+            maximum_request_bytes=1024,
+            upstream_timeout_seconds=60,
+        )
+        with self.assertRaisesRegex(ValueError, "identity is inconsistent"):
+            CodexSubscriptionProxy(credential=credential, budget=budget)
+
+    def test_codex_subscription_relay_replaces_fake_auth_and_enforces_budget(self) -> None:
+        observed: list[dict[str, Any]] = []
+
+        class FakeResponse:
+            status = 200
+
+            def __init__(self) -> None:
+                self.chunks = [b"data: done\n\n", b""]
+
+            def getheader(self, name: str):
+                return "text/event-stream" if name.lower() == "content-type" else None
+
+            def read(self, _size: int) -> bytes:
+                return self.chunks.pop(0)
+
+        class FakeHTTPSConnection:
+            def __init__(self, host: str, timeout: int) -> None:
+                self.host = host
+                self.timeout = timeout
+
+            def request(self, method: str, path: str, *, body: bytes, headers: dict) -> None:
+                observed.append(
+                    {
+                        "method": method,
+                        "path": path,
+                        "body": body,
+                        "headers": headers,
+                        "host": self.host,
+                    }
+                )
+
+            def getresponse(self) -> FakeResponse:
+                return FakeResponse()
+
+            def close(self) -> None:
+                return
+
+        expires = int(time.time()) + 7200
+        access_token = codex_access_token("real-test-account", expires)
+        credential = CodexSubscriptionCredential(
+            access_token=access_token,
+            account_id="real-test-account",
+            expires_at=expires,
+        )
+        budget = SubscriptionBudget(
+            maximum_requests=1,
+            maximum_request_bytes=1024,
+            upstream_timeout_seconds=60,
+        )
+        with patch(
+            "harness.runtime.codex_subscription_proxy.http.client.HTTPSConnection",
+            FakeHTTPSConnection,
+        ):
+            manager = codex_subscription_proxy(credential=credential, budget=budget)
+            try:
+                proxy = manager.__enter__()
+            except PermissionError:
+                self.skipTest("loopback sockets unavailable in this test boundary")
+            try:
+                model_token = proxy.model_token
+                host, port_text = proxy.base_url.removeprefix("http://").split(":", 1)
+                port = int(port_text.split("/", 1)[0])
+                connection = http.client.HTTPConnection(host, port, timeout=5)
+                connection.request(
+                    "POST",
+                    CODEX_RESPONSES_PATH,
+                    body=b"opaque-zstd-request",
+                    headers={
+                        "Authorization": f"Bearer {proxy.model_token}",
+                        "chatgpt-account-id": "harness-canary",
+                        "Content-Encoding": "zstd",
+                    },
+                )
+                response = connection.getresponse()
+                self.assertEqual(200, response.status)
+                self.assertEqual(b"data: done\n\n", response.read())
+                connection.close()
+
+                unauthorized = http.client.HTTPConnection(host, port, timeout=5)
+                unauthorized.request(
+                    "POST",
+                    CODEX_RESPONSES_PATH,
+                    body=b"rejected",
+                    headers={
+                        "Authorization": "Bearer fixed-known-token",
+                        "chatgpt-account-id": "harness-canary",
+                    },
+                )
+                rejected = unauthorized.getresponse()
+                self.assertEqual(401, rejected.status)
+                rejected.read()
+                unauthorized.close()
+
+                second = http.client.HTTPConnection(host, port, timeout=5)
+                second.request(
+                    "POST",
+                    CODEX_RESPONSES_PATH,
+                    body=b"second",
+                    headers={
+                        "Authorization": f"Bearer {proxy.model_token}",
+                        "chatgpt-account-id": "harness-canary",
+                    },
+                )
+                exhausted = second.getresponse()
+                self.assertEqual(429, exhausted.status)
+                exhausted.read()
+                second.close()
+                metrics = proxy.metrics
+            finally:
+                manager.__exit__(None, None, None)
+
+        self.assertEqual(1, len(observed))
+        self.assertEqual(CODEX_RESPONSES_PATH, observed[0]["path"])
+        self.assertEqual(
+            f"Bearer {access_token}",
+            observed[0]["headers"]["Authorization"],
+        )
+        self.assertEqual("real-test-account", observed[0]["headers"]["chatgpt-account-id"])
+        self.assertNotIn(model_token, repr(observed))
+        self.assertEqual(1, metrics.requests)
+        self.assertEqual(len(b"opaque-zstd-request"), metrics.request_bytes)
+
+    def test_codex_subscription_relay_sanitizes_header_construction_errors(self) -> None:
+        class RejectingHTTPSConnection:
+            def __init__(self, _host: str, timeout: int) -> None:
+                self.timeout = timeout
+
+            def request(self, _method: str, _path: str, *, body: bytes, headers: dict) -> None:
+                raise ValueError(f"Invalid header value {headers['Authorization']}")
+
+            def close(self) -> None:
+                return
+
+        expires = int(time.time()) + 7200
+        credential = CodexSubscriptionCredential(
+            access_token=codex_access_token("real-test-account", expires),
+            account_id="real-test-account",
+            expires_at=expires,
+        )
+        budget = SubscriptionBudget(
+            maximum_requests=1,
+            maximum_request_bytes=1024,
+            upstream_timeout_seconds=60,
+        )
+        stderr = io.StringIO()
+        with (
+            patch(
+                "harness.runtime.codex_subscription_proxy.http.client.HTTPSConnection",
+                RejectingHTTPSConnection,
+            ),
+            redirect_stderr(stderr),
+        ):
+            manager = codex_subscription_proxy(credential=credential, budget=budget)
+            try:
+                proxy = manager.__enter__()
+            except PermissionError:
+                self.skipTest("loopback sockets unavailable in this test boundary")
+            try:
+                host, port_text = proxy.base_url.removeprefix("http://").split(":", 1)
+                connection = http.client.HTTPConnection(
+                    host,
+                    int(port_text.split("/", 1)[0]),
+                    timeout=5,
+                )
+                connection.request(
+                    "POST",
+                    CODEX_RESPONSES_PATH,
+                    body=b"opaque-zstd-request",
+                    headers={
+                        "Authorization": f"Bearer {proxy.model_token}",
+                        "chatgpt-account-id": "harness-canary",
+                    },
+                )
+                response = connection.getresponse()
+                response_body = response.read().decode("utf-8")
+                connection.close()
+            finally:
+                manager.__exit__(None, None, None)
+        self.assertEqual(502, response.status)
+        self.assertIn("upstream request failed", response_body)
+        self.assertEqual("", stderr.getvalue())
+        self.assertNotIn(credential.access_token, response_body)
+        self.assertNotIn(credential.account_id, response_body)
 
     def test_sanitized_metrics_never_retain_transcript_or_error_text(self) -> None:
         events = [
@@ -384,6 +837,46 @@ class ModelStressRunnerTests(unittest.TestCase):
         payload = valid_result()
         payload["raw"] = {"transcript": "private"}
         self.assertTrue(validate_result(payload))
+
+    def test_result_validator_binds_codex_subscription_identity_and_budget(self) -> None:
+        payload = valid_result()
+        payload["provenance"].update(
+            {
+                "model": "gpt-5.6-sol",
+                "provider": "openai-codex",
+                "endpoint_class": "credential-isolated-chatgpt-codex-subscription",
+            }
+        )
+        payload["provider_boundary"] = {
+            "execution_target": "codex-subscription-sol",
+            "reasoning_effort": "medium",
+            "credential_delivery": "host-subscription-relay",
+            "output_token_limit_enforcement": "runner-config-only",
+            "maximum_requests": 10,
+            "maximum_request_bytes": 524288,
+            "observed_requests": 2,
+            "observed_request_bytes": 2048,
+        }
+        self.assertEqual([], validate_result(payload))
+        for key, value in (
+            ("model", "gpt-5.6"),
+            ("provider", "openai"),
+            ("endpoint_class", "local-loopback-openai-compatible"),
+        ):
+            invalid = copy.deepcopy(payload)
+            invalid["provenance"][key] = value
+            with self.subTest(key=key):
+                self.assertTrue(validate_result(invalid))
+        invalid = copy.deepcopy(payload)
+        invalid["provider_boundary"]["observed_requests"] = 11
+        self.assertTrue(validate_result(invalid))
+        invalid = copy.deepcopy(payload)
+        invalid["provider_boundary"]["output_token_limit_enforcement"] = "provider-request"
+        self.assertTrue(validate_result(invalid))
+
+        local = valid_result()
+        local["provider_boundary"]["output_token_limit_enforcement"] = "runner-config-only"
+        self.assertTrue(validate_result(local))
 
     def test_result_validator_rejects_inconsistent_shapes_and_relationships(self) -> None:
         mutations = []
@@ -883,6 +1376,100 @@ def canonical_identifier(value):
         payload = json.loads(result.stdout)
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["model_invoked"])
+
+    def test_cli_subscription_check_fails_closed_without_chatgpt_login(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            result = subprocess.run(
+                [
+                    "python3",
+                    "tools/model_stress_runner.py",
+                    "check",
+                    "--execution-target",
+                    CODEX_SOL_CONTROL_TARGET,
+                    "--codex-auth-path",
+                    str(Path(name) / "missing-auth.json"),
+                ],
+                cwd=ROOT,
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+        self.assertEqual(2, result.returncode, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertFalse(payload["ok"])
+        self.assertFalse(payload["model_invoked"])
+        self.assertFalse(payload["capabilities"]["codex_chatgpt_subscription_ready"])
+
+    def test_cli_subscription_check_rejects_malformed_claim_without_traceback(self) -> None:
+        account = "account-test"
+        payload = {
+            "auth_mode": "chatgpt",
+            "OPENAI_API_KEY": None,
+            "tokens": {
+                "access_token": codex_access_token(
+                    account,
+                    int(time.time()) + 7200,
+                    auth_claim="not-an-object",
+                ),
+                "account_id": account,
+            },
+        }
+        with tempfile.TemporaryDirectory() as name:
+            auth = Path(name) / "auth.json"
+            auth.write_text(json.dumps(payload), encoding="utf-8")
+            auth.chmod(0o600)
+            result = subprocess.run(
+                [
+                    "python3",
+                    "tools/model_stress_runner.py",
+                    "check",
+                    "--execution-target",
+                    CODEX_SOL_CONTROL_TARGET,
+                    "--codex-auth-path",
+                    str(auth),
+                ],
+                cwd=ROOT,
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertNotIn("Traceback", result.stdout)
+        output = json.loads(result.stdout)
+        self.assertFalse(output["ok"])
+        self.assertFalse(output["model_invoked"])
+        self.assertIn(
+            "auth claim is invalid",
+            output["capabilities"]["codex_chatgpt_subscription_error"],
+        )
+
+    def test_codex_catalog_preflight_uses_sanitized_environment(self) -> None:
+        executable = Path("/opt/pi/bin/pi")
+        fake_root = Path("/opt/pi")
+        with (
+            patch("harness.runtime.model_stress_runner._pi_root", return_value=fake_root),
+            patch("harness.runtime.model_stress_runner.subprocess.run") as run,
+        ):
+            run.return_value.returncode = 0
+
+            def populate_output(command, **kwargs):
+                kwargs["stdout"].write(
+                    b"provider model context max-out thinking images\n"
+                    b"openai-codex gpt-5.6-sol 272K 4.1K yes yes\n"
+                )
+                return run.return_value
+
+            run.side_effect = populate_output
+            codex_catalog_preflight(executable)
+        command = run.call_args.args[0]
+        environment = run.call_args.kwargs["env"]
+        self.assertNotIn("OPENAI_API_KEY", environment)
+        self.assertNotIn("CODEX_HOME", environment)
+        self.assertIn("--offline", command)
+        self.assertIn("--no-extensions", command)
+        self.assertEqual("openai-codex", command[command.index("--provider") + 1])
+        self.assertEqual("gpt-5.6-sol", command[-1])
 
     def test_cli_check_rejects_symlink_repository_root(self) -> None:
         with tempfile.TemporaryDirectory() as name:

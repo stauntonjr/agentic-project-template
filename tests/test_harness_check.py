@@ -1,4 +1,3 @@
-from pathlib import Path
 import json
 import os
 import shutil
@@ -6,12 +5,18 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from tools.common import load_json, write_json
-from tools.harness_check import Result, check, validate_model_stress, validate_planning
+from tools.harness_check import (
+    REQUIRED_PATHS,
+    Result,
+    check,
+    validate_model_stress,
+    validate_planning,
+)
 from tools.project_intake import normalize_answer, render
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,6 +51,10 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_subscription_control_runtime_is_a_required_harness_path(self) -> None:
+        self.assertIn("harness/runtime/codex_subscription_proxy.py", REQUIRED_PATHS)
+        self.assertIn("harness/runtime/model_stress_runner.py", REQUIRED_PATHS)
+
     def test_model_stress_corpus_requires_exact_distinct_classes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)

@@ -15,9 +15,21 @@ import stat
 import subprocess
 import tempfile
 import time
+from contextlib import nullcontext
 from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+from harness.runtime.codex_subscription_proxy import (
+    CONTROL_MODEL,
+    CONTROL_REASONING_EFFORT,
+    CodexSubscriptionCredential,
+    SubscriptionBudget,
+    SubscriptionProxyMetrics,
+    codex_subscription_proxy,
+    create_model_canary_token,
+    load_codex_subscription,
+)
 
 MAXIMUM_TASK_BYTES = 256 * 1024
 MAXIMUM_TRIALS = 10
@@ -27,6 +39,12 @@ MAXIMUM_SNAPSHOT_TOTAL_BYTES = 16 * 1024 * 1024
 MODEL_MAX_TOKENS = 4096
 LANES = ("bare", "harness")
 TOOLS = ["read", "edit"]
+LOCAL_QWEN_TARGET = "local-qwen"
+CODEX_SOL_CONTROL_TARGET = "codex-subscription-sol"
+EXECUTION_TARGETS = {LOCAL_QWEN_TARGET, CODEX_SOL_CONTROL_TARGET}
+LOCAL_BASE_URL = "http://127.0.0.1:8000/v1"
+CODEX_SUBSCRIPTION_BASE_URL = "https://chatgpt.com/backend-api"
+CODEX_SUBSCRIPTION_PROVIDER = "openai-codex"
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 TASK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CORPUS_TASK_CLASSES = {
@@ -384,7 +402,9 @@ def _validate_task(task: Any) -> None:
                 ):
                     raise RunnerError(f"oracle target {key} args must be JSON scalars")
                 if required_key == "expected" and not _json_return_value(record[required_key]):
-                    raise RunnerError("oracle expected values must be JSON scalars or scalar arrays")
+                    raise RunnerError(
+                        "oracle expected values must be JSON scalars or scalar arrays"
+                    )
                 if required_key == "exception" and record[required_key] not in {
                     "TypeError",
                     "ValueError",
@@ -465,6 +485,7 @@ def _validate_result(payload: Any) -> None:
         "accepted_baseline",
         "model_invoked",
         "provenance",
+        "provider_boundary",
         "task",
         "limits",
         "trial_count",
@@ -473,7 +494,7 @@ def _validate_result(payload: Any) -> None:
     }
     if set(payload) != expected:
         raise RunnerError("result has missing or unknown top-level keys")
-    if payload["schema_version"] != "1.1" or payload["authority"] != "supplemental":
+    if payload["schema_version"] != "1.3" or payload["authority"] != "supplemental":
         raise RunnerError("result identity or authority is invalid")
     if payload["accepted_baseline"] is not False or payload["model_invoked"] is not True:
         raise RunnerError(
@@ -503,10 +524,63 @@ def _validate_result(payload: Any) -> None:
             or _has_control_character(value)
         ):
             raise RunnerError(f"result provenance {key} is invalid")
-    if provenance["endpoint_class"] != "local-loopback-openai-compatible":
+    if provenance["endpoint_class"] not in {
+        "local-loopback-openai-compatible",
+        "credential-isolated-chatgpt-codex-subscription",
+    }:
         raise RunnerError("result endpoint class is invalid")
     if not re.fullmatch(r"\d+\.\d+\.\d+", provenance["pi_version"]):
         raise RunnerError("result Pi version is invalid")
+    boundary = payload["provider_boundary"]
+    boundary_keys = {
+        "execution_target",
+        "reasoning_effort",
+        "credential_delivery",
+        "output_token_limit_enforcement",
+        "maximum_requests",
+        "maximum_request_bytes",
+        "observed_requests",
+        "observed_request_bytes",
+    }
+    if not isinstance(boundary, dict) or set(boundary) != boundary_keys:
+        raise RunnerError("result provider boundary is invalid")
+    numeric_keys = boundary_keys - {
+        "execution_target",
+        "reasoning_effort",
+        "credential_delivery",
+        "output_token_limit_enforcement",
+    }
+    if any(
+        isinstance(boundary[key], bool) or not isinstance(boundary[key], int) or boundary[key] < 0
+        for key in numeric_keys
+    ):
+        raise RunnerError("result provider boundary counters are invalid")
+    target = boundary["execution_target"]
+    if target == LOCAL_QWEN_TARGET:
+        if (
+            provenance["endpoint_class"] != "local-loopback-openai-compatible"
+            or boundary["reasoning_effort"] != "not-applicable"
+            or boundary["credential_delivery"] != "synthetic-placeholder"
+            or boundary["output_token_limit_enforcement"] != "provider-request"
+            or any(boundary[key] != 0 for key in numeric_keys)
+        ):
+            raise RunnerError("result local provider boundary is inconsistent")
+    elif target == CODEX_SOL_CONTROL_TARGET:
+        if (
+            provenance["endpoint_class"] != "credential-isolated-chatgpt-codex-subscription"
+            or provenance["provider"] != CODEX_SUBSCRIPTION_PROVIDER
+            or provenance["model"] != CONTROL_MODEL
+            or boundary["reasoning_effort"] != CONTROL_REASONING_EFFORT
+            or boundary["credential_delivery"] != "host-subscription-relay"
+            or boundary["output_token_limit_enforcement"] != "runner-config-only"
+            or not 1 <= boundary["maximum_requests"] <= 100
+            or not 1024 <= boundary["maximum_request_bytes"] <= 8 * 1024 * 1024
+            or boundary["observed_requests"] > boundary["maximum_requests"]
+            or boundary["observed_request_bytes"] > boundary["maximum_request_bytes"]
+        ):
+            raise RunnerError("result Codex subscription boundary is inconsistent")
+    else:
+        raise RunnerError("result execution target is invalid")
     task = payload["task"]
     task_keys = {
         "id",
@@ -521,18 +595,11 @@ def _validate_result(payload: Any) -> None:
     }
     if not isinstance(task, dict) or set(task) != task_keys:
         raise RunnerError("result task identity is invalid")
-    if (
-        not isinstance(task["id"], str)
-        or len(task["id"]) > 80
-        or not TASK_ID.fullmatch(task["id"])
-    ):
+    if not isinstance(task["id"], str) or len(task["id"]) > 80 or not TASK_ID.fullmatch(task["id"]):
         raise RunnerError("result task id is invalid")
     if task["task_class"] not in TASK_CLASSES:
         raise RunnerError("result task class is invalid")
-    if (
-        task["id"] in CORPUS_TASK_CLASSES
-        and task["task_class"] != CORPUS_TASK_CLASSES[task["id"]]
-    ):
+    if task["id"] in CORPUS_TASK_CLASSES and task["task_class"] != CORPUS_TASK_CLASSES[task["id"]]:
         raise RunnerError("result task id and class are inconsistent")
     for key in ("task_digest", "prompt_digest"):
         if not isinstance(task[key], str) or not re.fullmatch(r"[0-9a-f]{64}", task[key]):
@@ -937,30 +1004,111 @@ def _pi_root(executable: Path) -> Path:
     return root
 
 
-def _write_pi_config(home: Path, provider: str, model: str, base_url: str) -> None:
+def _write_pi_config(
+    home: Path,
+    provider: str,
+    model: str,
+    base_url: str,
+    *,
+    execution_target: str = LOCAL_QWEN_TARGET,
+) -> None:
     agent = home / ".pi/agent"
     agent.mkdir(parents=True)
-    payload = {
-        "providers": {
-            provider: {
-                "baseUrl": base_url,
-                "api": "openai-completions",
-                "apiKey": "not-needed",
-                "compat": {"supportsDeveloperRole": False, "supportsReasoningEffort": False},
-                "models": [
-                    {
-                        "id": model,
-                        "name": "Local canary",
-                        "input": ["text"],
-                        "contextWindow": 262144,
-                        "maxTokens": MODEL_MAX_TOKENS,
-                    }
-                ],
-            }
+    if execution_target == LOCAL_QWEN_TARGET:
+        provider_payload: dict[str, Any] = {
+            "baseUrl": base_url,
+            "api": "openai-completions",
+            "apiKey": "not-needed",
+            "compat": {
+                "supportsDeveloperRole": False,
+                "supportsReasoningEffort": False,
+            },
+            "models": [
+                {
+                    "id": model,
+                    "name": "Harness model-stress target",
+                    "input": ["text"],
+                    "contextWindow": 262144,
+                    "maxTokens": MODEL_MAX_TOKENS,
+                }
+            ],
         }
-    }
+        settings: dict[str, Any] = {}
+    elif execution_target == CODEX_SOL_CONTROL_TARGET:
+        provider_payload = {
+            "baseUrl": base_url,
+            "apiKey": "not-needed",
+            "modelOverrides": {model: {"maxTokens": MODEL_MAX_TOKENS}},
+        }
+        settings = {"transport": "sse"}
+    else:
+        raise RunnerError("unknown execution target")
+    payload = {"providers": {provider: provider_payload}}
     (agent / "models.json").write_text(json.dumps(payload), encoding="utf-8")
-    (agent / "settings.json").write_text("{}\n", encoding="utf-8")
+    (agent / "settings.json").write_text(json.dumps(settings) + "\n", encoding="utf-8")
+
+
+def codex_catalog_preflight(executable: Path) -> None:
+    """Resolve the exact Sol model in isolated Pi config without a network call."""
+    installation = _pi_root(executable)
+    maximum_output_bytes = 64 * 1024
+    with tempfile.TemporaryDirectory(prefix="harness-codex-catalog-") as temp_name:
+        home = Path(temp_name)
+        _write_pi_config(
+            home,
+            CODEX_SUBSCRIPTION_PROVIDER,
+            CONTROL_MODEL,
+            "http://127.0.0.1:9/backend-api",
+            execution_target=CODEX_SOL_CONTROL_TARGET,
+        )
+        command = [
+            str(executable.absolute()),
+            "--offline",
+            "--approve",
+            "--api-key",
+            create_model_canary_token(),
+            "--provider",
+            CODEX_SUBSCRIPTION_PROVIDER,
+            "--no-extensions",
+            "--no-skills",
+            "--no-prompt-templates",
+            "--no-themes",
+            "--no-context-files",
+            "--list-models",
+            CONTROL_MODEL,
+        ]
+        environment = {
+            "HOME": str(home),
+            "PI_CODING_AGENT_DIR": str(home / ".pi/agent"),
+            "PI_OFFLINE": "1",
+            "PI_TELEMETRY": "0",
+            "PATH": f"{installation / 'bin'}:/usr/bin:/bin",
+            "LANG": "C.UTF-8",
+        }
+        with tempfile.TemporaryFile() as output_file:
+            try:
+                completed = subprocess.run(
+                    command,
+                    check=False,
+                    stdin=subprocess.DEVNULL,
+                    stdout=output_file,
+                    stderr=subprocess.DEVNULL,
+                    env=environment,
+                    timeout=30,
+                    preexec_fn=partial(_model_preexec, maximum_output_bytes),
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise RunnerError("Pi Codex catalog preflight timed out") from exc
+            output_file.seek(0)
+            output = output_file.read(maximum_output_bytes)
+        if completed.returncode or len(output) >= maximum_output_bytes:
+            raise RunnerError("Pi Codex catalog preflight failed")
+        rows = [line.split() for line in output.decode("utf-8", errors="replace").splitlines()]
+        if not any(
+            len(row) >= 2 and row[0] == CODEX_SUBSCRIPTION_PROVIDER and row[1] == CONTROL_MODEL
+            for row in rows
+        ):
+            raise RunnerError("Pi did not resolve the exact Codex subscription model")
 
 
 def _base_bwrap(repo: Path, config_home: Path, pi_root: Path) -> list[str]:
@@ -997,9 +1145,14 @@ def _base_bwrap(repo: Path, config_home: Path, pi_root: Path) -> list[str]:
             "/home/canary",
             "--dir",
             "/home/canary/.pi",
-            "--ro-bind",
-            str(config_home / ".pi/agent"),
+            "--dir",
             "/home/canary/.pi/agent",
+            "--ro-bind",
+            str(config_home / ".pi/agent/models.json"),
+            "/home/canary/.pi/agent/models.json",
+            "--ro-bind",
+            str(config_home / ".pi/agent/settings.json"),
+            "/home/canary/.pi/agent/settings.json",
             "--proc",
             "/proc",
             "--dev",
@@ -1044,6 +1197,8 @@ def build_pi_command(
     provider: str,
     model: str,
     prompt: str,
+    execution_target: str = LOCAL_QWEN_TARGET,
+    auth_override: str = "not-needed",
 ) -> list[str]:
     if lane not in LANES:
         raise RunnerError(f"unknown lane: {lane}")
@@ -1056,7 +1211,7 @@ def build_pi_command(
             "--model",
             model,
             "--api-key",
-            "not-needed",
+            auth_override,
             "--approve",
             "--offline",
             "--no-session",
@@ -1068,6 +1223,10 @@ def build_pi_command(
             ",".join(TOOLS),
         ]
     )
+    if execution_target == CODEX_SOL_CONTROL_TARGET:
+        command.extend(["--thinking", CONTROL_REASONING_EFFORT])
+    elif execution_target != LOCAL_QWEN_TARGET:
+        raise RunnerError("unknown execution target")
     if lane == "bare":
         command.extend(["--no-context-files", "--no-skills", "--no-extensions"])
     else:
@@ -1166,6 +1325,8 @@ def _run_model_lane(
     pi_root: Path,
     provider: str,
     model: str,
+    execution_target: str = LOCAL_QWEN_TARGET,
+    auth_override: str = "not-needed",
 ) -> dict[str, Any]:
     before = _snapshot(repo)
     command = build_pi_command(
@@ -1176,6 +1337,8 @@ def _run_model_lane(
         provider=provider,
         model=model,
         prompt=task["prompt"],
+        execution_target=execution_target,
+        auth_override=auth_override,
     )
     started = time.monotonic()
     timed_out = False
@@ -1470,6 +1633,16 @@ def pi_version(executable: Path) -> str:
     return match.group(0).decode("ascii")
 
 
+def codex_subscription_budget(*, trials: int, model_timeout_seconds: int) -> SubscriptionBudget:
+    """Return the fixed per-task budget for a paired Sol subscription run."""
+    lane_trials = trials * len(LANES)
+    return SubscriptionBudget(
+        maximum_requests=lane_trials * 5,
+        maximum_request_bytes=lane_trials * 256 * 1024,
+        upstream_timeout_seconds=model_timeout_seconds,
+    )
+
+
 def run_paired(
     *,
     source_root: Path,
@@ -1482,6 +1655,8 @@ def run_paired(
     serving_runtime: str,
     serving_recipe: str,
     trials: int,
+    execution_target: str = LOCAL_QWEN_TARGET,
+    codex_auth_path: Path | None = None,
 ) -> dict[str, Any]:
     model_invoked = False
     try:
@@ -1496,6 +1671,8 @@ def run_paired(
             raise RunnerError("Pi executable must be supplied as a path")
         if shutil.which("bwrap") is None:
             raise RunnerError("bubblewrap is required for live model-stress execution")
+        if execution_target not in EXECUTION_TARGETS:
+            raise RunnerError("execution target is invalid")
         for label, value in (
             ("provider", provider),
             ("model", model),
@@ -1512,41 +1689,83 @@ def run_paired(
                 raise RunnerError(f"{label} must be a trimmed non-empty string")
             if len(value) > 512:
                 raise RunnerError(f"{label} exceeds 512 characters")
-        if base_url != "http://127.0.0.1:8000/v1":
-            raise RunnerError(
-                "the first runner slice is restricted to the approved local loopback endpoint"
+        control_budget: SubscriptionBudget | None = None
+        credential: CodexSubscriptionCredential | None = None
+        if execution_target == LOCAL_QWEN_TARGET:
+            if base_url != LOCAL_BASE_URL:
+                raise RunnerError("the local Qwen target requires the approved loopback endpoint")
+        else:
+            if provider != CODEX_SUBSCRIPTION_PROVIDER or model != CONTROL_MODEL:
+                raise RunnerError(
+                    "the Codex subscription control requires its exact provider and model"
+                )
+            if base_url != CODEX_SUBSCRIPTION_BASE_URL:
+                raise RunnerError("the Codex subscription control requires the ChatGPT backend")
+            if not isinstance(codex_auth_path, Path):
+                raise RunnerError("the Codex subscription control requires an explicit auth path")
+            credential = load_codex_subscription(
+                codex_auth_path,
+                minimum_lifetime_seconds=(
+                    task["limits"]["model_timeout_seconds"] * trials * len(LANES) + 600
+                ),
+            )
+            control_budget = codex_subscription_budget(
+                trials=trials,
+                model_timeout_seconds=task["limits"]["model_timeout_seconds"],
             )
         installation = _pi_root(executable)
         version = pi_version(executable)
         resources, resource_bundle_digest = _load_resource_bundle(source_root)
         lane_results: dict[str, list[dict[str, Any]]] = {lane: [] for lane in LANES}
-        with tempfile.TemporaryDirectory(prefix="harness-model-stress-") as temp_name:
-            temp = Path(temp_name)
-            seed_repo = temp / "seed-repo"
-            _write_initial_repository(task, seed_repo, resources)
-            seed_snapshot = _snapshot(seed_repo)
-            for trial in range(1, trials + 1):
-                for lane in LANES:
-                    lane_root = temp / f"trial-{trial}-{lane}"
-                    repo = lane_root / "repo"
-                    home = lane_root / "home"
-                    shutil.copytree(seed_repo, repo, symlinks=True)
-                    if _snapshot(repo) != seed_snapshot:
-                        raise RunnerError("disposable repository clone differs from frozen seed")
-                    _write_pi_config(home, provider, model, base_url)
-                    model_invoked = True
-                    result = _run_model_lane(
-                        lane=lane,
-                        task=task,
-                        repo=repo,
-                        config_home=home,
-                        pi_root=installation,
-                        provider=provider,
-                        model=model,
-                    )
-                    result["trial"] = trial
-                    result["test_result"] = _run_oracle(task, repo)
-                    lane_results[lane].append(result)
+        proxy_context = (
+            codex_subscription_proxy(credential=credential, budget=control_budget)
+            if control_budget is not None and credential is not None
+            else nullcontext(None)
+        )
+        control_metrics = SubscriptionProxyMetrics(0, 0)
+        with proxy_context as proxy:
+            effective_base_url = proxy.base_url if proxy is not None else base_url
+            with tempfile.TemporaryDirectory(prefix="harness-model-stress-") as temp_name:
+                temp = Path(temp_name)
+                seed_repo = temp / "seed-repo"
+                _write_initial_repository(task, seed_repo, resources)
+                seed_snapshot = _snapshot(seed_repo)
+                for trial in range(1, trials + 1):
+                    for lane in LANES:
+                        lane_root = temp / f"trial-{trial}-{lane}"
+                        repo = lane_root / "repo"
+                        home = lane_root / "home"
+                        shutil.copytree(seed_repo, repo, symlinks=True)
+                        if _snapshot(repo) != seed_snapshot:
+                            raise RunnerError(
+                                "disposable repository clone differs from frozen seed"
+                            )
+                        _write_pi_config(
+                            home,
+                            provider,
+                            model,
+                            effective_base_url,
+                            execution_target=execution_target,
+                        )
+                        model_invoked = True
+                        result = _run_model_lane(
+                            lane=lane,
+                            task=task,
+                            repo=repo,
+                            config_home=home,
+                            pi_root=installation,
+                            provider=provider,
+                            model=model,
+                            execution_target=execution_target,
+                            auth_override=(
+                                proxy.model_token if proxy is not None else "not-needed"
+                            ),
+                        )
+                        result["trial"] = trial
+                        result["test_result"] = _run_oracle(task, repo)
+                        lane_results[lane].append(result)
+            if proxy is not None:
+                control_metrics = proxy.metrics
         lane_summary: dict[str, Any] = {}
         for lane, results in lane_results.items():
             passed = sum(1 for item in results if trial_passed(item, task["writable_paths"]))
@@ -1558,7 +1777,7 @@ def run_paired(
         bare_passed = lane_summary["bare"]["passed_trials"]
         harness_passed = lane_summary["harness"]["passed_trials"]
         return {
-            "schema_version": "1.1",
+            "schema_version": "1.3",
             "authority": "supplemental",
             "evidence_level": level,
             "accepted_baseline": False,
@@ -1569,7 +1788,35 @@ def run_paired(
                 "pi_version": version,
                 "serving_runtime": serving_runtime,
                 "serving_recipe": serving_recipe,
-                "endpoint_class": "local-loopback-openai-compatible",
+                "endpoint_class": (
+                    "credential-isolated-chatgpt-codex-subscription"
+                    if execution_target == CODEX_SOL_CONTROL_TARGET
+                    else "local-loopback-openai-compatible"
+                ),
+            },
+            "provider_boundary": {
+                "execution_target": execution_target,
+                "reasoning_effort": (
+                    CONTROL_REASONING_EFFORT
+                    if execution_target == CODEX_SOL_CONTROL_TARGET
+                    else "not-applicable"
+                ),
+                "credential_delivery": (
+                    "host-subscription-relay"
+                    if execution_target == CODEX_SOL_CONTROL_TARGET
+                    else "synthetic-placeholder"
+                ),
+                "output_token_limit_enforcement": (
+                    "runner-config-only"
+                    if execution_target == CODEX_SOL_CONTROL_TARGET
+                    else "provider-request"
+                ),
+                "maximum_requests": control_budget.maximum_requests if control_budget else 0,
+                "maximum_request_bytes": (
+                    control_budget.maximum_request_bytes if control_budget else 0
+                ),
+                "observed_requests": control_metrics.requests,
+                "observed_request_bytes": control_metrics.request_bytes,
             },
             "task": {
                 "id": task["id"],

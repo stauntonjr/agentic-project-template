@@ -37,7 +37,12 @@ read-only generated Pi configuration, an explicit non-secret `not-needed` API-ke
 prevents Pi from consulting a credential store, and no shell tool. The host home and source repository are
 not mounted. Only the disposable repository and ephemeral virtual filesystems are writable. Model
 event output is capped while the process runs, stderr is discarded, and the model output-token
-configuration is fixed at 4,096 tokens.
+configuration is fixed at 4,096 tokens. Result schema 1.3 separately records whether the selected
+Pi provider sends that value in its provider request. Pi 0.84.1 source shows that the local Qwen
+OpenAI-compatible path transmits it; future schema-1.3 Qwen results classify that as
+`provider-request`. Historical schema-1.1 Qwen artifacts do not contain the field. Pi's Codex
+Responses path ignores the option, so Sol records `runner-config-only` and must not be described as
+having the same provider output-token bound.
 
 Generated code is evaluated one case at a time in separate resource-bounded Bubblewrap processes.
 Each oracle process receives only the current arguments plus the module and function names; hidden
@@ -63,6 +68,51 @@ Accepted live evidence requires the same disposable engineering task in bare and
 Qwen lanes, at least three trials per lane, independent write-scope inspection, exact runtime
 provenance, and the deterministic gates. The runner never promotes its own output to an accepted
 baseline and never makes a general harness-lift claim.
+
+## Optional ChatGPT subscription frontier control
+
+ADR-0009 defines a separate one-off positive control using Pi's native `openai-codex` provider and
+exact `gpt-5.6-sol`. It uses the same frozen tasks, prompts, tools, lanes, limits, and hidden oracles
+as the local Qwen run except for the disclosed provider output-token enforcement asymmetry. Each
+evaluation freezes its own harness-resource bundle; the Sol report must
+compare its digest with Qwen and disclose any byte difference rather than implying an identical
+harness-context replay. It does not replace the Qwen cadence, select a project default, accept a
+baseline, or authorize routine cloud execution.
+
+This control uses the existing Codex CLI ChatGPT Pro login. OpenAI API-key authentication is
+prohibited. The host runner rejects Codex auth containing an API key, keeps the short-lived ChatGPT
+OAuth access token in host-process memory, and exposes only a random non-secret canary JWT to Pi.
+A loopback relay verifies that canary, accepts only the Codex Responses path, enforces per-task
+request-count, cumulative request-byte, and timeout bounds, and substitutes the real subscription
+headers only for the fixed upstream request. Pi's read-only generated configuration, command
+evidence, disposable repository, result JSON, and tracked report never contain the OAuth token or
+account identifier. Pi receives an otherwise empty ephemeral writable agent-state directory
+because version 0.84.1 synchronizes even the canary credential into a runtime store; that directory
+is not host-backed and disappears after the sandbox exits. The auth file and host home are not
+mounted in Bubblewrap, and `--clearenv` prevents an ambient `OPENAI_API_KEY` or other host
+credential from reaching Pi.
+
+The preflight validates the private ChatGPT login and resolves the exact model from the supplied Pi
+installation without a model request or startup networking:
+
+```bash
+python3 tools/model_stress_runner.py check \
+  --execution-target codex-subscription-sol \
+  --codex-auth-path "$HOME/.codex/auth.json" \
+  --pi /absolute/path/to/pi
+```
+
+The live path must then begin with `--trials 1`. Only after the smoke result is structurally valid
+may an operator select three trials for each tracked task. The explicit live arguments are
+`--execution-target codex-subscription-sol`, `--provider openai-codex`, `--model gpt-5.6-sol`, and
+`--base-url https://chatgpt.com/backend-api`; the runner rejects alternatives. The literal Pi flag
+name `--api-key` carries the random canary JWT required by Pi's local account parser, not an API key
+or reusable OAuth credential.
+
+The public synthetic task, generated source files, and lane-specific harness context leave the
+host for ChatGPT processing. Do not use this route for private application content without a new
+privacy and authorization decision. Subscription usage has no API-price claim; retain only
+provider-reported token counts and the relay's sanitized request metrics.
 
 ## Held-out corpus
 
