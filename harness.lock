@@ -44,7 +44,7 @@
       "ownership": "upstream-owned"
     },
     ".agents/skills/manage-github-planning/references/safety.md": {
-      "sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
+      "sha256": "5822cde2726e0a523619f236310a8e4a1ef7575032dd8fb717fd9b6bbdae7cb3",
       "ownership": "upstream-owned"
     },
     ".agents/skills/project-intake/SKILL.md": {
@@ -276,7 +276,7 @@
       "ownership": "project-owned"
     },
     "docs/project/correction-log.md": {
-      "sha256": "bb312788eb687003813d5219bb5a9469413d58d9f30a5f99371698dcc30663a4",
+      "sha256": "fd7490f59465fad1d0ff1efc44f596de0cf1381c442c33f8482b460eeac3ff2d",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
@@ -616,7 +616,7 @@
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/PROVENANCE.json": {
-      "sha256": "7a2bfef445413685ddc65529e20d77f36e0a984ad35a3d85f04ced9079a0645d",
+      "sha256": "40db55d0494ef9ca72b03a7e0eee6d84eea2731c4de3dea45772978b425078f4",
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/skills/execute-engineering-loop/SKILL.md": {
@@ -652,7 +652,7 @@
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/skills/manage-github-planning/references/safety.md": {
-      "sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
+      "sha256": "5822cde2726e0a523619f236310a8e4a1ef7575032dd8fb717fd9b6bbdae7cb3",
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/skills/project-intake/SKILL.md": {
@@ -724,7 +724,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_github_planning.py": {
-      "sha256": "a71dcbc6bcbd8d3a7b8de82998a612b3095cc99cf98835c53d89849a1cc52aec",
+      "sha256": "7f50ac9c9cc28e2daee97c87d7e86bb377e17dcb5b4af25d788f8a0d0f467400",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {

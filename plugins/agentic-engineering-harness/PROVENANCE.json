@@ -71,8 +71,8 @@
       "transformation": "namespace-skill-references"
     },
     "manage-github-planning/references/safety.md": {
-      "source_sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
-      "distribution_sha256": "91affb5f8f2c6b6dfd26dc65f303d7f883c6cc9502315d5a59794cbc2d964436",
+      "source_sha256": "5822cde2726e0a523619f236310a8e4a1ef7575032dd8fb717fd9b6bbdae7cb3",
+      "distribution_sha256": "5822cde2726e0a523619f236310a8e4a1ef7575032dd8fb717fd9b6bbdae7cb3",
       "transformation": "identity"
     },
     "project-intake/SKILL.md": {

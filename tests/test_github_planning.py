@@ -40,10 +40,24 @@ class GitHubPlanningTests(unittest.TestCase):
         )
         correction = (ROOT / "docs/project/correction-log.md").read_text(encoding="utf-8")
         planning = (ROOT / "docs/project/github-planning.md").read_text(encoding="utf-8")
+        safety = (
+            ROOT / ".agents/skills/manage-github-planning/references/safety.md"
+        ).read_text(encoding="utf-8")
+        normalized_safety = " ".join(safety.split())
         self.assertIn("Do not pass `--project` to `gh issue create`", skill)
         self.assertIn("tools/github_planning.py add-item --url URL --yes", skill)
         self.assertIn("GH-PLANNING-001", correction)
+        self.assertIn("GH-PR-METADATA-007", correction)
         self.assertIn("Mutation check", correction)
+        self.assertIn(
+            "gh api --method PATCH repos/OWNER/REPOSITORY/pulls/NUMBER -F body=@FILE",
+            normalized_safety,
+        )
+        self.assertIn("queries deprecated `projectCards`", safety)
+        self.assertIn(
+            "then re-read the pull request and verify the intended fields",
+            normalized_safety,
+        )
         self.assertIn("gh api graphql", planning)
         self.assertIn("gh project item-add", planning)
 

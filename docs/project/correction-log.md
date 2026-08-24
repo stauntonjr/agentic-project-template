@@ -70,6 +70,31 @@ failure exposes an escaped defect with a deterministic oracle, create a candidat
 - Prevention: the `add-item` implementation now separates its single mutation from bounded
   post-write reads, and the GitHub-planning guide documents the eventual-consistency boundary.
 
+## GH-PR-METADATA-007: `gh pr edit` queried deprecated Project cards
+
+- Date: 2026-08-24.
+- Workflow: update pull request #43's body after pushing verified correction evidence.
+- Provenance: sanitized live GitHub CLI evidence from the agentic-project-template repository.
+- Failed approach: ran `gh pr edit NUMBER --body-file FILE` with GitHub CLI 2.45.0.
+- Error signature: `GraphQL: Projects (classic) is being deprecated ... (projectCards)`.
+- Mutation check: an exact pull-request re-read showed that neither correction-loop evidence nor
+  the current test count was present; the head commit and existing Project membership were
+  unchanged.
+- Classification: installed-client GraphQL query incompatibility, not an invalid body file,
+  authentication failure, Projects v2 membership error, or pull-request write rejection.
+- Corrected path:
+  1. Stop after the first failed `gh pr edit`; do not retry the same client route.
+  2. Send the reviewed body file to the exact REST pull-request endpoint with
+     `gh api --method PATCH repos/OWNER/REPOSITORY/pulls/NUMBER -F body=@FILE`.
+  3. Re-read that pull request and require both the expected head SHA and distinguishing body
+     content before reporting success.
+- Verification: the REST mutation returned pull request #43; a subsequent REST read returned head
+  `7cdca280d2ecd5d937126ba155a70c74995827ee` and both the correction-evidence marker and current
+  206-test marker.
+- Prevention: the GitHub-planning safety reference preserves the REST/body-file fallback and
+  mandatory re-read; a repository test requires that packaged guidance and this ledger entry
+  remain present.
+
 ## GH-AUTH-002: Sandboxed network failure reported as an invalid token
 
 - Date: 2026-08-24.
