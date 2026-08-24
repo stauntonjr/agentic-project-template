@@ -31,8 +31,8 @@
   ],
   "files": {
     "execute-engineering-loop/SKILL.md": {
-      "source_sha256": "58f42f1368200ed65dfbeaafe483011ef547a2fb8422282d15315fb8a50627ad",
-      "distribution_sha256": "70cfdc3f26312a9d15154f6ca49e775e5fedeef9ad457b529a9511b62e5575ae",
+      "source_sha256": "d6de9e5b01bb5ede1fe781ec5a13c08020b30a975965da7049d00f39793ad6e1",
+      "distribution_sha256": "f615ee89a4a0e7e4b344c729b2dc81070dea293b05b95811293ff6f9a99475cb",
       "transformation": "namespace-skill-references"
     },
     "execute-engineering-loop/agents/openai.yaml": {
@@ -45,9 +45,14 @@
       "distribution_sha256": "a0675d49827bf6f3e325bdfb48387ed12f7b4444f9ac10e0c9526a089cfa0f7b",
       "transformation": "identity"
     },
+    "execute-engineering-loop/references/verification-efficiency.md": {
+      "source_sha256": "f22b064de9a7b9f12fa732b2cf8078f30b430bab3dd96fa08ffea1cae801ca83",
+      "distribution_sha256": "f22b064de9a7b9f12fa732b2cf8078f30b430bab3dd96fa08ffea1cae801ca83",
+      "transformation": "identity"
+    },
     "loop-report/SKILL.md": {
-      "source_sha256": "51723c61326d38e17bb3b89674fde517176694eb74937497d971ecece050cf48",
-      "distribution_sha256": "51723c61326d38e17bb3b89674fde517176694eb74937497d971ecece050cf48",
+      "source_sha256": "388d98bd3fe55561cc88931bb8427341747942520be7493e44b62ac3a0b1ccdc",
+      "distribution_sha256": "388d98bd3fe55561cc88931bb8427341747942520be7493e44b62ac3a0b1ccdc",
       "transformation": "identity"
     },
     "loop-report/agents/openai.yaml": {
@@ -56,8 +61,8 @@
       "transformation": "namespace-skill-references"
     },
     "loop-report/references/report-contract.md": {
-      "source_sha256": "d547a6afddebe3ebeb728c1d602245d490b2dade541ec15ca6c877f6fe6e43ba",
-      "distribution_sha256": "d547a6afddebe3ebeb728c1d602245d490b2dade541ec15ca6c877f6fe6e43ba",
+      "source_sha256": "8c12e1fc0b4797aa89fa1e1e025068a1fc2f3606ca00729cbde6e8aaa0264177",
+      "distribution_sha256": "8c12e1fc0b4797aa89fa1e1e025068a1fc2f3606ca00729cbde6e8aaa0264177",
       "transformation": "identity"
     },
     "manage-github-planning/SKILL.md": {

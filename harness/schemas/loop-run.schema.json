@@ -18,11 +18,12 @@
     "start_commit",
     "state",
     "checks",
+    "review_cycles",
     "verdicts",
     "release_impact"
   ],
   "properties": {
-    "schema_version": {"const": "1.2"},
+    "schema_version": {"const": "1.3"},
     "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
     "revision": {"type": "integer", "minimum": 1},
     "attempt_id": {"type": "integer", "minimum": 1},
@@ -69,6 +70,7 @@
       ]
     },
     "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "review_cycles": {"type": "array", "items": {"$ref": "#/$defs/reviewCycle"}},
     "verdicts": {"type": "array", "items": {"$ref": "#/$defs/verdict"}},
     "release_impact": {
       "oneOf": [
@@ -161,11 +163,125 @@
         "command",
         "status",
         "evidence",
+        "tier",
+        "duration_seconds",
+        "evidence_origin",
+        "reuse_source",
+        "artifact_digest",
+        "applicability",
+        "candidate",
         "recorded_at"
       ],
       "properties": {
         "status": {"enum": ["passed", "failed", "skipped", "not-run"]},
-        "criterion_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+        "criterion_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "tier": {"enum": ["static", "targeted", "affected", "full", "external"]},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "evidence_origin": {"enum": ["executed", "reused"]},
+        "reuse_source": {"type": ["string", "null"]},
+        "artifact_digest": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          ]
+        },
+        "applicability": {"type": ["string", "null"]},
+        "candidate": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/candidate"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"evidence_origin": {"const": "reused"}}},
+          "then": {
+            "properties": {
+              "tier": {"not": {"const": "full"}},
+              "reuse_source": {"type": "string", "minLength": 1},
+              "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+              "applicability": {"type": "string", "minLength": 1}
+            }
+          },
+          "else": {
+            "properties": {
+              "reuse_source": {"const": null},
+              "artifact_digest": {"const": null},
+              "applicability": {"const": null}
+            }
+          }
+        }
+      ]
+    },
+    "reviewCycle": {
+      "type": "object",
+      "required": [
+        "review_id",
+        "revision",
+        "attempt_id",
+        "reviewer",
+        "candidate",
+        "started_at",
+        "closed_at",
+        "duration_seconds",
+        "status",
+        "outcome",
+        "summary",
+        "findings"
+      ],
+      "properties": {
+        "review_id": {"type": "string", "pattern": "^review-[0-9]{3}$"},
+        "revision": {"type": "integer", "minimum": 1},
+        "attempt_id": {"type": "integer", "minimum": 1},
+        "reviewer": {"type": "string", "minLength": 1},
+        "candidate": {"$ref": "#/$defs/candidate"},
+        "started_at": {"type": "string"},
+        "closed_at": {"type": ["string", "null"]},
+        "duration_seconds": {"type": ["number", "null"], "minimum": 0},
+        "status": {"enum": ["open", "closed"]},
+        "outcome": {"type": ["string", "null"], "enum": [null, "clean", "batch-ready", "emergency-stop"]},
+        "summary": {"type": ["string", "null"]},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "closing_candidate": {"$ref": "#/$defs/candidate"},
+        "candidate_changed": {"type": "boolean"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_id",
+        "severity",
+        "title",
+        "criterion",
+        "reproduction",
+        "minimum_repair",
+        "emergency_boundary",
+        "fingerprint",
+        "recorded_at"
+      ],
+      "properties": {
+        "finding_id": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["low", "medium", "high", "critical"]},
+        "title": {"type": "string", "minLength": 1},
+        "criterion": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,63}$"},
+        "reproduction": {"type": "string", "minLength": 1},
+        "minimum_repair": {"type": "string", "minLength": 1},
+        "emergency_boundary": {
+          "type": ["string", "null"],
+          "enum": [null, "secret-exposure", "destructive-effect", "uncontrolled-external-effect"]
+        },
+        "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "recorded_at": {"type": "string"}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["commit", "tree_digest", "release_impact_digest"],
+      "properties": {
+        "commit": {"type": "string"},
+        "tree_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "release_impact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     },
     "verdict": {
@@ -183,15 +299,13 @@
       ],
       "properties": {
         "decision": {"enum": ["approve", "revise", "reject"]},
-        "candidate": {
-          "type": "object",
-          "required": ["commit", "tree_digest", "release_impact_digest"],
-          "properties": {
-            "commit": {"type": "string"},
-            "tree_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-            "release_impact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
-          }
-        }
+        "review_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^review-[0-9]{3}$"}
+          ]
+        },
+        "candidate": {"$ref": "#/$defs/candidate"}
       }
     },
     "releaseImpact": {

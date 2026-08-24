@@ -23,6 +23,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Issue #18 packages the seven reusable workflows as the installed SemVer-versioned
   `agentic-engineering-harness` Codex plugin while keeping repository-local skills canonical and
   project policy out of user configuration.
+- Issue #46 adds ADR-0010 and loop schema 1.3: independent reviewers collect one deduplicated
+  stable-candidate finding batch before repair, checks carry tier/duration/evidence-origin data,
+  expensive retained evidence requires immutable provenance, and reported completion requires
+  exactly one executed passing full gate for the final current attempt.
 - Issue #21 now has an accepted local Qwen model-diversity policy, an exact machine-readable due
   contract, a dependency-free status command, and a bounded paired runner. Its versioned first
   task keeps the executable oracle outside the model-visible repository, gives identical
@@ -79,6 +83,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Experimental Pi adapter with native skill discovery, workflow prompts, ignored session state, structured context questions, and explicit delegation/sandbox limitations.
 - Dependency-free validators, intake rendering, loop evidence, reporting, and GitHub audit/dry-run tools.
 - Criterion-linked completion gates with revision-bound verifier verdicts and content-aware baseline/write-scope enforcement.
+- Batched review cycles, tiered verification timing, explicit contract-revision versus repair-attempt
+  semantics, and provenance-bound reuse of expensive external evidence.
 - Provenance-locked, ownership-aware three-way upgrade plans with explicit apply resolutions, receipts, and rollback.
 - Ten isolated forward-test scenarios covering routing, context gaps, evidence, safety behavior,
   layered domain rules, and governed learning.

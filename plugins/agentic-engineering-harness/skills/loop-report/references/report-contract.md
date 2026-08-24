@@ -15,4 +15,10 @@ Use these sections in order:
 11. Recommended next loop.
 12. Exact revision and change scope.
 
+Within verification evidence, report review-cycle and finding-batch counts, review elapsed time,
+check tiers and per-tier duration, reused-evidence provenance, and superseded attempts. Distinguish
+a changed contract revision from an implementation repair attempt. Identify repeated full gates as
+an efficiency defect; reported completion requires exactly one executed passing full gate for the
+current attempt.
+
 Prefer links and artifact paths over pasted logs. Include zero-result sections when their absence is meaningful.

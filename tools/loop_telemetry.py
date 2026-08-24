@@ -15,10 +15,10 @@ from typing import Any
 
 try:
     from .common import load_json, repository_root, utc_now, write_json
-    from .loop import active_criterion_ids, current_passed_criteria, load_run
+    from .loop import active_criterion_ids, candidate_identity, current_passed_criteria, load_run
 except ImportError:  # Direct script execution.
     from common import load_json, repository_root, utc_now, write_json
-    from loop import active_criterion_ids, current_passed_criteria, load_run
+    from loop import active_criterion_ids, candidate_identity, current_passed_criteria, load_run
 
 
 SCHEMA_VERSION = "1.0"
@@ -322,7 +322,11 @@ def retry_count(record: dict[str, Any]) -> int:
     return sum(maximum - 1 for maximum in attempts.values())
 
 
-def build_summary(record: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+def build_summary(
+    record: dict[str, Any],
+    data: dict[str, Any],
+    current_candidate: dict[str, str] | None = None,
+) -> dict[str, Any]:
     corrections = (
         provided_measurement("human_corrections", "{correction}", data["human_corrections"])
         if "human_corrections" in data
@@ -341,9 +345,20 @@ def build_summary(record: dict[str, Any], data: dict[str, Any]) -> dict[str, Any
         "completeness": "available",
     }
     active = active_criterion_ids(record)
-    passed = current_passed_criteria(record).intersection(active)
+    candidate_bound = record.get("schema_version") == "1.3"
+    passed = (
+        current_passed_criteria(record, current_candidate).intersection(active)
+        if current_candidate is not None
+        else current_passed_criteria(record).intersection(active)
+        if not candidate_bound
+        else set()
+    )
     acceptance = unavailable_measurement("acceptance_pass_rate", "1")
-    if active and record.get("state") in {"reported", "blocked", "abandoned"}:
+    if (
+        active
+        and record.get("state") in {"reported", "blocked", "abandoned"}
+        and (current_candidate is not None or not candidate_bound)
+    ):
         acceptance = {
             "name": "acceptance_pass_rate",
             "value": len(passed) / len(active),
@@ -687,7 +702,12 @@ def main(argv: list[str] | None = None) -> int:
                 errors.extend(validate_input(data, config, record))
             if errors:
                 raise ValueError("; ".join(errors))
-            summary_payload = build_summary(record, data)
+            current_candidate = (
+                candidate_identity(root, record)
+                if record.get("schema_version") == "1.3"
+                else None
+            )
+            summary_payload = build_summary(record, data, current_candidate)
             summary_errors = validate_summary(summary_payload)
             if summary_errors:
                 raise ValueError("generated summary is invalid: " + "; ".join(summary_errors))
@@ -702,7 +722,7 @@ def main(argv: list[str] | None = None) -> int:
             if errors:
                 raise ValueError("; ".join(errors))
             emit(root, build_aggregate(summaries), args.output)
-    except (KeyError, OSError, TypeError, ValueError) as exc:
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
         print(f"loop telemetry: failed: {exc}", file=sys.stderr)
         return 1
     return 0

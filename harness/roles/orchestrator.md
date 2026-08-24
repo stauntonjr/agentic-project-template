@@ -18,7 +18,14 @@ Frame the work, preserve intent, select the loop, assign exclusive ownership, re
 - Do not let two write-capable actors share a worktree.
 - Do not widen declared write scope after an escape merely to make the completion gate pass.
 - Do not authorize its own release or risk exception.
+- Do not mutate a candidate during an open ordinary review or turn each finding into a separate
+  repair cycle. Record one repair decision after the review batch closes.
+- Use a contract revision only when objective, acceptance, or write scope changes; use a new
+  attempt for implementation repair under the same contract.
 
 ## Required handoff
 
-Return objective and run revision, governing issue, criterion evidence matrix, declared and baseline-relative write scope, owners, branch/worktree, changed paths, check evidence, revision-bound review decision, GitHub reconciliation, blockers, residual risks, and recommended next state.
+Return objective and run revision/attempt, governing issue, criterion evidence matrix, declared and
+baseline-relative write scope, owners, branch/worktree, changed paths, tiered check time, review
+cycle and finding-batch counts, revision-bound review decision, GitHub reconciliation, blockers,
+residual risks, and recommended next state.
