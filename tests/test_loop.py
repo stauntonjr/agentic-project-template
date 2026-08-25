@@ -6,18 +6,22 @@ import unittest
 from pathlib import Path
 
 from tools.loop import (
+    close_review,
     finish_run,
     load_run,
     make_write_set,
+    migrate_run,
     new_attempt,
     parse_criteria,
     record_check,
+    record_finding,
     record_release_impact,
     record_verdict,
     recovery_status,
     resume_run,
     revise_run,
     set_state,
+    start_review,
     start_run,
     waive_criterion,
 )
@@ -107,6 +111,17 @@ def start_test_run(
     return record
 
 
+def close_clean_review(root: Path, run_id: str, reviewer: str = "verifier-1") -> None:
+    cycle = start_review(root, run_id, reviewer=reviewer)
+    close_review(
+        root,
+        run_id,
+        review_id=cycle["review_id"],
+        outcome="clean",
+        summary="No findings after bounded independent review",
+    )
+
+
 def approve_current(root: Path, run_id: str = "test-run") -> None:
     record_check(
         root,
@@ -116,7 +131,9 @@ def approve_current(root: Path, run_id: str = "test-run") -> None:
         status="passed",
         evidence="targeted unit boundary",
         criteria=["AC1"],
+        tier="full",
     )
+    close_clean_review(root, run_id)
     record_verdict(
         root,
         run_id,
@@ -128,6 +145,35 @@ def approve_current(root: Path, run_id: str = "test-run") -> None:
 
 
 class LoopTests(unittest.TestCase):
+    def test_schema_12_run_migrates_without_replacing_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            record_check(
+                root,
+                "test-run",
+                name="legacy",
+                command="python3 -m unittest",
+                status="passed",
+                evidence="legacy evidence",
+                criteria=["AC1"],
+            )
+            path, record = load_run(root, "test-run")
+            baseline = record["baseline"]
+            record["schema_version"] = "1.2"
+            record.pop("review_cycles")
+            record["checks"][0].pop("candidate")
+            path.write_text(json.dumps(record), encoding="utf-8")
+
+            migrated = migrate_run(root, "test-run")
+
+            self.assertEqual("1.3", migrated["schema_version"])
+            self.assertEqual(baseline, migrated["baseline"])
+            self.assertEqual([], migrated["review_cycles"])
+            self.assertIsNone(migrated["checks"][0]["candidate"])
+            self.assertTrue(migrated["telemetry"]["schema_migrations"][-1]["preserved_baseline"])
+
     def test_three_consecutive_failures_block_without_starting_a_fourth_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -315,7 +361,15 @@ class LoopTests(unittest.TestCase):
             self.assertIn("targeted unit boundary", report)
             self.assertIn("approve by verifier-1", report)
             self.assertIn("Recommended product release impact: none", report)
+            self.assertIn("Efficiency telemetry: 1 review cycle(s)", report)
+            self.assertIn('Review outcomes: {"batch-ready": 0, "clean": 1', report)
+            self.assertIn("0 finding batch(es)", report)
+            self.assertIn("Contract revision history:", report)
+            self.assertIn("Implementation attempt history:", report)
+            self.assertIn("Check-tier time:", report)
+            self.assertIn("| check-001 | unit | full |", report)
             self.assertEqual("none", evidence["release_impact"]["level"])
+            self.assertEqual("clean", evidence["review_cycles"][0]["outcome"])
             self.assertEqual([], evidence["boundary"]["scope"]["violations"])
             self.assertEqual("reported", finished["state"])
 
@@ -392,6 +446,13 @@ class LoopTests(unittest.TestCase):
                 implementers=["implementer-1"],
             )
             (root / "new.txt").write_text("untracked\n", encoding="utf-8")
+            record_release_impact(
+                root,
+                record["run_id"],
+                level="minor",
+                reason="The initial public file is a new pre-1.0 capability",
+                public_contract_changes=["new.txt"],
+            )
             record_check(
                 root,
                 record["run_id"],
@@ -400,14 +461,9 @@ class LoopTests(unittest.TestCase):
                 status="passed",
                 evidence="new.txt exists",
                 criteria=["AC1"],
+                tier="full",
             )
-            record_release_impact(
-                root,
-                record["run_id"],
-                level="minor",
-                reason="The initial public file is a new pre-1.0 capability",
-                public_contract_changes=["new.txt"],
-            )
+            close_clean_review(root, record["run_id"])
             record_verdict(
                 root,
                 record["run_id"],
@@ -564,7 +620,9 @@ class LoopTests(unittest.TestCase):
                 status="passed",
                 evidence="Nested candidate inspected",
                 criteria=["AC1"],
+                tier="full",
             )
+            close_clean_review(root, record["run_id"])
             record_verdict(
                 root,
                 record["run_id"],
@@ -612,7 +670,9 @@ class LoopTests(unittest.TestCase):
                 status="passed",
                 evidence="Embedded candidate inspected",
                 criteria=["AC1"],
+                tier="full",
             )
+            close_clean_review(root, record["run_id"])
             record_verdict(
                 root,
                 record["run_id"],
@@ -746,6 +806,7 @@ class LoopTests(unittest.TestCase):
             root = Path(directory)
             init_repository(root)
             start_test_run(root)
+            close_clean_review(root, "test-run")
 
             with self.assertRaisesRegex(
                 ValueError, "lacks passed check evidence for criteria: AC1"
@@ -824,6 +885,17 @@ class LoopTests(unittest.TestCase):
                 waived_by="human:owner",
                 reason="Owner accepted this boundary as out of scope",
             )
+            record_check(
+                root,
+                "test-run",
+                name="full",
+                command="python3 -m unittest",
+                status="passed",
+                evidence="complete final gate",
+                criteria=[],
+                tier="full",
+            )
+            close_clean_review(root, "test-run")
             record_verdict(
                 root,
                 "test-run",
@@ -856,7 +928,9 @@ class LoopTests(unittest.TestCase):
                 status="passed",
                 evidence="targeted boundary",
                 criteria=["AC1"],
+                tier="full",
             )
+            close_clean_review(root, "impact-run")
             record_verdict(
                 root,
                 "impact-run",
@@ -875,7 +949,12 @@ class LoopTests(unittest.TestCase):
             start_test_run(root)
             tracked.write_text("reviewed\n", encoding="utf-8")
             approve_current(root)
-            revise_run(root, "test-run", reason="Acceptance wording changed")
+            revise_run(
+                root,
+                "test-run",
+                reason="Acceptance wording changed",
+                objective="Revised test objective",
+            )
 
             with self.assertRaisesRegex(ValueError, "current revision and attempt"):
                 finish_run(root, "test-run", "reported")
@@ -898,6 +977,489 @@ class LoopTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "criteria lack current passed checks: AC1"):
                 finish_run(root, "test-run", "reported")
+
+    def test_review_collects_one_deduplicated_batch_before_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            finding = {
+                "review_id": cycle["review_id"],
+                "severity": "high",
+                "title": "Completion gate can be bypassed",
+                "criterion": "AC1",
+                "reproduction": "Run the bounded bypass fixture",
+                "minimum_repair": "Fail closed and add the fixture as a regression",
+            }
+            record_finding(root, "test-run", **finding)
+            with self.assertRaisesRegex(ValueError, "duplicate review finding"):
+                record_finding(root, "test-run", **finding)
+            with self.assertRaisesRegex(ValueError, "review cycle is open"):
+                new_attempt(root, "test-run", "repair finding batch")
+            with self.assertRaisesRegex(ValueError, "review cycle is open"):
+                revise_run(root, "test-run", reason="change contract too early")
+
+            closed = close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="One deduplicated repair batch",
+            )
+            self.assertEqual(1, len(closed["findings"]))
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="revise",
+                criteria=["AC1"],
+                evidence="Bounded finding batch",
+            )
+            self.assertEqual(2, new_attempt(root, "test-run", "repair finding batch")["attempt_id"])
+
+    def test_finding_batch_blocks_second_review_and_late_repair_transition(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="high",
+                title="Completion bypass",
+                criterion="AC1",
+                reproduction="Open a second review without repairing the first batch",
+                minimum_repair="Require the finding-batch transition before another review",
+            )
+            close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="One repair batch",
+            )
+
+            with self.assertRaisesRegex(ValueError, "requires a repair attempt"):
+                start_review(root, "test-run", reviewer="verifier-1")
+            with self.assertRaisesRegex(ValueError, "matching revise or reject verdict"):
+                new_attempt(root, "test-run", "repair without a decision")
+
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="revise",
+                criteria=["AC1"],
+                evidence="The bounded finding batch requires repair",
+            )
+            with self.assertRaisesRegex(ValueError, "requires a repair attempt"):
+                start_review(root, "test-run", reviewer="verifier-1")
+            tracked.write_text("mutated before transition\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "changed before the repair attempt"):
+                new_attempt(root, "test-run", "late repair decision")
+            tracked.write_text("before\n", encoding="utf-8")
+            self.assertEqual(
+                2,
+                new_attempt(root, "test-run", "repair the reviewed finding batch")["attempt_id"],
+            )
+
+    def test_contract_revision_requires_a_delta_and_resolves_finding_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            with self.assertRaisesRegex(ValueError, "contract revision must change"):
+                revise_run(root, "test-run", reason="Nominal revision only")
+
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="high",
+                title="Revision escape",
+                criterion="AC1",
+                reproduction="Increment the revision without resolving the batch",
+                minimum_repair="Bind revision transitions to the finding decision",
+            )
+            close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="Revision escape requires repair",
+            )
+            with self.assertRaisesRegex(ValueError, "matching revise or reject verdict"):
+                revise_run(
+                    root,
+                    "test-run",
+                    reason="Genuine but unauthorized contract change",
+                    objective="Changed before decision",
+                )
+
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="revise",
+                criteria=["AC1"],
+                evidence="Revise the reviewed contract",
+            )
+            tracked.write_text("candidate drift\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "changed before the repair attempt"):
+                revise_run(
+                    root,
+                    "test-run",
+                    reason="Late contract repair",
+                    objective="Changed after candidate drift",
+                )
+            tracked.write_text("before\n", encoding="utf-8")
+            revised = revise_run(
+                root,
+                "test-run",
+                reason="Reviewed contract repair",
+                objective="Changed after reviewed decision",
+            )
+            self.assertEqual(2, revised["revision"])
+            self.assertEqual(
+                "review-002",
+                start_review(root, "test-run", reviewer="verifier-1")["review_id"],
+            )
+
+    def test_blocked_report_does_not_count_stale_candidate_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            record_check(
+                root,
+                "test-run",
+                name="old candidate",
+                command="python3 -m unittest old",
+                status="passed",
+                evidence="Passed before candidate mutation",
+                criteria=["AC1"],
+            )
+            tracked.write_text("changed after check\n", encoding="utf-8")
+
+            report_path, _, _ = finish_run(root, "test-run", "blocked")
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn("| AC1 | missing |", report)
+            self.assertNotIn("| AC1 | check-passed |", report)
+
+    def test_non_emergency_review_fails_if_candidate_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            tracked.write_text("changed during review\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "review candidate changed"):
+                close_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    outcome="clean",
+                    summary="Incorrectly clean",
+                )
+
+    def test_critical_emergency_can_stop_review_after_candidate_change(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            tracked.write_text("removed exposed value\n", encoding="utf-8")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="critical",
+                title="Active credential exposure",
+                criterion="AC1",
+                reproduction="A bounded secret scanner identified an active value",
+                minimum_repair="Revoke and remove the value before continuing",
+                emergency_boundary="secret-exposure",
+            )
+            closed = close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="emergency-stop",
+                summary="Stopped immediately to contain active exposure",
+            )
+            self.assertTrue(closed["candidate_changed"])
+
+    def test_critical_emergency_cannot_be_downgraded_to_an_ordinary_batch(self) -> None:
+        for boundary in (
+            "secret-exposure",
+            "destructive-effect",
+            "uncontrolled-external-effect",
+        ):
+            with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                init_repository(root)
+                start_test_run(root)
+                cycle = start_review(root, "test-run", reviewer="verifier-1")
+                record_finding(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    severity="critical",
+                    title=f"Critical {boundary}",
+                    criterion="AC1",
+                    reproduction="Exercise the declared emergency boundary",
+                    minimum_repair="Stop the review immediately",
+                    emergency_boundary=boundary,
+                )
+                with self.assertRaisesRegex(ValueError, "requires an emergency stop"):
+                    close_review(
+                        root,
+                        "test-run",
+                        review_id=cycle["review_id"],
+                        outcome="batch-ready",
+                        summary="Incorrect ordinary batch",
+                    )
+
+    def test_reused_evidence_requires_immutable_provenance_and_cannot_be_full_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            digest = "sha256:" + "a" * 64
+            with self.assertRaisesRegex(ValueError, "requires an immutable sha256"):
+                record_check(
+                    root,
+                    "test-run",
+                    name="model evaluation",
+                    command="reuse retained result",
+                    status="passed",
+                    evidence="retained result",
+                    criteria=["AC1"],
+                    tier="external",
+                    evidence_origin="reused",
+                    reuse_source="result.json",
+                    applicability="model-visible resources are unchanged",
+                )
+            record = record_check(
+                root,
+                "test-run",
+                name="model evaluation",
+                command="reuse retained result",
+                status="passed",
+                evidence="retained result",
+                criteria=["AC1"],
+                tier="external",
+                duration_seconds=0.25,
+                evidence_origin="reused",
+                reuse_source="result.json",
+                artifact_digest=digest,
+                applicability="model-visible resources and oracle are unchanged",
+            )
+            self.assertEqual("reused", record["checks"][-1]["evidence_origin"])
+            with self.assertRaisesRegex(ValueError, "final full gate must be executed"):
+                record_check(
+                    root,
+                    "test-run",
+                    name="full",
+                    command="make smoke",
+                    status="passed",
+                    evidence="reused full result",
+                    tier="full",
+                    evidence_origin="reused",
+                    reuse_source="result.json",
+                    artifact_digest=digest,
+                    applicability="unchanged",
+                )
+
+    def test_reported_completion_requires_exactly_one_executed_full_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            record_check(
+                root,
+                "test-run",
+                name="targeted",
+                command="python3 -m unittest tests.test_loop",
+                status="passed",
+                evidence="criterion passes without complete gate",
+                criteria=["AC1"],
+                tier="targeted",
+            )
+            close_clean_review(root, "test-run")
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="approve",
+                criteria=["AC1"],
+                evidence="Reviewed targeted evidence",
+            )
+            with self.assertRaisesRegex(ValueError, "exactly one current-attempt full gate"):
+                finish_run(root, "test-run", "reported")
+
+    def test_later_finding_batch_invalidates_earlier_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            approve_current(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="high",
+                title="Later review found a bypass",
+                criterion="AC1",
+                reproduction="Run the later bounded review fixture",
+                minimum_repair="Bind approval to the latest review",
+            )
+            close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="Later finding batch",
+            )
+
+            with self.assertRaisesRegex(ValueError, "latest independent review is not clean"):
+                finish_run(root, "test-run", "reported")
+
+    def test_full_gate_is_stale_after_candidate_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tracked = init_repository(root)
+            start_test_run(root)
+            record_check(
+                root,
+                "test-run",
+                name="full",
+                command="make smoke",
+                status="passed",
+                evidence="complete gate before mutation",
+                criteria=["AC1"],
+                tier="full",
+            )
+            tracked.write_text("changed after full gate\n", encoding="utf-8")
+            record_check(
+                root,
+                "test-run",
+                name="current targeted",
+                command="python3 -m unittest current-targeted",
+                status="passed",
+                evidence="AC1 passes on the changed candidate but the full gate is stale",
+                criteria=["AC1"],
+                tier="targeted",
+            )
+            close_clean_review(root, "test-run")
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="approve",
+                criteria=["AC1"],
+                evidence="Reviewed changed candidate",
+            )
+
+            with self.assertRaisesRegex(ValueError, "full gate is stale"):
+                finish_run(root, "test-run", "reported")
+
+    def test_criterion_evidence_is_stale_after_candidate_changes(self) -> None:
+        for evidence_origin in ("executed", "reused"):
+            with (
+                self.subTest(evidence_origin=evidence_origin),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                tracked = init_repository(root)
+                start_test_run(root)
+                kwargs = {}
+                if evidence_origin == "reused":
+                    kwargs = {
+                        "reuse_source": "retained-result.json",
+                        "artifact_digest": "sha256:" + "a" * 64,
+                        "applicability": "The candidate was unchanged when evidence was recorded",
+                    }
+                record_check(
+                    root,
+                    "test-run",
+                    name="criterion evidence",
+                    command="run targeted evidence",
+                    status="passed",
+                    evidence="AC1 passed for the earlier candidate",
+                    criteria=["AC1"],
+                    tier="targeted" if evidence_origin == "executed" else "external",
+                    evidence_origin=evidence_origin,
+                    **kwargs,
+                )
+                tracked.write_text("changed after criterion evidence\n", encoding="utf-8")
+                record_check(
+                    root,
+                    "test-run",
+                    name="full",
+                    command="make smoke",
+                    status="passed",
+                    evidence="Current full gate intentionally has no criterion link",
+                    tier="full",
+                )
+                close_clean_review(root, "test-run")
+                with self.assertRaisesRegex(ValueError, "lacks passed check evidence"):
+                    record_verdict(
+                        root,
+                        "test-run",
+                        reviewer="verifier-1",
+                        verdict="approve",
+                        criteria=["AC1"],
+                        evidence="The stale criterion result must not count",
+                    )
+
+    def test_documentation_only_impact_classifier_is_fail_closed(self) -> None:
+        contract = (
+            ROOT
+            / ".agents/skills/execute-engineering-loop/references/verification-efficiency.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("## Documentation-only impact classifier", contract)
+        self.assertIn("Ambiguous changes are behavior-affecting", contract)
+        self.assertIn("The final full gate remains mandatory", contract)
+
+    def test_schema_encodes_reused_evidence_invariants(self) -> None:
+        schema = json.loads((ROOT / "harness/schemas/loop-run.schema.json").read_text())
+        conditional = schema["$defs"]["check"]["allOf"][0]
+
+        self.assertEqual("reused", conditional["if"]["properties"]["evidence_origin"]["const"])
+        self.assertEqual(
+            {"not": {"const": "full"}},
+            conditional["then"]["properties"]["tier"],
+        )
+        for field in ("reuse_source", "artifact_digest", "applicability"):
+            self.assertEqual("string", conditional["then"]["properties"][field]["type"])
+            self.assertEqual({"const": None}, conditional["else"]["properties"][field])
+
+    def test_report_distinguishes_contract_revisions_from_repair_attempts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            new_attempt(root, "test-run", "repair one finding batch")
+            record_release_impact(
+                root,
+                "test-run",
+                level="none",
+                reason="Current repair attempt has no product release",
+            )
+            approve_current(root)
+
+            report_path, _, _ = finish_run(root, "test-run", "reported")
+            report = report_path.read_text(encoding="utf-8")
+
+            self.assertIn("1 superseded attempt(s)", report)
+            self.assertIn("revision 1 attempt 1: repair one finding batch", report)
 
     def test_blocked_run_can_report_incomplete_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

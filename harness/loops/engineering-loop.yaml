@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "id": "engineering-loop",
   "description": "Default evidence-producing loop for non-trivial repository work.",
   "start_state": "intake",
@@ -13,6 +13,19 @@
     "destructive_git_recovery": false,
     "attempt_identity_required": true,
     "contract_changes_increment_revision": true
+  },
+  "verification_policy": {
+    "check_tiers": ["static", "targeted", "affected", "full", "external"],
+    "final_full_gate": "exactly-one-executed-passing-current-attempt",
+    "review_collection": "one-deduplicated-batch-before-repair",
+    "ordinary_finding_interrupts_review": false,
+    "emergency_boundaries": [
+      "secret-exposure",
+      "destructive-effect",
+      "uncontrolled-external-effect"
+    ],
+    "reused_evidence_requires": ["source", "sha256 artifact digest", "applicability rationale"],
+    "reused_evidence_cannot_satisfy": "final-full-gate"
   },
   "states": [
     {
@@ -59,16 +72,16 @@
       "id": "verify",
       "owner": "verifier",
       "requires": ["change", "verification plan"],
-      "produces": ["criterion-linked check evidence", "findings", "candidate identity"],
-      "gate": "every unwaived criterion has current-attempt evidence or failures are explained",
+      "produces": ["tiered criterion-linked check evidence", "deduplicated finding batch", "candidate identity", "elapsed verification time"],
+      "gate": "every unwaived criterion has current-attempt evidence or failures are explained; ordinary findings remain in one stable-candidate review cycle until batch closure",
       "next": ["adversarial-review", "implement", "blocked"]
     },
     {
       "id": "adversarial-review",
       "owner": "verifier",
       "requires": ["diff", "raw evidence"],
-      "produces": ["revision-bound independent decision", "criterion coverage", "residual risks"],
-      "gate": "reviewer did not author the reviewed work and the verdict identifies the current revision, attempt, commit, and working-tree digest",
+      "produces": ["closed review cycle", "revision-bound independent decision", "criterion coverage", "residual risks"],
+      "gate": "reviewer did not author the reviewed work; the review closes clean, batch-ready, or at a critical emergency boundary; and the verdict identifies the same current revision, attempt, commit, and working-tree digest",
       "next": ["integrate", "implement", "blocked"]
     },
     {
@@ -76,7 +89,7 @@
       "owner": "orchestrator",
       "requires": ["current independent approval", "declared-scope evidence", "clean integration target"],
       "produces": ["integrated revision", "planning reconciliation"],
-      "gate": "all unwaived criteria are evidenced, the verdict is current, no undeclared writes exist, and shared Git and GitHub state are consistent",
+      "gate": "all unwaived criteria are evidenced, exactly one executed current-attempt full gate passed, the verdict is current, no review is open, no undeclared writes exist, and shared Git and GitHub state are consistent",
       "next": ["report", "blocked"]
     },
     {

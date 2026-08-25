@@ -28,6 +28,8 @@ Inspect the generated JSON evidence and Markdown report. Confirm:
 - decisions, deferrals, retries, failures, and unresolved risks;
 - current-revision product release impact and identified public-contract changes;
 - elapsed time and available cost/token telemetry.
+- review-cycle count, outcomes, finding-batch count, and closed-review elapsed time;
+- check tiers, per-tier elapsed time, evidence origin, and superseded attempt count.
 
 Do not claim live GitHub, deployment, or release state unless it was read during this loop.
 

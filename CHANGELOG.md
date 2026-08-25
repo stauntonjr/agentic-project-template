@@ -6,6 +6,12 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Added
 
+- Batched stable-candidate independent review cycles with deduplicated findings, explicit critical
+  emergency stops, tiered verification timing, immutable expensive-evidence reuse provenance, and
+  exactly one executed final full gate per completed attempt.
+- An explicit schema-1.2 to schema-1.3 in-flight loop migration that preserves the original dirty
+  baseline instead of recreating evidence after implementation.
+
 - Accepted shared-program versus dedicated-application GitHub Project topology, with
   Project #13 as the canonical field/view copy source.
 - Live, non-destructive Project title, saved-view, and repository-link drift auditing.

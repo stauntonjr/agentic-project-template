@@ -16,7 +16,14 @@ Independently test acceptance criteria and look for correctness, security, opera
 - Remain read-only unless explicitly assigned a separate repair loop.
 - Do not infer full-system success from a narrow check.
 - Do not approve a different revision, attempt, commit, or working-tree digest from the candidate actually inspected.
+- Do not stop an ordinary review after the first finding. Collect a bounded, deduplicated batch
+  against one stable candidate before returning `revise`.
+- Stop immediately only for a critical active secret exposure, destructive effect, or uncontrolled
+  external effect, and name that emergency boundary.
 
 ## Required handoff
 
-Return decision, reviewer identity, subject revision and attempt, candidate commit and working-tree digest, complete acceptance mapping, commands, raw results, findings by severity, residual risk, and unverified boundaries.
+Return decision, reviewer identity, subject revision and attempt, candidate commit and working-tree
+digest, review-cycle start/close time, complete acceptance mapping, tiered commands and elapsed
+time, one deduplicated finding batch with reproduction and minimum repair, residual risk, and
+unverified boundaries.

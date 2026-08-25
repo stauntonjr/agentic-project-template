@@ -80,7 +80,22 @@ Delegate only independent, bounded work. Never send two write-capable agents to 
 
 ## Verification and reporting
 
-Run cheap checks first, then targeted tests, then integration or release checks proportional to risk. A command exit proves only the boundary it exercised.
+Use the verification ladder: cheap static checks while editing, targeted checks for the touched
+behavior, affected-contract checks after one repair batch, and exactly one executed full gate for
+the final current attempt. Record the tier and elapsed time. A command exit proves only the
+boundary it exercised.
+
+Independent review is a bounded collection phase. Keep the candidate stable while the verifier
+collects and deduplicates ordinary findings, then return one batch with severity, criterion,
+reproduction, and minimum repair. Do not restart implementation after each finding. Interrupt the
+review immediately only for a critical active secret exposure, destructive effect, or uncontrolled
+external effect. Changing objective, acceptance, or write scope creates a new revision; repairing
+the implementation under the same contract creates a new attempt.
+
+Expensive external or model evidence may be reused only when its immutable artifact digest,
+source, and applicability are recorded and the candidate has not changed an input, tool,
+environment, oracle, or behavior that affects that evidence boundary. Otherwise rerun it. Reuse
+never replaces the executed final full gate.
 
 Before handoff:
 
