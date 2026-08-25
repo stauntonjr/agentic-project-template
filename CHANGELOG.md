@@ -121,6 +121,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Fixed
 
+- The installable plugin now uses a new patch/cache identity, and its isolated lifecycle probe
+  byte-verifies the installed GitHub planning skill and safety reference against the reviewed
+  generated distribution.
+
 - Adopted harness validation now imports the Actions supply-chain implementation from the
   harness-owned `harness.runtime` namespace. An incompatible application-owned
   `tools/check_actions_supply_chain.py` remains byte-for-byte intact, is reported as a

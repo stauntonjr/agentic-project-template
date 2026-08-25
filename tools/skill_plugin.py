@@ -32,6 +32,10 @@ MANIFEST_RELATIVE = PLUGIN_RELATIVE / ".codex-plugin/plugin.json"
 PROVENANCE_RELATIVE = PLUGIN_RELATIVE / "PROVENANCE.json"
 LICENSE_RELATIVE = PLUGIN_RELATIVE / "LICENSE"
 MARKETPLACE_RELATIVE = Path(".agents/plugins/marketplace.json")
+INSTALLED_VERIFICATION_RELATIVES = (
+    Path("skills/manage-github-planning/SKILL.md"),
+    Path("skills/manage-github-planning/references/safety.md"),
+)
 EXCLUDED_POLICY = (
     "AGENTS.md",
     ".codex/",
@@ -366,6 +370,7 @@ def runtime_probe(root: Path, codex: Path) -> dict[str, Any]:
         raise RuntimeError("runtime probe requires Bubblewrap (bwrap)")
     codex = codex.resolve(strict=True)
     user_home = Path.home()
+    manifest = plugin_manifest(root)
     source_names = sorted(path.name for path in (root / SOURCE_RELATIVE).iterdir() if path.is_dir())
     expected_plugin_names = [f"{PLUGIN_NAME}:{name}" for name in source_names]
     with tempfile.TemporaryDirectory(prefix="skill-plugin-runtime-", dir="/tmp") as temporary:
@@ -408,6 +413,29 @@ def runtime_probe(root: Path, codex: Path) -> dict[str, Any]:
         installed = _run_json(
             prefix + ["plugin", "add", f"{PLUGIN_NAME}@agentic-project-template", "--json"]
         )
+        if installed.get("version") != manifest["version"]:
+            raise RuntimeError(
+                "installed plugin version mismatch: "
+                f"expected {manifest['version']}, got {installed.get('version')}"
+            )
+        installed_manifests = [
+            path
+            for path in (codex_home / "plugins/cache").rglob(".codex-plugin/plugin.json")
+            if load_json(path).get("name") == PLUGIN_NAME
+        ]
+        if len(installed_manifests) != 1:
+            raise RuntimeError(
+                "installed plugin path mismatch: "
+                f"expected one manifest, got {len(installed_manifests)}"
+            )
+        installed_plugin_root = installed_manifests[0].parent.parent
+        for relative in INSTALLED_VERIFICATION_RELATIVES:
+            reviewed_path = root / PLUGIN_RELATIVE / relative
+            installed_path = installed_plugin_root / relative
+            if not installed_path.is_file() or installed_path.is_symlink():
+                raise RuntimeError(f"installed planning file is missing: {relative}")
+            if reviewed_path.read_bytes() != installed_path.read_bytes():
+                raise RuntimeError(f"installed planning file differs from reviewed source: {relative}")
         marketplace_path = root / MARKETPLACE_RELATIVE
         api = _app_server_results(
             prefix + ["app-server", "--stdio"],
@@ -501,6 +529,9 @@ def runtime_probe(root: Path, codex: Path) -> dict[str, Any]:
             "version": installed.get("version"),
             "plugin_skill_count": len(actual_plugin_names),
             "plugin_skill_names": actual_plugin_names,
+            "verified_installed_files": [
+                relative.as_posix() for relative in INSTALLED_VERIFICATION_RELATIVES
+            ],
             "collision": {
                 "repository_name": local_matches[0]["name"],
                 "repository_scope": local_matches[0]["scope"],

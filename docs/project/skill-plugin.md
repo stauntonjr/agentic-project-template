@@ -103,8 +103,11 @@ codex plugin marketplace upgrade agentic-project-template
 codex plugin add agentic-engineering-harness@agentic-project-template
 ```
 
-During same-version local development, use the plugin-creator cachebuster helper instead of
-hand-editing marketplace state, then reinstall and start a new thread.
+During local development, use the plugin-creator cachebuster helper instead of hand-editing
+marketplace state, then reinstall and start a new thread. The lifecycle probe byte-compares the
+installed `manage-github-planning/SKILL.md` and its `references/safety.md` with the reviewed
+generated distribution; checking only the canonical source tree does not prove the active plugin
+was refreshed.
 
 Uninstall the plugin first. Remove the marketplace only when no other installed plugin depends on
 it:

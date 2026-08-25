@@ -31,6 +31,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Issue #18 packages the seven reusable workflows as the installed SemVer-versioned
   `agentic-engineering-harness` Codex plugin while keeping repository-local skills canonical and
   project policy out of user configuration.
+- Issue #55 gives that plugin a distinct patch/cache identity and extends the isolated lifecycle
+  probe to byte-verify the installed GitHub planning skill and safety reference. The scope is
+  distribution freshness; it deliberately does not add command interception or shell policy.
 - Issue #46 adds ADR-0010 and loop schema 1.3: independent reviewers collect one deduplicated
   stable-candidate finding batch before repair, checks carry tier/duration/evidence-origin data,
   expensive retained evidence requires immutable provenance, and reported completion requires

@@ -216,7 +216,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "46acab8abdeb54bb90be380d277bdf7b5f3ff816091419aaf556b43fe25020a0",
+      "sha256": "07cec625d110660c3282c786de4e4f16c09ccd325b30523f76564dcf7d2c330a",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -292,7 +292,7 @@
       "ownership": "project-owned"
     },
     "docs/project/correction-log.md": {
-      "sha256": "3ebe008fd7576c5e37b4ba777f2eb09777865bce45709d1634fc170f321d9a67",
+      "sha256": "f828bad1e0269db964f41a2ee7db2ad0b1996ff4c0cf4c6dd65db70c57b77408",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
@@ -304,7 +304,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "0e4c54494217f8800a1e292530a24845702968620121be7eac6da1352f8360cd",
+      "sha256": "0678dcf0c4867f4ba4a6837ca1c35e01bfd477f46effe4f2c2b0d68f1add1ea4",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
@@ -328,7 +328,7 @@
       "ownership": "project-owned"
     },
     "docs/project/skill-plugin.md": {
-      "sha256": "5e39726b25de9c77970dbaaf45ffe07ea4fc83a8f01746b4cd5d2fd7d704025e",
+      "sha256": "762cd2f613a7376b573a9cd5044d571e50fbe7bdf487acd45c6ead11dc0ed24e",
       "ownership": "project-owned"
     },
     "docs/project/working-agreements.md": {
@@ -656,7 +656,7 @@
       "ownership": "upstream-owned"
     },
     "plugins/agentic-engineering-harness/.codex-plugin/plugin.json": {
-      "sha256": "9a4ad8347640f3346bf8ee73593e086c2a5aa93512f2aabbdccd048ffccebf10",
+      "sha256": "395e43ce6892de7b3eea3244cf7ee3949b7f70a71ee96a319115d8d5b78ed87c",
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/LICENSE": {
@@ -664,7 +664,7 @@
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/PROVENANCE.json": {
-      "sha256": "7514cf17a0b01111213bc56d5ba47b34accacca81981fab216a63bb2e69fce72",
+      "sha256": "e5819e24ff9c88dd1f99005c94302dbf6e46c11d6497260eefc0eafbff3539f2",
       "ownership": "project-owned"
     },
     "plugins/agentic-engineering-harness/skills/execute-engineering-loop/SKILL.md": {
@@ -832,7 +832,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_skill_plugin.py": {
-      "sha256": "b83b97ef532928aa6d6bacb4538cdca64d2554d4a8d970b6289c29eda176ed57",
+      "sha256": "877badf553fd683ab8168622f777a670a4d6319ada08a2020964b09929c5ee55",
       "ownership": "upstream-owned"
     },
     "tools/__init__.py": {
@@ -912,7 +912,7 @@
       "ownership": "upstream-owned"
     },
     "tools/skill_plugin.py": {
-      "sha256": "a92c30bebde8603ba78dcbc7929e9309307d2228012321c23a12ca83460ae27f",
+      "sha256": "d8480c1ccfc4df2aabdf25259ecfe25dc60349b7901b406980de0df20c21f21b",
       "ownership": "upstream-owned"
     },
     "uv.lock": {
