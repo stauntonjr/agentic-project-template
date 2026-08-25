@@ -23,6 +23,8 @@ from harness.runtime.model_stress import (  # noqa: E402
 )
 from harness.runtime.model_stress_runner import (  # noqa: E402
     CORPUS_TASK_CLASSES,
+)
+from harness.runtime.model_stress_runner import (  # noqa: E402
     load_task as load_model_stress_task,
 )
 
@@ -84,6 +86,8 @@ REQUIRED_PATHS = (
     "tools/loop_telemetry.py",
     "tools/model_stress.py",
     "tools/model_stress_runner.py",
+    "harness/runtime/codex_subscription_proxy.py",
+    "harness/runtime/model_stress_runner.py",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",

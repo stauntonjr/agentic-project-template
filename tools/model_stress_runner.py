@@ -13,9 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from harness.runtime.codex_subscription_proxy import (  # noqa: E402
+    SubscriptionProxyError,
+    load_codex_subscription,
+)
 from harness.runtime.model_stress_runner import (  # noqa: E402
+    CODEX_SOL_CONTROL_TARGET,
+    EXECUTION_TARGETS,
+    LOCAL_QWEN_TARGET,
     RunnerError,
     RunnerExecutionError,
+    codex_catalog_preflight,
     load_task,
     run_paired,
     safe_output_path,
@@ -36,8 +44,18 @@ def main() -> int:
     parser.add_argument("--provider")
     parser.add_argument("--model")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
+    parser.add_argument(
+        "--execution-target",
+        choices=sorted(EXECUTION_TARGETS),
+        default=LOCAL_QWEN_TARGET,
+    )
     parser.add_argument("--serving-runtime")
     parser.add_argument("--serving-recipe")
+    parser.add_argument(
+        "--codex-auth-path",
+        type=Path,
+        default=Path.home() / ".codex/auth.json",
+    )
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -48,10 +66,23 @@ def main() -> int:
         task, digest = load_task(task_path, root=root)
         level = validate_trials(args.trials)
         if args.action == "check":
+            check_ok = True
+            subscription_ready = False
+            subscription_error = None
+            if args.execution_target == CODEX_SOL_CONTROL_TARGET:
+                try:
+                    load_codex_subscription(args.codex_auth_path)
+                    if args.pi is None:
+                        raise RunnerError("subscription preflight requires the exact Pi executable")
+                    codex_catalog_preflight(args.pi)
+                    subscription_ready = True
+                except (RunnerError, SubscriptionProxyError) as exc:
+                    check_ok = False
+                    subscription_error = str(exc)
             print(
                 json.dumps(
                     {
-                        "ok": True,
+                        "ok": check_ok,
                         "model_invoked": False,
                         "task_id": task["id"],
                         "task_class": task["task_class"],
@@ -60,12 +91,14 @@ def main() -> int:
                         "capabilities": {
                             "bubblewrap": shutil.which("bwrap") is not None,
                             "pi_argument_required_for_run": True,
+                            "codex_chatgpt_subscription_ready": subscription_ready,
+                            "codex_chatgpt_subscription_error": subscription_error,
                         },
                     },
                     indent=2,
                 )
             )
-            return 0
+            return 0 if check_ok else 2
         missing = [
             name
             for name, value in (
@@ -91,6 +124,8 @@ def main() -> int:
             serving_runtime=args.serving_runtime,
             serving_recipe=args.serving_recipe,
             trials=args.trials,
+            execution_target=args.execution_target,
+            codex_auth_path=args.codex_auth_path,
         )
         model_invoked = True
         errors = validate_result(payload)

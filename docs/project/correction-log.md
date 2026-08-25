@@ -233,3 +233,124 @@ failure exposes an escaped defect with a deterministic oracle, create a candidat
 - Prevention: the lane-command regression requires the synthetic argument while retaining the
   read-only config mount; future reports must distinguish a Pi process start from a provider-backed,
   settled model response.
+
+## LOCAL-RUNNER-007: API-key control design conflicted with the authorized subscription boundary
+
+- Date: 2026-08-24.
+- Workflow: add a GPT-5.6 Sol control to the paired Pi model-stress runner.
+- Provenance: human authorization and local design inspection in the agentic-project-template
+  workspace.
+- Failed approach: the first proposed control would have accepted an OpenAI API key through a
+  credential-isolating proxy.
+- Error signature: the human owner explicitly prohibited an OpenAI API key and required use of the
+  existing ChatGPT Pro/Codex subscription.
+- Mutation check: no OpenAI request or model invocation occurred; no API key was read, printed,
+  passed to Pi, persisted, or added to retained evidence. Only uncommitted local runner design work
+  existed when the approach was stopped.
+- Classification: authorization and credential-boundary mismatch, not a provider outage,
+  authentication rejection, model failure, or Pi catalog limitation.
+- Corrected path:
+  1. Use Pi's native `openai-codex` Responses provider and exact `gpt-5.6-sol` model.
+  2. Validate the existing Codex ChatGPT login while rejecting any API-key auth field.
+  3. Keep the short-lived OAuth token in a host relay and give Pi only a random per-run canary JWT.
+  4. Resolve the exact Pi model in a credential-free, offline catalog preflight before a request.
+  5. Run a bounded smoke before any repeated paired evaluation.
+- Verification: focused tests prove API-key rejection, private bounded no-symlink auth loading,
+  canary authentication, fixed upstream routing, credential substitution, request budgets,
+  sanitized Pi catalog resolution, exact control provenance, and no inherited API-key environment.
+- Prevention: ADR-0009 and the runner make the subscription target explicit and fail closed;
+  control documentation states that Pi's `--api-key` flag carries only a non-secret canary value.
+
+## LOCAL-RUNNER-008: Pi Codex credential synchronization required ephemeral state
+
+- Date: 2026-08-24.
+- Workflow: run the first bounded GPT-5.6 Sol subscription-control smoke through Pi 0.84.1.
+- Provenance: sanitized paired result, loopback relay metrics, and a no-credential disposable Pi
+  reproduction.
+- Failed approach: mounted the complete generated Pi agent directory read-only, assuming the
+  explicit non-secret canary argument would prevent all credential-store writes.
+- Error signature: Pi attempted `setRuntimeApiKey` synchronization for `openai-codex` and exited on
+  a read-only `models-store.json` before emitting JSON events or reaching the relay.
+- Mutation check: both lanes exited in under one second, changed no disposable task file, reported
+  no provider tokens, and the relay observed zero requests and zero bytes. No ChatGPT model request,
+  API-key use, GitHub write, or host credential/configuration mutation occurred.
+- Classification: Pi runtime-state mount incompatibility, not a ChatGPT authentication rejection,
+  GPT-5.6 Sol result, relay transport failure, or subscription-usage event.
+- Corrected path: keep generated `models.json` and `settings.json` individually read-only while
+  giving Pi an empty, sandbox-local writable agent-state directory for lock and runtime-store
+  files. Continue to mount no host auth store and pass only the random canary.
+- Verification: a no-credential reproduction must progress beyond credential synchronization to
+  the deliberately closed loopback endpoint; the corrected host safety tests and bounded live
+  smoke must then pass their respective startup and relay boundaries.
+- Prevention: lane-command regressions require both configuration files to remain read-only,
+  forbid an auth-file mount, and preserve the ephemeral-state layout.
+
+## LOCAL-RUNNER-009: subscription auth parsing accepted ambiguous or malformed structures
+
+- Date: 2026-08-24.
+- Workflow: independently verify the GPT-5.6 Sol subscription-control candidate before publication.
+- Provenance: synthetic private auth files and JWTs containing no real credential or account data.
+- Failed approach: parsed the bounded Codex auth file with ordinary JSON semantics and accessed the
+  nested JWT auth claim before confirming it was an object.
+- Error signature: duplicate top-level JSON keys were accepted by last-value-wins parsing, while a
+  string or list at the auth-claim path raised an uncaught `AttributeError` in the CLI check path.
+- Mutation check: the verifier used only disposable local files; no model, provider, credential,
+  candidate, GitHub object, or external repository was invoked or mutated.
+- Classification: fail-closed input-validation defect, not a ChatGPT authentication rejection or
+  subscription outage.
+- Corrected path: reject duplicate keys in both the auth document and decoded JWT claims, validate
+  the nested claim as an object before reading its account ID, and translate malformed input into
+  the runner's structured non-invocation result.
+- Verification: loader regressions cover duplicate auth keys and string/list claim shapes; the CLI
+  regression requires exit 2, empty stderr, no traceback, `ok: false`, and `model_invoked: false`.
+- Prevention: all host credential metadata remains bounded, private, no-symlink, strictly parsed,
+  shape-checked, and outside the Pi/model sandbox before any provider preflight or request.
+
+## LOCAL-RUNNER-010: unsafe credential header values could reach exception text
+
+- Date: 2026-08-24.
+- Workflow: independently verify the GPT-5.6 Sol subscription-control credential boundary.
+- Provenance: synthetic private auth files and a fake upstream connection; no real credential or
+  provider request.
+- Failed approach: validated JWT structure and account consistency without first restricting the
+  token and account ID to bounded header-safe character sets; upstream header construction errors
+  also did not catch `ValueError`.
+- Error signature: a synthetic access token with a trailing line feed reached `http.client`, whose
+  rejected-header exception could include the supplied bearer value; control characters in a
+  synthetic account ID had the same disclosure class.
+- Mutation check: the verifier and regression use only disposable synthetic values and a mocked
+  connection; no model, provider, credential, candidate, GitHub object, or external repository is
+  invoked or mutated.
+- Classification: credential-metadata validation and exception-sanitization defect, not a ChatGPT
+  authentication rejection or subscription outage.
+- Corrected path: accept only bounded JWT-token characters and bounded account-ID characters before
+  decoding or constructing a credential; apply the same check in the relay constructor; catch an
+  upstream header `ValueError` and return only the fixed sanitized relay error.
+- Verification: loader regressions reject newline/carriage-return cases without echo, and a host
+  relay regression forces an exception containing the synthetic bearer while requiring HTTP 502,
+  empty stderr, no traceback, and no token or account value in the response.
+- Prevention: no credential-derived string reaches an HTTP header until strict syntax, size,
+  identity, expiry, private-file, duplicate-key, and nested-claim checks all pass.
+
+## LOCAL-RUNNER-011: Pi Codex ignored the configured output-token option
+
+- Date: 2026-08-24.
+- Workflow: independently compare the GPT-5.6 Sol control contract with installed Pi 0.84.1.
+- Provenance: read-only inspection of Pi's installed OpenAI-compatible and Codex Responses provider
+  implementations plus the retained sanitized results.
+- Failed approach: treated the generated `maxTokens: 4096` model override as an enforced provider
+  request limit for both local Qwen and Codex subscription targets.
+- Error signature: Pi's OpenAI-compatible completions implementation transmits its max-token field,
+  but the Codex Responses implementation does not read the option or send `max_output_tokens`.
+- Mutation check: the finding used static local inspection only; no model, provider, credential,
+  GitHub object, candidate repository, or external repository was invoked or mutated.
+- Classification: evidence-provenance and comparison-contract defect, not a GPT-5.6 Sol failure,
+  timeout, or subscription rejection.
+- Corrected path: schema 1.3 records `output_token_limit_enforcement` in the provider boundary;
+  local Qwen requires `provider-request`, while Codex Sol requires `runner-config-only`. The Sol
+  report excludes output-token enforcement from the equal-limit claim and discloses the asymmetry.
+- Verification: custom and Draft 2020-12 validators reject target/enforcement mismatches; retained
+  Sol artifacts are transparently annotated without changing any trial, usage, scope, request,
+  timing, tool-error, or oracle value, and both original and corrected hashes are reported.
+- Prevention: future cross-provider comparisons must distinguish configuration intent from an
+  observed or source-verified provider request boundary.

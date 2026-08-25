@@ -35,6 +35,13 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   three-trial-per-lane acceptance candidate is now complete: bare passed 0/9 and harness-enabled
   passed 1/9, with the only pass on the implementation task. The observed +1 is not a general
   harness-lift claim and remains unaccepted pending a separate human decision.
+- ADR-0009 adds an explicitly selected `openai-codex/gpt-5.6-sol` frontier control through the
+  existing Codex ChatGPT Pro subscription, without an OpenAI API key or a credential inside Pi's
+  sandbox. It reuses the exact task bytes and paired protocol, but its evolved harness-resource
+  bundle is not byte-identical to the earlier Qwen bundle; it never replaces or self-accepts the
+  Qwen baseline. Exact execution results and limitations are maintained in
+  `docs/reports/issue-21-gpt-5-6-sol-control.md`; this handoff intentionally does not duplicate
+  volatile trial totals.
 - Agentic Repo Auditor Issue #8 published the first packaged, read-only audit against pinned
   S3NTINEL commit `14ba0416` through Auditor PR #15. The exact installed CLI output is deterministic,
   the target fingerprint remained unchanged, and the report explicitly excludes application and
@@ -89,6 +96,9 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - ADR-0008 and `harness/model-stress.json` make a paired local Qwen canary due after ten loops,
   agent-control changes, or minor/major release assessment. The offline status gate and disposable
   paired runner are implemented; live evidence remains supplemental and cannot self-approve.
+- ADR-0009 adds a credential-isolated ChatGPT subscription relay for an optional exact GPT-5.6 Sol
+  control. Generated Pi configuration stays read-only, runtime state is ephemeral, the host OAuth
+  credential never enters the model sandbox, and API-key auth is rejected.
 
 ## Open decisions
 
