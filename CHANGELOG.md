@@ -6,6 +6,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Changed
 
+- Stopped new-project intake from copying the template-maintenance root `tests/` suite into derived
+  applications. The raw template unittest stage now runs only in template mode; generated
+  repositories retain the portable executable harness checks and run application tests through
+  their selected quality profile.
 - Feature-froze the harness around its implemented original core and made one time-boxed ordinary
   greenfield application the sole active proof target. Later security, provider, orchestration,
   analytics, and semantic-merge work is explicitly deferred rather than implied by the MVP.

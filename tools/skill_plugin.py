@@ -168,9 +168,7 @@ def validate_marketplace(root: Path) -> list[str]:
     if not isinstance(plugins, list):
         return errors + ["marketplace plugins must be an array"]
     matches = [
-        item
-        for item in plugins
-        if isinstance(item, dict) and item.get("name") == PLUGIN_NAME
+        item for item in plugins if isinstance(item, dict) and item.get("name") == PLUGIN_NAME
     ]
     if len(matches) != 1:
         errors.append("marketplace must contain exactly one plugin entry")
@@ -406,9 +404,7 @@ def runtime_probe(root: Path, codex: Path) -> dict[str, Any]:
             "--",
             PROBE_BINARY,
         ]
-        marketplace_add = _run_json(
-            prefix + ["plugin", "marketplace", "add", str(root), "--json"]
-        )
+        marketplace_add = _run_json(prefix + ["plugin", "marketplace", "add", str(root), "--json"])
         installed = _run_json(
             prefix + ["plugin", "add", f"{PLUGIN_NAME}@agentic-project-template", "--json"]
         )
@@ -489,8 +485,7 @@ def runtime_probe(root: Path, codex: Path) -> dict[str, Any]:
         if after_remove.get("installed"):
             raise RuntimeError("plugin remained installed after removal")
         marketplace_removed = _run_json(
-            prefix
-            + ["plugin", "marketplace", "remove", "agentic-project-template", "--json"]
+            prefix + ["plugin", "marketplace", "remove", "agentic-project-template", "--json"]
         )
         return {
             "ok": True,

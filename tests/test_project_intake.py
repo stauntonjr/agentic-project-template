@@ -238,12 +238,22 @@ class ProjectIntakeTests(unittest.TestCase):
             target = Path(directory) / "target"
             source.mkdir()
             (source / "keep.txt").write_text("source\n", encoding="utf-8")
+            (source / "tests").mkdir()
+            (source / "tests/test_template.py").write_text(
+                "template maintenance\n", encoding="utf-8"
+            )
+            (source / "fixtures/tests").mkdir(parents=True)
+            (source / "fixtures/tests/keep.txt").write_text(
+                "nested application fixture\n", encoding="utf-8"
+            )
             (source / ".venv/lib").mkdir(parents=True)
             (source / ".venv/lib/dependency.py").write_text("generated\n", encoding="utf-8")
             (source / "node_modules/package").mkdir(parents=True)
             (source / "node_modules/package/index.js").write_text("generated\n", encoding="utf-8")
             copy_template(source, target)
             self.assertTrue((target / "keep.txt").is_file())
+            self.assertFalse((target / "tests").exists())
+            self.assertTrue((target / "fixtures/tests/keep.txt").is_file())
             self.assertFalse((target / ".venv").exists())
             self.assertFalse((target / "node_modules").exists())
 
@@ -333,6 +343,26 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertTrue((target / "harness/intake.json").is_file())
             self.assertTrue((target / ".pi/settings.json").is_file())
             self.assertTrue((target / "harness/adapters/pi.json").is_file())
+            self.assertFalse((target / "tests").exists())
+            (target / "tests").mkdir()
+            (target / "tests/test_application.py").write_text(
+                "raise RuntimeError('template test stage executed application tests')\n",
+                encoding="utf-8",
+            )
+            template_test_stage = subprocess.run(
+                ["make", "test"],
+                cwd=target,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=subprocess_environment(),
+            )
+            self.assertEqual(
+                0,
+                template_test_stage.returncode,
+                template_test_stage.stdout + template_test_stage.stderr,
+            )
 
     def test_python_fixture_creates_executable_profile_contract(self) -> None:
         if not load_json(ROOT / "harness/project.yaml").get("template_mode", False):
