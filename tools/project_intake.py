@@ -374,15 +374,24 @@ Generated from `harness/project.yaml` and {intake_source}.
 
 def copy_template(source: Path, target: Path) -> None:
     safe_target_path(target, "harness/project.yaml")
+
+    generated_ignore = shutil.ignore_patterns(
+        *GENERATED_PARTS,
+        *GENERATED_NAMES,
+        "*.egg-info",
+        "*.pyc",
+    )
+
+    def ignore_template_only_paths(directory: str, names: list[str]) -> set[str]:
+        ignored = set(generated_ignore(directory, names))
+        if Path(directory) == source:
+            ignored.add("tests")
+        return ignored
+
     shutil.copytree(
         source,
         target,
-        ignore=shutil.ignore_patterns(
-            *GENERATED_PARTS,
-            *GENERATED_NAMES,
-            "*.egg-info",
-            "*.pyc",
-        ),
+        ignore=ignore_template_only_paths,
     )
 
 

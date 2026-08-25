@@ -4,7 +4,7 @@ check:
 	python3 tools/harness_check.py
 
 test:
-	python3 -m unittest discover -s tests -v
+	@python3 -c 'import json, subprocess, sys; project = json.load(open("harness/project.yaml", encoding="utf-8")); sys.exit(subprocess.call([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]) if project.get("template_mode") else 0)'
 
 compile:
 	python3 -m compileall -q tools tests

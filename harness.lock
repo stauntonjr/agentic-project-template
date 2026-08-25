@@ -216,7 +216,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "c96ee4b4a38d9326503c30d07bdf3dd71036de3cbaf86587b198a63a3443def6",
+      "sha256": "46acab8abdeb54bb90be380d277bdf7b5f3ff816091419aaf556b43fe25020a0",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -228,7 +228,7 @@
       "ownership": "merge-required"
     },
     "Makefile": {
-      "sha256": "6f2422d99110ca0b42d6907ccab36118e28c0d07cc8795e118c540d7b5bcf472",
+      "sha256": "4cc87fa4605dfbbd6d5ec0e9317308d0743f247425b68971829aa20fc79eef6f",
       "ownership": "merge-required"
     },
     "README.md": {
@@ -304,7 +304,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "9e37946dc1470c9ad60d87e744f6ac07e3a5c624d9b64cdeb14bcac86be637b3",
+      "sha256": "0e4c54494217f8800a1e292530a24845702968620121be7eac6da1352f8360cd",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
@@ -820,7 +820,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_project_intake.py": {
-      "sha256": "44b530717da39036d9e1a83d4cecef93b3900d63541d01d05b9fb8484850249e",
+      "sha256": "00a7b65e3e945244978cc454003dfa01af9c76ba38f0f762c2b71d5edd8c7cc4",
       "ownership": "upstream-owned"
     },
     "tests/test_recovery_scenarios.py": {
@@ -892,7 +892,7 @@
       "ownership": "upstream-owned"
     },
     "tools/project_intake.py": {
-      "sha256": "acaee0be376568ed5895502267eae42f6037dcc8cdd530c443420d6c9d2eddf1",
+      "sha256": "a46a3917de3a6d0b752eec5fab30e9a3ab96bf5862ef2e7d464d8a578025ee69",
       "ownership": "upstream-owned"
     },
     "tools/python_package_smoke.py": {
@@ -912,7 +912,7 @@
       "ownership": "upstream-owned"
     },
     "tools/skill_plugin.py": {
-      "sha256": "db55f1b02bf0c7dbfc0fc0aacddfd61c7b08ecc87f55c158d1574808ccca3829",
+      "sha256": "a92c30bebde8603ba78dcbc7929e9309307d2228012321c23a12ca83460ae27f",
       "ownership": "upstream-owned"
     },
     "uv.lock": {

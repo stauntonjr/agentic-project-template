@@ -18,6 +18,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   implemented and feature-frozen; Issues #5, #16, #19, #20, and #21 are deferred until one ordinary
   greenfield application satisfies `docs/project/mvp-reset.md`. Do not resume Issue #16 or add
   harness machinery to make the probe pass.
+- Issue #53 is the sole bounded blocker found by that proof: new-project generation no longer copies
+  the template-maintenance `tests/` suite into applications. Portable harness checks remain in the
+  authoritative `make smoke` path; the raw template unittest stage runs only in template mode,
+  while applications run their own tests through the selected quality profile.
 - Latest implemented harness changes: Issue #14 enforces the three-failure stop, reviewed handoff
   resume, and a sanitized six-class recovery matrix. Issue #15 adds a read-only Kortex provenance
   and governed-learning evaluation. Issue #2 validates layered domain routing on S3NTINEL without
