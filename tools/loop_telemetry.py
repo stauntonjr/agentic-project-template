@@ -345,7 +345,7 @@ def build_summary(
         "completeness": "available",
     }
     active = active_criterion_ids(record)
-    candidate_bound = record.get("schema_version") == "1.3"
+    candidate_bound = record.get("schema_version") in {"1.3", "1.4"}
     passed = (
         current_passed_criteria(record, current_candidate).intersection(active)
         if current_candidate is not None
@@ -704,7 +704,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("; ".join(errors))
             current_candidate = (
                 candidate_identity(root, record)
-                if record.get("schema_version") == "1.3"
+                if record.get("schema_version") in {"1.3", "1.4"}
                 else None
             )
             summary_payload = build_summary(record, data, current_candidate)

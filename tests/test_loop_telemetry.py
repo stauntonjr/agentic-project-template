@@ -162,7 +162,7 @@ class LoopTelemetryTests(unittest.TestCase):
         self.assertEqual("unavailable", acceptance["completeness"])
         self.assertEqual("2026-08-23T11:00:00Z", summary["observation_time"])
 
-    def test_schema_13_acceptance_is_bound_to_the_explicit_current_candidate(self) -> None:
+    def test_candidate_bound_schemas_require_the_explicit_current_candidate(self) -> None:
         current = {
             "commit": "b" * 40,
             "tree_digest": "sha256:" + "b" * 64,
@@ -173,63 +173,68 @@ class LoopTelemetryTests(unittest.TestCase):
             "tree_digest": "sha256:" + "a" * 64,
             "release_impact_digest": "sha256:" + "c" * 64,
         }
-        for state in ("reported", "blocked", "abandoned"):
-            for origin in ("executed", "reused"):
-                with self.subTest(state=state, origin=origin):
-                    record = {
-                        **loop_record(),
-                        "schema_version": "1.3",
-                        "state": state,
-                        "acceptance_criteria": [
-                            {"id": "AC1", "text": "one", "waiver": None}
-                        ],
-                        "checks": [
-                            {
-                                "revision": 2,
-                                "attempt_id": 1,
-                                "status": "passed",
-                                "criterion_ids": ["AC1"],
-                                "evidence_origin": origin,
-                                "candidate": stale,
-                            }
-                        ],
-                    }
-                    summary = build_summary(
-                        record,
-                        {"schema_version": "1.0", "run_id": "dogfood-loop"},
-                        current,
-                    )
-                    acceptance = next(
-                        item
-                        for item in summary["measurements"]
-                        if item["name"] == "acceptance_pass_rate"
-                    )
-                    self.assertEqual(0.0, acceptance["value"])
-                    self.assertEqual(0, acceptance["numerator"])
+        for schema_version in ("1.3", "1.4"):
+            for state in ("reported", "blocked", "abandoned"):
+                for origin in ("executed", "reused"):
+                    with self.subTest(schema_version=schema_version, state=state, origin=origin):
+                        record = {
+                            **loop_record(),
+                            "schema_version": schema_version,
+                            "state": state,
+                            "acceptance_criteria": [
+                                {"id": "AC1", "text": "one", "waiver": None}
+                            ],
+                            "checks": [
+                                {
+                                    "revision": 2,
+                                    "attempt_id": 1,
+                                    "status": "passed",
+                                    "criterion_ids": ["AC1"],
+                                    "evidence_origin": origin,
+                                    "candidate": stale,
+                                }
+                            ],
+                        }
+                        summary = build_summary(
+                            record,
+                            {"schema_version": "1.0", "run_id": "dogfood-loop"},
+                            current,
+                        )
+                        acceptance = next(
+                            item
+                            for item in summary["measurements"]
+                            if item["name"] == "acceptance_pass_rate"
+                        )
+                        self.assertEqual(0.0, acceptance["value"])
+                        self.assertEqual(0, acceptance["numerator"])
 
-                    record["checks"][0]["candidate"] = current
-                    current_summary = build_summary(
-                        record,
-                        {"schema_version": "1.0", "run_id": "dogfood-loop"},
-                        current,
-                    )
-                    current_acceptance = next(
-                        item
-                        for item in current_summary["measurements"]
-                        if item["name"] == "acceptance_pass_rate"
-                    )
-                    self.assertEqual(1.0, current_acceptance["value"])
+                        record["checks"][0]["candidate"] = current
+                        current_summary = build_summary(
+                            record,
+                            {"schema_version": "1.0", "run_id": "dogfood-loop"},
+                            current,
+                        )
+                        current_acceptance = next(
+                            item
+                            for item in current_summary["measurements"]
+                            if item["name"] == "acceptance_pass_rate"
+                        )
+                        self.assertEqual(1.0, current_acceptance["value"])
 
-    def test_schema_13_acceptance_is_unavailable_without_candidate_identity(self) -> None:
-        record = {**loop_record(), "schema_version": "1.3"}
-        summary = build_summary(
-            record, {"schema_version": "1.0", "run_id": "dogfood-loop"}
-        )
-        acceptance = next(
-            item for item in summary["measurements"] if item["name"] == "acceptance_pass_rate"
-        )
-        self.assertIsNone(acceptance["value"])
-        self.assertEqual("unavailable", acceptance["completeness"])
+    def test_candidate_bound_acceptance_is_unavailable_without_candidate_identity(self) -> None:
+        for schema_version in ("1.3", "1.4"):
+            with self.subTest(schema_version=schema_version):
+                record = {**loop_record(), "schema_version": schema_version}
+                summary = build_summary(
+                    record, {"schema_version": "1.0", "run_id": "dogfood-loop"}
+                )
+                acceptance = next(
+                    item
+                    for item in summary["measurements"]
+                    if item["name"] == "acceptance_pass_rate"
+                )
+                self.assertIsNone(acceptance["value"])
+                self.assertEqual("unavailable", acceptance["completeness"])
 
         legacy = build_summary(
             loop_record(), {"schema_version": "1.0", "run_id": "dogfood-loop"}

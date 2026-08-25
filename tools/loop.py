@@ -34,9 +34,45 @@ EMERGENCY_BOUNDARIES = (
     "destructive-effect",
     "uncontrolled-external-effect",
 )
+SOLUTION_DISPOSITIONS = ("build", "adopt", "adapt", "defer")
+RESEARCH_STATUSES = ("not-material", "completed", "blocked")
+SOLUTION_TRIGGERS = (
+    "initial",
+    "standardized-capability",
+    "security-sensitive-capability",
+    "new-parser",
+    "sandbox",
+    "protocol",
+    "cryptography",
+    "concurrency-control",
+    "filesystem-security",
+    "material-dependency",
+    "write-scope-growth",
+    "threat-model-expansion",
+    "budget-risk",
+)
+FINDING_DISPOSITIONS = (
+    "repair-in-scope",
+    "simplify",
+    "narrow-claim",
+    "defer",
+    "accept-risk",
+    "revise-contract",
+    "emergency-stop",
+)
+SCOPE_CHANGES = ("none", "within-contract", "expands-contract")
+COMPLEXITY_CHANGES = ("none", "reduced", "bounded", "material")
+BUDGET_STATUSES = ("on-budget", "at-risk", "exceeded", "unavailable")
+PROPORTIONALITY_RECOMMENDATIONS = (
+    "proceed",
+    "simplify",
+    "defer",
+    "revise-contract",
+    "escalate-to-owner",
+)
 RELEASE_IMPACTS = ("none", "patch", "minor", "major")
 FINAL_STATES = ("reported", "blocked", "abandoned")
-RUN_SCHEMA_VERSION = "1.3"
+RUN_SCHEMA_VERSION = "1.4"
 RESUME_HANDOFF_SCHEMA_VERSION = "1.0"
 DEFAULT_MAXIMUM_CONSECUTIVE_FAILURES = 3
 
@@ -77,11 +113,13 @@ def load_run(root: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
 def migrate_run(root: Path, run_id: str) -> dict[str, Any]:
     path, record = load_run(root, run_id)
     source_version = record.get("schema_version")
-    if source_version not in {"1.2", RUN_SCHEMA_VERSION}:
+    if source_version not in {"1.2", "1.3", RUN_SCHEMA_VERSION}:
         raise ValueError(
             f"no engineering-loop migration from schema {source_version!r} to {RUN_SCHEMA_VERSION}"
         )
     record.setdefault("review_cycles", [])
+    record.setdefault("scope_contract", None)
+    record.setdefault("solution_assessments", [])
     for check in record.get("checks", []):
         check.setdefault("tier", "targeted")
         check.setdefault("duration_seconds", 0.0)
@@ -92,7 +130,22 @@ def migrate_run(root: Path, run_id: str) -> dict[str, Any]:
         check.setdefault("candidate", None)
     for verdict in record.get("verdicts", []):
         verdict.setdefault("review_id", None)
-    if source_version == "1.2":
+    for review in record.get("review_cycles", []):
+        review.setdefault("proportionality", None)
+        review.setdefault("resolution", None)
+        if isinstance(review.get("resolution"), dict):
+            review["resolution"].setdefault(
+                "next_transition",
+                "new-attempt"
+                if review["resolution"].get("decision") == "emergency-stopped"
+                else "none",
+            )
+        for finding in review.get("findings", []):
+            finding.setdefault("disposition", None)
+    for assessment in record.get("solution_assessments", []):
+        assessment.setdefault("supersedes", None)
+        assessment.setdefault("superseded_by", None)
+    if source_version != RUN_SCHEMA_VERSION:
         record["schema_version"] = RUN_SCHEMA_VERSION
         record.setdefault("telemetry", {}).setdefault("schema_migrations", []).append(
             {
@@ -154,6 +207,64 @@ def parse_criteria(values: Iterable[str]) -> list[dict[str, Any]]:
     if not criteria:
         raise ValueError("at least one acceptance criterion is required")
     return criteria
+
+
+def nonempty_unique_text(values: Iterable[str], *, field: str) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{field} entries must be non-empty strings")
+        text = value.strip()
+        if text in seen:
+            raise ValueError(f"{field} entries must be unique")
+        seen.add(text)
+        normalized.append(text)
+    if not normalized:
+        raise ValueError(f"at least one {field} entry is required")
+    return normalized
+
+
+def make_scope_contract(
+    *,
+    in_scope: Iterable[str],
+    out_of_scope: Iterable[str],
+    assurance_boundary: str,
+    budget_constraints: Iterable[str],
+    revision_triggers: Iterable[str],
+) -> dict[str, Any]:
+    if not isinstance(assurance_boundary, str) or not assurance_boundary.strip():
+        raise ValueError("assurance boundary is required")
+    return {
+        "in_scope": nonempty_unique_text(in_scope, field="in-scope"),
+        "out_of_scope": nonempty_unique_text(out_of_scope, field="out-of-scope"),
+        "assurance_boundary": assurance_boundary.strip(),
+        "budget_constraints": nonempty_unique_text(budget_constraints, field="budget constraints"),
+        "revision_triggers": nonempty_unique_text(
+            revision_triggers, field="scope revision triggers"
+        ),
+    }
+
+
+def validate_scope_contract(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("scope contract is required")
+    required = {
+        "in_scope",
+        "out_of_scope",
+        "assurance_boundary",
+        "budget_constraints",
+        "revision_triggers",
+    }
+    if set(value) != required:
+        raise ValueError("scope contract has missing or unknown fields")
+    return make_scope_contract(
+        in_scope=value["in_scope"],
+        out_of_scope=value["out_of_scope"],
+        assurance_boundary=value["assurance_boundary"],
+        budget_constraints=value["budget_constraints"],
+        revision_triggers=value["revision_triggers"],
+    )
 
 
 def path_fingerprint(path: Path) -> tuple[str, str | None]:
@@ -442,6 +553,7 @@ def start_run(
     acceptance_criteria: list[dict[str, Any]] | None = None,
     declared_write_set: list[dict[str, str]] | None = None,
     implementers: list[str] | None = None,
+    scope_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not objective.strip():
         raise ValueError("objective is required")
@@ -462,6 +574,7 @@ def start_run(
         raise ValueError("at least one implementer identity is required")
     if len(authors) != len(set(authors)):
         raise ValueError("implementer identities must be unique")
+    validated_scope = validate_scope_contract(scope_contract)
     branch = git_text(root, "branch", "--show-current") or "DETACHED_OR_UNBORN"
     record: dict[str, Any] = {
         "schema_version": RUN_SCHEMA_VERSION,
@@ -472,6 +585,8 @@ def start_run(
         "objective": objective,
         "issue": issue,
         "acceptance_criteria": criteria,
+        "scope_contract": validated_scope,
+        "solution_assessments": [],
         "declared_write_set": declared_write_set or [],
         "implementers": authors,
         "baseline": {
@@ -513,6 +628,88 @@ def active_criterion_ids(record: dict[str, Any]) -> set[str]:
         for item in record.get("acceptance_criteria", [])
         if not item.get("waiver") or item["waiver"].get("revision") != record.get("revision")
     }
+
+
+def current_solution_assessments(record: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        item
+        for item in record.get("solution_assessments", [])
+        if item.get("revision") == record.get("revision")
+    ]
+
+
+def active_solution_assessments(record: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        item for item in current_solution_assessments(record) if item.get("superseded_by") is None
+    ]
+
+
+def record_solution_assessment(
+    root: Path,
+    run_id: str,
+    *,
+    trigger: str,
+    disposition: str,
+    research_status: str,
+    rationale: str,
+    sources: Iterable[str],
+) -> dict[str, Any]:
+    if trigger not in SOLUTION_TRIGGERS:
+        raise ValueError(f"invalid solution-assessment trigger: {trigger}")
+    if disposition not in SOLUTION_DISPOSITIONS:
+        raise ValueError(f"invalid solution disposition: {disposition}")
+    if research_status not in RESEARCH_STATUSES:
+        raise ValueError(f"invalid research status: {research_status}")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError("solution-assessment rationale is required")
+    source_values = list(sources)
+    normalized_sources: list[str] = []
+    if source_values:
+        normalized_sources = nonempty_unique_text(source_values, field="solution sources")
+    if research_status == "completed" and not normalized_sources:
+        raise ValueError("completed solution research requires at least one source")
+    if trigger != "initial" and research_status == "not-material":
+        raise ValueError("triggered solution reassessment requires completed or blocked research")
+    path, record = load_run(root, run_id)
+    prior = [item for item in active_solution_assessments(record) if item.get("trigger") == trigger]
+    if len(prior) > 1:
+        raise ValueError(f"multiple active solution assessments exist for trigger {trigger}")
+    current_candidate = candidate_identity(root, record)
+    supersedes = None
+    if prior:
+        previous = prior[0]
+        same_candidate = previous.get("candidate") == current_candidate
+        if same_candidate:
+            if previous.get("research_status") != "blocked" or research_status == "blocked":
+                raise ValueError(
+                    "solution assessment already exists for "
+                    f"revision {record['revision']} trigger {trigger} and current candidate"
+                )
+            if research_status != "completed":
+                raise ValueError(
+                    "a blocked solution assessment can be superseded only by completed research"
+                )
+        supersedes = previous.get("assessment_id")
+    assessment_id = f"solution-{len(record.get('solution_assessments', [])) + 1:03d}"
+    assessment = {
+        "assessment_id": assessment_id,
+        "revision": record["revision"],
+        "attempt_id": record["attempt_id"],
+        "trigger": trigger,
+        "disposition": disposition,
+        "research_status": research_status,
+        "rationale": rationale.strip(),
+        "sources": normalized_sources,
+        "supersedes": supersedes,
+        "superseded_by": None,
+        "candidate": current_candidate,
+        "recorded_at": utc_now(),
+    }
+    if prior:
+        prior[0]["superseded_by"] = assessment_id
+    record.setdefault("solution_assessments", []).append(assessment)
+    write_json(path, record)
+    return record
 
 
 def current_passed_criteria(
@@ -624,26 +821,82 @@ def current_finding_reviews(record: dict[str, Any]) -> list[dict[str, Any]]:
         cycle
         for cycle in current_closed_reviews(record)
         if cycle.get("outcome") in {"batch-ready", "emergency-stop"}
+        and cycle.get("resolution") is None
     ]
 
 
-def require_finding_repair_transition(root: Path, record: dict[str, Any]) -> None:
+def require_finding_repair_transition(
+    root: Path, record: dict[str, Any], *, transition: str
+) -> None:
+    emergency_resolutions = [
+        cycle
+        for cycle in current_closed_reviews(record)
+        if isinstance(cycle.get("resolution"), dict)
+        and cycle["resolution"].get("decision") == "emergency-stopped"
+    ]
+    if emergency_resolutions:
+        resolution = emergency_resolutions[-1]["resolution"]
+        if resolution.get("candidate") != candidate_identity(root, record):
+            raise ValueError("the emergency-stop resolution is stale for the repair candidate")
+        expected = {
+            "new-attempt": "attempt",
+            "contract-revision": "revision",
+        }.get(resolution.get("next_transition"))
+        if expected is None:
+            raise ValueError("emergency-stop resolution lacks a valid next transition")
+        if transition != expected:
+            raise ValueError(
+                "emergency-stop resolution requires "
+                + ("a new attempt" if expected == "attempt" else "a contract revision")
+            )
+        return
     finding_reviews = current_finding_reviews(record)
     if not finding_reviews:
         return
     finding_review = finding_reviews[-1]
-    repair_verdicts = [
-        verdict
-        for verdict in record.get("verdicts", [])
-        if verdict.get("revision") == record.get("revision")
-        and verdict.get("attempt_id") == record.get("attempt_id")
-        and verdict.get("review_id") == finding_review.get("review_id")
-        and verdict.get("decision") in {"revise", "reject"}
-    ]
-    if not repair_verdicts:
-        raise ValueError("a finding batch requires a matching revise or reject verdict before repair")
+    if not matching_repair_verdict(record, finding_review["review_id"]):
+        raise ValueError(
+            "a finding batch requires a matching revise or reject verdict before repair"
+        )
     if finding_review.get("closing_candidate") != candidate_identity(root, record):
-        raise ValueError("the finding-batch candidate changed before the repair attempt was recorded")
+        raise ValueError(
+            "the finding-batch candidate changed before the repair attempt was recorded"
+        )
+    if any(item.get("disposition") is None for item in finding_review.get("findings", [])):
+        raise ValueError("a finding batch requires complete finding dispositions before repair")
+    proportionality = finding_review.get("proportionality")
+    if not isinstance(proportionality, dict):
+        raise ValueError("a finding batch requires a proportionality review before repair")
+    if proportionality.get("candidate") != candidate_identity(root, record):
+        raise ValueError("the proportionality review is stale for the repair candidate")
+    recommendation = proportionality.get("recommendation")
+    dispositions = {
+        item.get("disposition", {}).get("decision") for item in finding_review.get("findings", [])
+    }
+    if transition == "attempt":
+        if recommendation not in {"proceed", "simplify"}:
+            raise ValueError(
+                "proportionality recommendation does not authorize an implementation attempt"
+            )
+        if dispositions & {"revise-contract", "emergency-stop"}:
+            raise ValueError(
+                "finding dispositions require contract revision, deferral, or escalation"
+            )
+        if not dispositions & {"repair-in-scope", "simplify", "narrow-claim"}:
+            raise ValueError("a no-code finding batch must use resolve-finding-batch")
+        if dispositions & {"simplify", "narrow-claim"} and recommendation != "simplify":
+            raise ValueError(
+                "simplification or narrowed-claim repair requires simplify recommendation"
+            )
+    elif transition == "revision":
+        if recommendation not in {"revise-contract", "escalate-to-owner"}:
+            raise ValueError("proportionality recommendation does not authorize contract revision")
+        if "revise-contract" not in dispositions:
+            raise ValueError("contract revision requires a revise-contract finding disposition")
+        if "emergency-stop" in dispositions:
+            raise ValueError("an emergency-stop batch cannot transition through contract revision")
+    else:
+        raise ValueError(f"invalid finding transition: {transition}")
 
 
 def start_review(root: Path, run_id: str, *, reviewer: str) -> dict[str, Any]:
@@ -659,6 +912,14 @@ def start_review(root: Path, run_id: str, *, reviewer: str) -> dict[str, Any]:
         raise ValueError(
             "the current finding batch requires a repair attempt before another review"
         )
+    if any(
+        cycle.get("revision") == record.get("revision")
+        and cycle.get("attempt_id") == record.get("attempt_id")
+        and cycle.get("resolution", {}).get("decision") == "emergency-stopped"
+        for cycle in record.get("review_cycles", [])
+        if isinstance(cycle.get("resolution"), dict)
+    ):
+        raise ValueError("an emergency-stopped attempt must transition before another review")
     cycle = {
         "review_id": f"review-{len(record.get('review_cycles', [])) + 1:03d}",
         "revision": record["revision"],
@@ -672,6 +933,8 @@ def start_review(root: Path, run_id: str, *, reviewer: str) -> dict[str, Any]:
         "outcome": None,
         "summary": None,
         "findings": [],
+        "proportionality": None,
+        "resolution": None,
     }
     record.setdefault("review_cycles", []).append(cycle)
     write_json(path, record)
@@ -729,6 +992,7 @@ def record_finding(
             "finding_id": f"{review_id}-finding-{len(cycle['findings']) + 1:03d}",
             **fingerprint_payload,
             "fingerprint": fingerprint,
+            "disposition": None,
             "recorded_at": utc_now(),
         }
     )
@@ -783,6 +1047,238 @@ def close_review(
     )
     write_json(path, record)
     return cycle
+
+
+def current_review_by_id(record: dict[str, Any], review_id: str) -> dict[str, Any]:
+    matches = [
+        item for item in current_closed_reviews(record) if item.get("review_id") == review_id
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"closed current review not found: {review_id}")
+    return matches[0]
+
+
+def matching_repair_verdict(record: dict[str, Any], review_id: str) -> dict[str, Any] | None:
+    matches = [
+        item
+        for item in record.get("verdicts", [])
+        if item.get("revision") == record.get("revision")
+        and item.get("attempt_id") == record.get("attempt_id")
+        and item.get("review_id") == review_id
+        and item.get("decision") in {"revise", "reject"}
+    ]
+    return matches[-1] if matches else None
+
+
+def record_finding_disposition(
+    root: Path,
+    run_id: str,
+    *,
+    review_id: str,
+    finding_id: str,
+    disposition: str,
+    rationale: str,
+    decided_by: str,
+) -> dict[str, Any]:
+    if disposition not in FINDING_DISPOSITIONS:
+        raise ValueError(f"invalid finding disposition: {disposition}")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError("finding-disposition rationale is required")
+    if not isinstance(decided_by, str) or not decided_by.strip():
+        raise ValueError("finding-disposition decision owner is required")
+    if disposition == "accept-risk" and not decided_by.startswith("human:"):
+        raise ValueError("accept-risk disposition requires human:IDENTITY")
+    path, record = load_run(root, run_id)
+    cycle = current_review_by_id(record, review_id)
+    if not matching_repair_verdict(record, review_id):
+        raise ValueError("finding dispositions require a matching revise or reject verdict")
+    if cycle.get("closing_candidate") != candidate_identity(root, record):
+        raise ValueError("finding-batch candidate changed before disposition")
+    findings = [item for item in cycle.get("findings", []) if item.get("finding_id") == finding_id]
+    if len(findings) != 1:
+        raise ValueError(f"finding not found in {review_id}: {finding_id}")
+    finding = findings[0]
+    if finding.get("disposition") is not None:
+        raise ValueError("finding already has a disposition")
+    is_emergency = bool(finding.get("emergency_boundary"))
+    if is_emergency and disposition != "emergency-stop":
+        raise ValueError("an emergency finding requires emergency-stop disposition")
+    if not is_emergency and disposition == "emergency-stop":
+        raise ValueError("emergency-stop disposition requires an emergency finding")
+    finding["disposition"] = {
+        "decision": disposition,
+        "rationale": rationale.strip(),
+        "decided_by": decided_by.strip(),
+        "recorded_at": utc_now(),
+    }
+    write_json(path, record)
+    return record
+
+
+def record_proportionality_review(
+    root: Path,
+    run_id: str,
+    *,
+    review_id: str,
+    reviewed_by: str,
+    objective_alignment: str,
+    scope_change: str,
+    complexity_change: str,
+    budget_status: str,
+    triggers: Iterable[str],
+    alternatives: Iterable[str],
+    recommendation: str,
+    solution_disposition: str,
+    rationale: str,
+) -> dict[str, Any]:
+    if scope_change not in SCOPE_CHANGES:
+        raise ValueError(f"invalid scope change: {scope_change}")
+    if complexity_change not in COMPLEXITY_CHANGES:
+        raise ValueError(f"invalid complexity change: {complexity_change}")
+    if budget_status not in BUDGET_STATUSES:
+        raise ValueError(f"invalid budget status: {budget_status}")
+    if recommendation not in PROPORTIONALITY_RECOMMENDATIONS:
+        raise ValueError(f"invalid proportionality recommendation: {recommendation}")
+    if solution_disposition not in SOLUTION_DISPOSITIONS:
+        raise ValueError(f"invalid solution disposition: {solution_disposition}")
+    required_text = (reviewed_by, objective_alignment, rationale)
+    if not all(isinstance(item, str) and item.strip() for item in required_text):
+        raise ValueError(
+            "proportionality reviewer, objective alignment, and rationale are required"
+        )
+    trigger_values = list(triggers)
+    normalized_triggers: list[str] = []
+    if trigger_values:
+        normalized_triggers = nonempty_unique_text(trigger_values, field="proportionality triggers")
+    invalid_triggers = sorted(set(normalized_triggers) - (set(SOLUTION_TRIGGERS) - {"initial"}))
+    if invalid_triggers:
+        raise ValueError("invalid proportionality triggers: " + ", ".join(invalid_triggers))
+    alternative_values = nonempty_unique_text(alternatives, field="proportionality alternatives")
+    if scope_change == "expands-contract" and recommendation in {"proceed", "simplify"}:
+        raise ValueError(
+            "scope-expanding work cannot proceed without contract revision or deferral"
+        )
+    if budget_status == "exceeded" and recommendation == "proceed":
+        raise ValueError("budget-exceeded work cannot proceed without replanning")
+    path, record = load_run(root, run_id)
+    cycle = current_review_by_id(record, review_id)
+    if not matching_repair_verdict(record, review_id):
+        raise ValueError("proportionality review requires a matching revise or reject verdict")
+    if cycle.get("closing_candidate") != candidate_identity(root, record):
+        raise ValueError("finding-batch candidate changed before proportionality review")
+    if cycle.get("proportionality") is not None:
+        raise ValueError("review already has a proportionality decision")
+    missing = [
+        item.get("finding_id")
+        for item in cycle.get("findings", [])
+        if item.get("disposition") is None
+    ]
+    if missing:
+        raise ValueError("proportionality review requires all finding dispositions")
+    active_by_trigger = {item.get("trigger"): item for item in active_solution_assessments(record)}
+    current_candidate = candidate_identity(root, record)
+    missing_assessments = [
+        trigger
+        for trigger in normalized_triggers
+        if trigger not in active_by_trigger
+        or active_by_trigger[trigger].get("research_status") != "completed"
+        or active_by_trigger[trigger].get("candidate") != current_candidate
+    ]
+    if missing_assessments:
+        raise ValueError(
+            "proportionality triggers require current completed solution assessments: "
+            + ", ".join(missing_assessments)
+        )
+    independent_required = bool(normalized_triggers) or any(
+        (
+            scope_change == "expands-contract",
+            complexity_change == "material",
+            budget_status in {"at-risk", "exceeded"},
+            record.get("attempt_id", 1) >= 2,
+        )
+    )
+    reviewer = reviewed_by.strip()
+    if independent_required and reviewer in record.get("implementers", []):
+        raise ValueError("complexity trigger requires an independent scope reviewer")
+    if independent_required and reviewer == cycle.get("reviewer"):
+        raise ValueError("scope reviewer must differ from the technical reviewer")
+    cycle["proportionality"] = {
+        "reviewed_by": reviewer,
+        "independent_required": independent_required,
+        "objective_alignment": objective_alignment.strip(),
+        "scope_change": scope_change,
+        "complexity_change": complexity_change,
+        "budget_status": budget_status,
+        "triggers": normalized_triggers,
+        "alternatives": alternative_values,
+        "recommendation": recommendation,
+        "solution_disposition": solution_disposition,
+        "rationale": rationale.strip(),
+        "candidate": candidate_identity(root, record),
+        "recorded_at": utc_now(),
+    }
+    write_json(path, record)
+    return record
+
+
+def resolve_finding_batch(
+    root: Path,
+    run_id: str,
+    *,
+    review_id: str,
+    resolved_by: str,
+    rationale: str,
+) -> dict[str, Any]:
+    if not isinstance(resolved_by, str) or not resolved_by.strip():
+        raise ValueError("finding-batch resolution owner is required")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError("finding-batch resolution rationale is required")
+    path, record = load_run(root, run_id)
+    cycle = current_review_by_id(record, review_id)
+    if cycle.get("resolution") is not None:
+        raise ValueError("finding batch is already resolved")
+    if not matching_repair_verdict(record, review_id):
+        raise ValueError("finding-batch resolution requires a matching revise or reject verdict")
+    if cycle.get("closing_candidate") != candidate_identity(root, record):
+        raise ValueError("finding-batch candidate changed before no-code resolution")
+    proportionality = cycle.get("proportionality")
+    if not isinstance(proportionality, dict):
+        raise ValueError("finding-batch resolution requires proportionality review")
+    if proportionality.get("candidate") != candidate_identity(root, record):
+        raise ValueError("proportionality review is stale for no-code resolution")
+    if any(item.get("disposition") is None for item in cycle.get("findings", [])):
+        raise ValueError("finding-batch resolution requires complete dispositions")
+    dispositions = {item["disposition"]["decision"] for item in cycle.get("findings", [])}
+    recommendation = proportionality.get("recommendation")
+    resolution: str
+    next_transition = "none"
+    if dispositions == {"accept-risk"} and recommendation == "proceed":
+        resolution = "risk-accepted"
+    elif (
+        dispositions <= {"defer", "accept-risk"}
+        and "defer" in dispositions
+        and recommendation == "defer"
+    ):
+        resolution = "deferred"
+    elif "emergency-stop" in dispositions and recommendation == "escalate-to-owner":
+        resolution = "emergency-stopped"
+        next_transition = (
+            "contract-revision" if "revise-contract" in dispositions else "new-attempt"
+        )
+    else:
+        raise ValueError(
+            "finding dispositions and recommendation require repair or contract revision"
+        )
+    cycle["resolution"] = {
+        "decision": resolution,
+        "next_transition": next_transition,
+        "resolved_by": resolved_by.strip(),
+        "rationale": rationale.strip(),
+        "candidate": candidate_identity(root, record),
+        "recorded_at": utc_now(),
+    }
+    write_json(path, record)
+    return record
 
 
 def record_release_impact(
@@ -861,9 +1357,7 @@ def record_verdict(
         if missing_coverage:
             raise ValueError(f"approval omits active criteria: {', '.join(missing_coverage)}")
         current_candidate = candidate_identity(root, record)
-        missing_evidence = sorted(
-            active - current_passed_criteria(record, current_candidate)
-        )
+        missing_evidence = sorted(active - current_passed_criteria(record, current_candidate))
         if missing_evidence:
             raise ValueError(
                 f"approval lacks passed check evidence for criteria: {', '.join(missing_evidence)}"
@@ -894,6 +1388,7 @@ def revise_run(
     objective: str | None = None,
     acceptance_criteria: list[dict[str, Any]] | None = None,
     declared_write_set: list[dict[str, str]] | None = None,
+    scope_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not reason.strip():
         raise ValueError("revision reason is required")
@@ -915,23 +1410,30 @@ def revise_run(
         else [{**criterion, "waiver": None} for criterion in record["acceptance_criteria"]]
     )
     proposed_write_set = (
-        declared_write_set
-        if declared_write_set is not None
-        else record["declared_write_set"]
+        declared_write_set if declared_write_set is not None else record["declared_write_set"]
+    )
+    proposed_scope_contract = (
+        validate_scope_contract(scope_contract)
+        if scope_contract is not None
+        else record.get("scope_contract")
     )
     if (
         proposed_objective == record["objective"]
         and proposed_criteria == record["acceptance_criteria"]
         and proposed_write_set == record["declared_write_set"]
+        and proposed_scope_contract == record.get("scope_contract")
     ):
-        raise ValueError("contract revision must change the objective, criteria, or write scope")
-    require_finding_repair_transition(root, record)
+        raise ValueError(
+            "contract revision must change the objective, criteria, write scope, or scope contract"
+        )
+    require_finding_repair_transition(root, record, transition="revision")
     record["revision_history"].append(
         {
             "revision": record["revision"],
             "objective": record["objective"],
             "acceptance_criteria": record["acceptance_criteria"],
             "declared_write_set": record["declared_write_set"],
+            "scope_contract": record.get("scope_contract"),
             "superseded_at": utc_now(),
             "reason": reason,
         }
@@ -941,6 +1443,7 @@ def revise_run(
     record["objective"] = proposed_objective
     record["acceptance_criteria"] = proposed_criteria
     record["declared_write_set"] = proposed_write_set
+    record["scope_contract"] = proposed_scope_contract
     write_json(path, record)
     return record
 
@@ -983,7 +1486,7 @@ def new_attempt(root: Path, run_id: str, reason: str) -> dict[str, Any]:
         raise ValueError("cannot start a new attempt while an independent review cycle is open")
     if record.get("state") in FINAL_STATES:
         raise ValueError(f"cannot retry a terminal run in state {record.get('state')}")
-    require_finding_repair_transition(root, record)
+    require_finding_repair_transition(root, record, transition="attempt")
     record["attempt_history"].append(
         {
             "revision": record["revision"],
@@ -1072,6 +1575,7 @@ def resume_run(
             "objective": record["objective"],
             "acceptance_criteria": record["acceptance_criteria"],
             "declared_write_set": record["declared_write_set"],
+            "scope_contract": record.get("scope_contract"),
             "superseded_at": utc_now(),
             "reason": f"human-authorized recovery: {handoff['summary'].strip()}",
         }
@@ -1162,6 +1666,33 @@ def set_state(root: Path, run_id: str, state: str) -> dict[str, Any]:
         raise ValueError(
             f"cannot leave terminal state {record.get('state')} with set-state; use reviewed recovery"
         )
+    planned_states = {
+        "plan",
+        "authorize",
+        "implement",
+        "verify",
+        "adversarial-review",
+        "proportionality-review",
+        "integrate",
+        "report",
+        "learn",
+        "reported",
+    }
+    if record.get("schema_version") == RUN_SCHEMA_VERSION and state in planned_states:
+        validate_scope_contract(record.get("scope_contract"))
+        initial = [
+            item for item in active_solution_assessments(record) if item.get("trigger") == "initial"
+        ]
+        if not initial:
+            raise ValueError(
+                "a current-revision initial solution assessment is required before plan"
+            )
+        if len(initial) != 1:
+            raise ValueError("exactly one current-revision initial solution assessment is required")
+        if initial[0].get("research_status") == "blocked":
+            raise ValueError("blocked existing-solution research cannot advance to plan")
+    if state == "proportionality-review" and not current_finding_reviews(record):
+        raise ValueError("proportionality-review requires a current finding batch")
     record["state"] = state
     write_json(path, record)
     return record
@@ -1192,6 +1723,17 @@ def collect_git_evidence(root: Path, record: dict[str, Any]) -> dict[str, Any]:
 
 def completion_errors(root: Path, record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    try:
+        validate_scope_contract(record.get("scope_contract"))
+    except ValueError as exc:
+        errors.append(str(exc))
+    initial_assessments = [
+        item for item in active_solution_assessments(record) if item.get("trigger") == "initial"
+    ]
+    if len(initial_assessments) != 1:
+        errors.append("run has no current-revision initial solution assessment")
+    elif initial_assessments[0].get("research_status") == "blocked":
+        errors.append("run has blocked current-revision existing-solution research")
     project_path = root / "harness/project.yaml"
     if project_path.is_file():
         project = load_json(project_path).get("project", {})
@@ -1365,6 +1907,45 @@ def markdown_report(
     contract_changes = list_or_none(
         release_impact.get("public_contract_changes", []) if release_impact else []
     )
+    scope_contract = record.get("scope_contract") or {}
+    in_scope_text = list_or_none(scope_contract.get("in_scope", []))
+    out_of_scope_text = list_or_none(scope_contract.get("out_of_scope", []))
+    budget_text = list_or_none(scope_contract.get("budget_constraints", []))
+    trigger_text = list_or_none(scope_contract.get("revision_triggers", []))
+    solution_text = list_or_none(
+        current_solution_assessments(record),
+        lambda item: (
+            f"{item.get('assessment_id')}: {item.get('trigger')} -> "
+            f"{item.get('disposition')} ({item.get('research_status')}): "
+            f"{item.get('rationale')}"
+            + (f"; superseded by {item.get('superseded_by')}" if item.get("superseded_by") else "")
+        ),
+    )
+    proportionality_text = list_or_none(
+        [
+            {"review_id": cycle.get("review_id"), **cycle["proportionality"]}
+            for cycle in closed_reviews
+            if isinstance(cycle.get("proportionality"), dict)
+        ],
+        lambda item: (
+            f"{item.get('review_id')}: {item.get('recommendation')} by "
+            f"{item.get('reviewed_by')}; scope={item.get('scope_change')}; "
+            f"complexity={item.get('complexity_change')}; budget={item.get('budget_status')}; "
+            f"solution={item.get('solution_disposition')}"
+        ),
+    )
+    resolution_text = list_or_none(
+        [
+            {"review_id": cycle.get("review_id"), **cycle["resolution"]}
+            for cycle in closed_reviews
+            if isinstance(cycle.get("resolution"), dict)
+        ],
+        lambda item: (
+            f"{item.get('review_id')}: {item.get('decision')} by "
+            f"{item.get('resolved_by')}; next={item.get('next_transition')}: "
+            f"{item.get('rationale')}"
+        ),
+    )
 
     return f"""# Engineering loop report: {record["run_id"]}
 
@@ -1380,6 +1961,30 @@ def markdown_report(
 - VERIFIED: Final loop state: {record["state"]}.
 - VERIFIED: Run revision {record.get("revision", "legacy")}, attempt {record.get("attempt_id", "legacy")}.
 - INFERRED: Completion is limited to the repository and check boundaries listed below.
+
+### Binding scope contract
+
+In scope:
+
+{in_scope_text}
+
+Explicitly out of scope:
+
+{out_of_scope_text}
+
+Assurance boundary: {scope_contract.get("assurance_boundary", "not recorded")}
+
+Complexity and budget constraints:
+
+{budget_text}
+
+Scope-revision triggers:
+
+{trigger_text}
+
+### Existing-solution assessments
+
+{solution_text}
 
 ## Acceptance evidence matrix
 
@@ -1410,6 +2015,14 @@ Latest verifier verdict: {verdict_text}.
 Efficiency telemetry: {len(review_cycles)} review cycle(s), {review_seconds:.3f}s closed-review time, {finding_batches} finding batch(es), {finding_count} finding(s), {repeated_attempts} superseded attempt(s), and {reused_checks} reused check(s).
 
 Review outcomes: {json.dumps(review_outcomes, sort_keys=True)}
+
+Finding-disposition and proportionality decisions:
+
+{proportionality_text}
+
+Candidate-bound no-code finding-batch resolutions:
+
+{resolution_text}
 
 Contract revision history:
 
@@ -1494,6 +2107,8 @@ def finish_run(root: Path, run_id: str, state: str) -> tuple[Path, Path, dict[st
             "attempt_id": record.get("attempt_id"),
             "boundary": evidence,
             "acceptance_criteria": record.get("acceptance_criteria", []),
+            "scope_contract": record.get("scope_contract"),
+            "solution_assessments": record.get("solution_assessments", []),
             "claims": [
                 {
                     "status": "verified",
@@ -1524,6 +2139,11 @@ def main() -> int:
     start.add_argument("--issue")
     start.add_argument("--run-id")
     start.add_argument("--criterion", action="append", required=True, metavar="ID=TEXT")
+    start.add_argument("--in-scope", action="append", required=True)
+    start.add_argument("--out-of-scope", action="append", required=True)
+    start.add_argument("--assurance-boundary", required=True)
+    start.add_argument("--budget-constraint", action="append", required=True)
+    start.add_argument("--scope-revision-trigger", action="append", required=True)
     start.add_argument("--write-path", action="append", default=[])
     start.add_argument("--write-prefix", action="append", default=[])
     start.add_argument("--implementer", action="append", required=True)
@@ -1545,6 +2165,14 @@ def main() -> int:
     check.add_argument("--artifact-digest")
     check.add_argument("--applicability")
 
+    solution = subparsers.add_parser("record-solution-assessment")
+    solution.add_argument("--run", required=True)
+    solution.add_argument("--trigger", choices=SOLUTION_TRIGGERS, required=True)
+    solution.add_argument("--disposition", choices=SOLUTION_DISPOSITIONS, required=True)
+    solution.add_argument("--research-status", choices=RESEARCH_STATUSES, required=True)
+    solution.add_argument("--rationale", required=True)
+    solution.add_argument("--source", action="append", default=[])
+
     review_start = subparsers.add_parser("start-review")
     review_start.add_argument("--run", required=True)
     review_start.add_argument("--reviewer", required=True)
@@ -1564,6 +2192,40 @@ def main() -> int:
     review_close.add_argument("--review", required=True)
     review_close.add_argument("--outcome", choices=REVIEW_OUTCOMES, required=True)
     review_close.add_argument("--summary", required=True)
+
+    disposition = subparsers.add_parser("record-finding-disposition")
+    disposition.add_argument("--run", required=True)
+    disposition.add_argument("--review", required=True)
+    disposition.add_argument("--finding", required=True)
+    disposition.add_argument("--disposition", choices=FINDING_DISPOSITIONS, required=True)
+    disposition.add_argument("--rationale", required=True)
+    disposition.add_argument("--by", required=True)
+
+    proportionality = subparsers.add_parser("record-proportionality-review")
+    proportionality.add_argument("--run", required=True)
+    proportionality.add_argument("--review", required=True)
+    proportionality.add_argument("--reviewed-by", required=True)
+    proportionality.add_argument("--objective-alignment", required=True)
+    proportionality.add_argument("--scope-change", choices=SCOPE_CHANGES, required=True)
+    proportionality.add_argument("--complexity-change", choices=COMPLEXITY_CHANGES, required=True)
+    proportionality.add_argument("--budget-status", choices=BUDGET_STATUSES, required=True)
+    proportionality.add_argument(
+        "--trigger", action="append", choices=SOLUTION_TRIGGERS[1:], default=[]
+    )
+    proportionality.add_argument("--alternative", action="append", required=True)
+    proportionality.add_argument(
+        "--recommendation", choices=PROPORTIONALITY_RECOMMENDATIONS, required=True
+    )
+    proportionality.add_argument(
+        "--solution-disposition", choices=SOLUTION_DISPOSITIONS, required=True
+    )
+    proportionality.add_argument("--rationale", required=True)
+
+    resolution = subparsers.add_parser("resolve-finding-batch")
+    resolution.add_argument("--run", required=True)
+    resolution.add_argument("--review", required=True)
+    resolution.add_argument("--by", required=True)
+    resolution.add_argument("--rationale", required=True)
 
     release_impact = subparsers.add_parser("record-release-impact")
     release_impact.add_argument("--run", required=True)
@@ -1585,6 +2247,11 @@ def main() -> int:
     revise.add_argument("--criterion", action="append")
     revise.add_argument("--write-path", action="append")
     revise.add_argument("--write-prefix", action="append")
+    revise.add_argument("--in-scope", action="append")
+    revise.add_argument("--out-of-scope", action="append")
+    revise.add_argument("--assurance-boundary")
+    revise.add_argument("--budget-constraint", action="append")
+    revise.add_argument("--scope-revision-trigger", action="append")
 
     attempt = subparsers.add_parser("new-attempt")
     attempt.add_argument("--run", required=True)
@@ -1634,6 +2301,13 @@ def main() -> int:
                 acceptance_criteria=parse_criteria(args.criterion),
                 declared_write_set=make_write_set(args.write_path, args.write_prefix),
                 implementers=args.implementer,
+                scope_contract=make_scope_contract(
+                    in_scope=args.in_scope,
+                    out_of_scope=args.out_of_scope,
+                    assurance_boundary=args.assurance_boundary,
+                    budget_constraints=args.budget_constraint,
+                    revision_triggers=args.scope_revision_trigger,
+                ),
             )
             print(record["run_id"])
         elif args.action == "migrate-run":
@@ -1656,6 +2330,17 @@ def main() -> int:
                 applicability=args.applicability,
             )
             print(f"recorded check for {args.run}")
+        elif args.action == "record-solution-assessment":
+            record_solution_assessment(
+                root,
+                args.run,
+                trigger=args.trigger,
+                disposition=args.disposition,
+                research_status=args.research_status,
+                rationale=args.rationale,
+                sources=args.source,
+            )
+            print(f"recorded solution assessment for {args.run}")
         elif args.action == "start-review":
             cycle = start_review(root, args.run, reviewer=args.reviewer)
             print(cycle["review_id"])
@@ -1681,6 +2366,43 @@ def main() -> int:
                 summary=args.summary,
             )
             print(f"closed {args.review} as {args.outcome}")
+        elif args.action == "record-finding-disposition":
+            record_finding_disposition(
+                root,
+                args.run,
+                review_id=args.review,
+                finding_id=args.finding,
+                disposition=args.disposition,
+                rationale=args.rationale,
+                decided_by=args.by,
+            )
+            print(f"recorded disposition for {args.finding}")
+        elif args.action == "record-proportionality-review":
+            record_proportionality_review(
+                root,
+                args.run,
+                review_id=args.review,
+                reviewed_by=args.reviewed_by,
+                objective_alignment=args.objective_alignment,
+                scope_change=args.scope_change,
+                complexity_change=args.complexity_change,
+                budget_status=args.budget_status,
+                triggers=args.trigger,
+                alternatives=args.alternative,
+                recommendation=args.recommendation,
+                solution_disposition=args.solution_disposition,
+                rationale=args.rationale,
+            )
+            print(f"recorded proportionality review for {args.review}")
+        elif args.action == "resolve-finding-batch":
+            resolve_finding_batch(
+                root,
+                args.run,
+                review_id=args.review,
+                resolved_by=args.by,
+                rationale=args.rationale,
+            )
+            print(f"resolved finding batch {args.review}")
         elif args.action == "record-release-impact":
             record_release_impact(
                 root,
@@ -1705,6 +2427,24 @@ def main() -> int:
             write_set = None
             if args.write_path is not None or args.write_prefix is not None:
                 write_set = make_write_set(args.write_path or [], args.write_prefix or [])
+            scope_args = (
+                args.in_scope,
+                args.out_of_scope,
+                args.assurance_boundary,
+                args.budget_constraint,
+                args.scope_revision_trigger,
+            )
+            scope_contract = None
+            if any(item is not None for item in scope_args):
+                if any(item is None for item in scope_args):
+                    raise ValueError("scope revision requires every scope-contract field")
+                scope_contract = make_scope_contract(
+                    in_scope=args.in_scope,
+                    out_of_scope=args.out_of_scope,
+                    assurance_boundary=args.assurance_boundary,
+                    budget_constraints=args.budget_constraint,
+                    revision_triggers=args.scope_revision_trigger,
+                )
             record = revise_run(
                 root,
                 args.run,
@@ -1712,6 +2452,7 @@ def main() -> int:
                 objective=args.objective,
                 acceptance_criteria=criteria,
                 declared_write_set=write_set,
+                scope_contract=scope_contract,
             )
             print(f"revised {args.run} to revision {record['revision']}")
         elif args.action == "new-attempt":

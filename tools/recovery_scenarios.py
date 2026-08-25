@@ -17,6 +17,7 @@ try:
     from .loop import (
         add_item,
         load_run,
+        make_scope_contract,
         make_write_set,
         new_attempt,
         parse_criteria,
@@ -30,6 +31,7 @@ except ImportError:  # Direct script execution.
     from loop import (
         add_item,
         load_run,
+        make_scope_contract,
         make_write_set,
         new_attempt,
         parse_criteria,
@@ -86,6 +88,13 @@ def start_fixture_run(root: Path) -> dict[str, Any]:
         acceptance_criteria=parse_criteria(["AC1=Recovery preserves bounded work"]),
         declared_write_set=make_write_set(["artifact.txt", "partial.txt"], []),
         implementers=["fixture-implementer"],
+        scope_contract=make_scope_contract(
+            in_scope=["Exercise one deterministic recovery scenario"],
+            out_of_scope=["Production repository mutation"],
+            assurance_boundary="One disposable local Git repository",
+            budget_constraints=["Use only the existing recovery fixture primitives"],
+            revision_triggers=["New external side effect or dependency"],
+        ),
     )
 
 

@@ -13,6 +13,7 @@ Research to reduce decision risk, not to collect links. Read `references/researc
 2. Inspect repository evidence and prior decisions first.
 3. Define comparison dimensions before finding favorites: fitness, maturity, maintenance, license, security, portability, operating cost, integration effort, lock-in, and evidence quality.
 4. Ask the user focused follow-ups if the decision criteria or constraints are materially incomplete.
+5. Record the trigger and stop condition. Research is mandatory before bespoke implementation of a standardized, ecosystem-provided, or security-sensitive capability unless the repository already provides an authoritative stable solution.
 
 ## Discover
 
@@ -32,5 +33,11 @@ Research to reduce decision risk, not to collect links. Read `references/researc
 - Explain why rejected options are not fit for this project's constraints.
 - Identify what should be tested in a time-boxed spike.
 - State confidence, gaps, and which facts may drift.
+
+Record exactly one `build`, `adopt`, `adapt`, or `defer` disposition before implementation. Reopen
+the comparison when verification proposes a parser, sandbox, protocol, cryptography, concurrency
+control, filesystem-security subsystem, material dependency, material write-scope growth,
+threat-model expansion, or work beyond the accepted budget. Never install or execute a candidate
+merely to complete this checkpoint.
 
 Write a durable research note under `docs/research/` when it informs architecture, licensing, security, or roadmap decisions. Invoke `$record-architecture-decision` only when the human accepts a material decision.

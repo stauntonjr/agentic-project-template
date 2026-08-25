@@ -96,12 +96,22 @@ the copied harness validator does not import it merely because the names match.
 
 ```text
 Intake -> Understand -> Plan -> Authorize -> Implement
-       -> Verify -> Adversarial review -> Integrate -> Report -> Learn
+       -> Verify -> Adversarial review -> Proportionality review
+       -> Integrate -> Report -> Learn
 ```
 
 The loop is evidence-producing and revision-aware. Parallel work is reserved for independent, bounded lanes. Shared Git operations, planning state, and integration remain serialized through the orchestrator.
 
-Before each loop, the main agent performs a context-readiness gate: inspect discoverable facts, identify gaps in intent/evidence/authority/acceptance, ask focused questions only when needed, and record any low-risk assumptions. The separate `research-existing-solutions` skill handles prior art, standards, licensing, and buy-versus-build research.
+Before each loop, the main agent performs a context-readiness gate: inspect discoverable facts,
+identify gaps in intent/evidence/authority/acceptance, ask focused questions only when needed, and
+record any low-risk assumptions. Each run binds included work, explicit exclusions, an assurance
+boundary, complexity/budget constraints, and revision triggers. Before planning, it records a
+`build`, `adopt`, `adapt`, or `defer` assessment; the separate `research-existing-solutions` skill
+handles prior art, standards, licensing, security, and integration evidence when material.
+Each trigger has one active assessment within a revision. Blocked research prevents planning, but
+a later evidence-backed assessment can explicitly supersede it without erasing the original record.
+When candidate identity changes, the same trigger may be reassessed and supersede the stale active
+record; a second assessment for the same current candidate remains invalid.
 
 Start and close a loop with:
 
@@ -109,8 +119,17 @@ Start and close a loop with:
 python3 tools/loop.py start --issue 123 \
   --objective "Deliver the smallest accepted slice" \
   --criterion "AC1=The accepted behavior is demonstrated" \
+  --in-scope "Implement the accepted local behavior" \
+  --out-of-scope "Deployment and unrelated refactoring" \
+  --assurance-boundary "One stable local repository candidate" \
+  --budget-constraint "Use existing project primitives" \
+  --scope-revision-trigger "New dependency or subsystem" \
   --write-path src/example.py --write-path tests/test_example.py \
   --implementer codex/implementer-session
+python3 tools/loop.py record-solution-assessment --run RUN_ID \
+  --trigger initial --disposition adapt --research-status completed \
+  --source https://example.com/canonical-source \
+  --rationale "Existing project and ecosystem primitives cover the requirement"
 python3 tools/loop.py record-check --run RUN_ID --name unit \
   --command "python3 -m unittest discover -s tests -v" --status passed \
   --evidence "All targeted tests passed" --criterion AC1
@@ -123,6 +142,18 @@ python3 tools/loop.py finish --run RUN_ID
 ```
 
 `start` fingerprints pre-existing dirty and untracked paths; staged index blobs and modes; `assume-unchanged` and `skip-worktree` paths; and recursively inspected submodules or embedded Git repositories. Submodule visibility is forced even when `.gitmodules` requests `ignore = all`; unsafe directory entries fail closed. Completion compares the current tree, index, nested repositories, and committed paths with that baseline; rejects undeclared writes; requires passed evidence for every unwaived criterion; requires a current product release-impact assessment; and rejects approvals made against an older requirement revision, attempt, commit, or candidate digest. Contract revisions invalidate prior waivers. A new waiver requires recorded `human:IDENTITY` provenance and a reason. The generated executive report distinguishes verified repository evidence, reported facts, and inference.
+
+After a finding batch, the verifier's minimum repair is input rather than authorization. Every
+finding must be dispositioned and a proportionality decision must record objective alignment,
+scope and complexity delta, budget status, alternatives, and whether to proceed, simplify, defer,
+revise the contract, or escalate. Complexity triggers and a second failed repair require an
+independent scope reviewer. Contract expansion cannot proceed as an ordinary implementation retry.
+Each trigger requires a matching current completed solution assessment. In-scope repair,
+simplification, and narrowed claims use a new attempt; contract changes use a new revision;
+candidate-bound deferral, human-accepted risk, and emergency stop use an explicit no-code batch
+resolution before any later clean review. A mixed emergency batch preserves every disposition and
+records exactly one next transition: contract revision when any finding requires it, otherwise a
+new attempt. Neither transition can be substituted for the recorded one.
 
 Retries are executable policy rather than prompt guidance. Failures one and two start attempts two
 and three; the third consecutive failure persists the run as `blocked` without creating attempt

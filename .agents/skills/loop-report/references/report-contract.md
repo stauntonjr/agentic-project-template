@@ -4,10 +4,12 @@ Use these sections in order:
 
 1. Outcome and why it matters.
 2. Planned versus completed.
+   Include the binding scope contract and current build/adopt/adapt/defer assessment.
 3. User-visible and business-semantic changes.
 4. Architecture, schema, dependency, data, and interface changes.
 5. Verification evidence and boundary proven.
 6. Acceptance-criterion coverage, waivers, and revision-bound verifier verdict.
+   Include finding dispositions, proportionality review, and any candidate-bound no-code resolution and required next transition for every finding batch.
 7. Baseline-relative write scope and violations.
 8. GitHub Issue, Project, PR, and release state.
 9. Risks, limitations, failures, and unverified claims.
