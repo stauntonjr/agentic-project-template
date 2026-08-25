@@ -4,6 +4,12 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ## [0.5.0] - Unreleased
 
+### Changed
+
+- Feature-froze the harness around its implemented original core and made one time-boxed ordinary
+  greenfield application the sole active proof target. Later security, provider, orchestration,
+  analytics, and semantic-merge work is explicitly deferred rather than implied by the MVP.
+
 ### Added
 
 - Required, separate Issue-form fields for included scope, exclusions, assurance boundary,

@@ -4,6 +4,12 @@ A provider-neutral engineering harness for projects developed substantially or e
 
 This is a working v0.5, not a claim of autonomous software delivery. Humans still own product intent, risk acceptance, external side effects, and release authorization.
 
+Current priority: the harness is feature-frozen while Issue
+[#51](https://github.com/stauntonjr/agentic-project-template/issues/51) tests one small ordinary
+greenfield application. Security/settings reconciliation, additional adapters, orchestration,
+model analytics, and semantic merge assistance are deferred. See the
+[MVP reset](docs/project/mvp-reset.md).
+
 ## Start a project
 
 From GitHub after this repository is published as a template:

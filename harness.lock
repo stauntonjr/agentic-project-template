@@ -216,7 +216,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "e6d4c31557066fe5219ea2ada2fe42f6537f55463bc325050520f8730fff29d7",
+      "sha256": "c96ee4b4a38d9326503c30d07bdf3dd71036de3cbaf86587b198a63a3443def6",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -232,7 +232,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "d8387360bb122751663d35c33d96beb970f8d0831494143031c778cb9416efa6",
+      "sha256": "1f46e6eb35fe9b3cb7bdee0ce9e7afddbf3200c0fe9178201253f3bfd43c9332",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -304,11 +304,15 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "df58c48e1261a1c3dde019f7de044b36ede1992c8bd98381b7e629616f41442e",
+      "sha256": "9e37946dc1470c9ad60d87e744f6ac07e3a5c624d9b64cdeb14bcac86be637b3",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
       "sha256": "afce9427d006e76d61abadb9d4606426227c3de5d31eb9c3bc7fb40b8b4bff18",
+      "ownership": "project-owned"
+    },
+    "docs/project/mvp-reset.md": {
+      "sha256": "9ba7923405c6bf902619874d1bad6316581b7d08ebcf7d63820c94aa695d7adb",
       "ownership": "project-owned"
     },
     "docs/project/outcome-telemetry.md": {
