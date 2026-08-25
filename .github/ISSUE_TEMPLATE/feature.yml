@@ -11,10 +11,38 @@ body:
     validations:
       required: true
   - type: textarea
-    id: scope
+    id: in_scope
     attributes:
-      label: Scope and exclusions
-      description: State the smallest useful slice and what is out of scope.
+      label: In scope
+      description: Enumerate the smallest useful capability this Issue will deliver.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Explicitly out of scope
+      description: Enumerate adjacent behavior, systems, threat actors, and future work this Issue will not address.
+    validations:
+      required: true
+  - type: textarea
+    id: assurance_boundary
+    attributes:
+      label: Threat and assurance boundary
+      description: State the actors, environments, failure classes, and guarantees this work must cover—and those it does not claim.
+    validations:
+      required: true
+  - type: textarea
+    id: budget_constraints
+    attributes:
+      label: Complexity and budget constraints
+      description: State time, token, dependency, implementation-complexity, and verification constraints. Metrics are signals, not quality claims.
+    validations:
+      required: true
+  - type: textarea
+    id: scope_revision_triggers
+    attributes:
+      label: Conditions requiring scope revision
+      description: List discoveries that must stop implementation for build/adopt/adapt/defer reassessment or owner review.
     validations:
       required: true
   - type: textarea

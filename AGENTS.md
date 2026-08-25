@@ -25,7 +25,11 @@ Before planning or acting, the main agent must decide whether it has enough inte
 3. If a low-risk reversible assumption is sufficient, state and record it, then continue.
 4. If the gap changes product scope, risk, external side effects, or acceptance, stop and obtain the user's decision.
 
-Use `$research-existing-solutions` when current standards, existing repositories, licensing, security practice, interoperability, or buy-versus-build materially affects the work.
+Before planning, record a `build`, `adopt`, `adapt`, or `defer` assessment. Use
+`$research-existing-solutions` when current standards, existing repositories, licensing, security
+practice, interoperability, or buy-versus-build materially affects the work. Never silently assume
+that avoiding a dependency is preferable to adapting a maintained solution; ask the owner when
+dependency, license, portability, or trust constraints are materially unresolved.
 
 ## Authority and sources of truth
 
@@ -45,7 +49,8 @@ Use `$execute-engineering-loop` for every non-trivial change:
 
 ```text
 Intake -> Understand -> Plan -> Authorize -> Implement
-       -> Verify -> Adversarial review -> Integrate -> Report -> Learn
+       -> Verify -> Adversarial review -> Proportionality review
+       -> Integrate -> Report -> Learn
 ```
 
 - Use `$project-intake` for new, adopted, refreshed, or gap-only project discovery.
@@ -91,6 +96,18 @@ reproduction, and minimum repair. Do not restart implementation after each findi
 review immediately only for a critical active secret exposure, destructive effect, or uncontrolled
 external effect. Changing objective, acceptance, or write scope creates a new revision; repairing
 the implementation under the same contract creates a new attempt.
+
+A finding is evidence, not repair authority. Before mutation, disposition every finding as an
+in-scope repair, simplification, narrowed claim, deferral, accepted risk, contract revision, or
+emergency stop. Record objective alignment, scope and complexity delta, budget status, credible
+alternatives, and a proportionality recommendation. A parser, sandbox, protocol, cryptography,
+concurrency, filesystem-security, dependency, write-scope, threat-model, budget, or second-failed-
+repair trigger requires a scope reviewer independent of both implementer and technical verifier.
+Every trigger also requires a current completed build/adopt/adapt/defer assessment. Preserve a
+blocked or stale-candidate assessment when later evidence supersedes it, while rejecting duplicate
+same-candidate assessments. Use explicit no-code resolution only for deferral, human-accepted risk,
+or emergency stop; a mixed emergency batch preserves all dispositions and binds the next attempt or
+contract revision. Other dispositions require an attempt or revision.
 
 Expensive external or model evidence may be reused only when its immutable artifact digest,
 source, and applicability are recorded and the candidate has not changed an input, tool,

@@ -13,13 +13,19 @@ Read `harness/loops/engineering-loop.yaml`, the relevant role contracts, and
 1. Read `AGENTS.md`, `harness/project.yaml`, the handoff, governing Issue, and linked ADRs.
 2. Inspect Git status and resolve the exact branch/worktree boundary.
 3. Assess context readiness: do you have enough intent, evidence, authority, acceptance criteria, and current-state knowledge to excel? Inspect discoverable facts first. Ask focused follow-ups only for material gaps; record safe assumptions.
-4. Invoke `$agentic-engineering-harness:research-existing-solutions` when novelty, standards, licensing, current external behavior, or buy-versus-build materially affects the plan.
-5. Start the evidence boundary:
+4. Bind the smallest useful included work, explicit exclusions, assurance boundary, complexity and budget constraints, and conditions requiring scope revision. Do not begin with a combined or implicit scope statement.
+5. Record a `build`, `adopt`, `adapt`, or `defer` assessment before planning. Invoke `$agentic-engineering-harness:research-existing-solutions` when novelty, standards, licensing, current external behavior, security sensitivity, ecosystem-provided capability, or buy-versus-build materially affects the plan. Do not assume dependency-free implementation when the project has not chosen it.
+6. Start the evidence boundary:
 
    ```bash
    python3 tools/loop.py start --issue NUMBER \
      --objective "ACCEPTED OBJECTIVE" \
      --criterion "AC1=MECHANICALLY VERIFIABLE RESULT" \
+     --in-scope "SMALLEST ACCEPTED SLICE" \
+     --out-of-scope "EXPLICIT EXCLUSION" \
+     --assurance-boundary "ACTORS, ENVIRONMENT, AND GUARANTEE" \
+     --budget-constraint "TIME, TOKEN, DEPENDENCY, OR COMPLEXITY LIMIT" \
+     --scope-revision-trigger "DISCOVERY THAT REQUIRES REPLANNING" \
      --write-path path/to/exact-file \
      --write-prefix path/to/owned-directory \
      --implementer PROVIDER/SESSION-ID
@@ -27,7 +33,24 @@ Read `harness/loops/engineering-loop.yaml`, the relevant role contracts, and
 
 Do not invent a start commit or dirty baseline after implementation begins. The baseline binds worktree content, staged index identity, and dirty gitlinks. Use stable criterion IDs. Declare exact files with `--write-path` and directory subtrees with `--write-prefix`; never use the repository root as a catch-all.
 
-When upgrading an in-flight schema-1.2 run to tooling that writes schema 1.3, preserve its original
+Before entering `plan`, record the disposition and evidence:
+
+```bash
+python3 tools/loop.py record-solution-assessment --run RUN_ID \
+  --trigger initial --disposition adapt --research-status completed \
+  --source https://example.com/canonical-source \
+  --rationale "WHY THIS IS PROPORTIONATE"
+```
+
+Use `not-material` only when the repository already supplies an authoritative, stable solution and
+the work does not cross a standardized, ecosystem-provided, or security-sensitive boundary.
+Keep one active assessment per trigger, revision, and current candidate. A `blocked` research
+status stops the transition to planning, but a later evidence-backed record may explicitly
+supersede it while preserving both records. Candidate changes likewise permit a refreshed
+same-trigger assessment to supersede stale evidence; duplicate same-candidate records fail. Every
+proportionality trigger requires its own current, completed assessment before repair.
+
+When upgrading an in-flight schema-1.2 or schema-1.3 run to tooling that writes schema 1.4, preserve its original
 baseline with `python3 tools/loop.py migrate-run --run RUN_ID`. Do not restart the run after edits
 or rewrite the baseline manually.
 
@@ -131,6 +154,44 @@ python3 tools/loop.py record-verdict --run RUN_ID \
 ```
 
 The reviewer identity must differ from every recorded implementer. The approval is bound to the current revision, attempt, commit, and baseline-relative working-tree digest.
+
+For a finding batch, do not mutate after the verdict. The orchestrator first dispositions every
+finding, then records one proportionality review for the unchanged candidate. A finding may be an
+in-scope repair, simplification, narrowed claim, deferral, accepted risk, contract revision, or
+emergency stop. `accept-risk` requires `human:IDENTITY` provenance.
+
+```bash
+python3 tools/loop.py record-finding-disposition --run RUN_ID \
+  --review review-001 --finding review-001-finding-001 \
+  --disposition simplify --by orchestrator/SESSION \
+  --rationale "WHY THIS DISPOSITION MATCHES THE ACCEPTED SCOPE"
+python3 tools/loop.py record-proportionality-review --run RUN_ID \
+  --review review-001 --reviewed-by scope-reviewer/SESSION \
+  --objective-alignment "TRACE TO THE GOVERNING OBJECTIVE" \
+  --scope-change within-contract --complexity-change reduced \
+  --budget-status at-risk --trigger new-parser \
+  --alternative "ADOPT A MAINTAINED PARSER" --alternative "NARROW THE CLAIM" \
+  --recommendation simplify --solution-disposition adapt \
+  --rationale "REUSE THE EXISTING NARROW CONTRACT"
+```
+
+The scope reviewer must be independent of both implementer and technical verifier when any parser,
+sandbox, protocol, cryptography, concurrency, filesystem-security, dependency, write-scope,
+threat-model, or budget trigger is present, or when the candidate is on its second failed repair.
+Contract expansion cannot proceed through `new-attempt`; revise the contract, defer the work, or
+escalate to the owner.
+
+The transition table is explicit: `repair-in-scope`, `simplify`, and `narrow-claim` enter a new
+attempt; `revise-contract` enters a new revision; and candidate-bound `defer`, human `accept-risk`,
+or `emergency-stop` batches use `resolve-finding-batch` without pretending code changed. Mixed
+emergency batches preserve every disposition and bind `contract-revision` when any finding requires
+it, otherwise `new-attempt`; the other transition must fail:
+
+```bash
+python3 tools/loop.py resolve-finding-batch --run RUN_ID \
+  --review review-001 --by orchestrator/SESSION \
+  --rationale "WHY NO CANDIDATE MUTATION IS AUTHORIZED OR REQUIRED"
+```
 
 Only an explicit human decision may waive a criterion. Record its provenance and rationale with `loop.py waive-criterion --criterion AC1 --by human:IDENTITY --reason "..."`; the label is auditable evidence, not authentication.
 

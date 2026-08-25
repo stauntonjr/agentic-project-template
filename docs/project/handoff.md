@@ -27,6 +27,15 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   stable-candidate finding batch before repair, checks carry tier/duration/evidence-origin data,
   expensive retained evidence requires immutable provenance, and reported completion requires
   exactly one executed passing full gate for the final current attempt.
+- Issue #49 is the current integration candidate for ADR-0012 and loop schema 1.4. It separates
+  Issue scope from exclusions, binds assurance and budget boundaries, requires a current
+  build/adopt/adapt/defer assessment before planning, and inserts finding disposition plus a
+  proportionality decision before repair. Independent scope review is conditional on explicit
+  complexity, scope, budget, dependency, threat-model, or repeated-repair triggers.
+  Triggered reassessment must be current and completed; blocked or candidate-stale evidence can be
+  superseded without deletion while same-candidate duplicates fail. Non-mutating dispositions have
+  an explicit candidate-bound resolution, and mixed emergency batches preserve every disposition
+  while binding exactly one next attempt or contract revision.
 - Issue #21 now has an accepted local Qwen model-diversity policy, an exact machine-readable due
   contract, a dependency-free status command, and a bounded paired runner. Its versioned first
   task keeps the executable oracle outside the model-visible repository, gives identical
@@ -85,6 +94,8 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 - Criterion-linked completion gates with revision-bound verifier verdicts and content-aware baseline/write-scope enforcement.
 - Batched review cycles, tiered verification timing, explicit contract-revision versus repair-attempt
   semantics, and provenance-bound reuse of expensive external evidence.
+- Revision-bound scope contracts and existing-solution assessments, followed by candidate-bound
+  finding disposition and proportionality review before any review-driven mutation.
 - Provenance-locked, ownership-aware three-way upgrade plans with explicit apply resolutions, receipts, and rollback.
 - Ten isolated forward-test scenarios covering routing, context gaps, evidence, safety behavior,
   layered domain rules, and governed learning.

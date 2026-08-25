@@ -24,11 +24,14 @@ Inspect the generated JSON evidence and Markdown report. Confirm:
 - exact checks and their results;
 - acceptance criteria and their linked current-revision/current-attempt evidence;
 - baseline-relative changed paths and declared-scope violations;
+- binding included scope, explicit exclusions, assurance boundary, budget constraints, and revision triggers;
+- current build/adopt/adapt/defer assessment and research provenance;
 - agent handoffs and revision-bound independent-review decision;
 - decisions, deferrals, retries, failures, and unresolved risks;
 - current-revision product release impact and identified public-contract changes;
 - elapsed time and available cost/token telemetry.
 - review-cycle count, outcomes, finding-batch count, and closed-review elapsed time;
+- finding dispositions, no-code batch resolutions, and proportionality decisions, including objective, scope, complexity, budget, alternatives, recommendation, and independent scope-review status;
 - check tiers, per-tier elapsed time, evidence origin, and superseded attempt count.
 
 Do not claim live GitHub, deployment, or release state unless it was read during this loop.

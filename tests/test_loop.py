@@ -9,15 +9,20 @@ from tools.loop import (
     close_review,
     finish_run,
     load_run,
+    make_scope_contract,
     make_write_set,
     migrate_run,
     new_attempt,
     parse_criteria,
     record_check,
     record_finding,
+    record_finding_disposition,
+    record_proportionality_review,
     record_release_impact,
+    record_solution_assessment,
     record_verdict,
     recovery_status,
+    resolve_finding_batch,
     resume_run,
     revise_run,
     set_state,
@@ -28,6 +33,28 @@ from tools.loop import (
 from tools.project_intake import mark_adoption_state
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_scope_contract() -> dict[str, object]:
+    return make_scope_contract(
+        in_scope=["Change artifact.txt"],
+        out_of_scope=["Repository deployment"],
+        assurance_boundary="One local disposable Git repository",
+        budget_constraints=["Use existing loop primitives"],
+        revision_triggers=["New dependency or subsystem"],
+    )
+
+
+def record_fixture_solution(root: Path, run_id: str) -> None:
+    record_solution_assessment(
+        root,
+        run_id,
+        trigger="initial",
+        disposition="adapt",
+        research_status="not-material",
+        rationale="The fixture exercises existing loop primitives",
+        sources=[],
+    )
 
 
 def init_repository(root: Path, *, commit: bool = True) -> Path:
@@ -101,7 +128,9 @@ def start_test_run(
         acceptance_criteria=parse_criteria(["AC1=Artifact contains the accepted value"]),
         declared_write_set=make_write_set(write_paths, []),
         implementers=list(implementers),
+        scope_contract=test_scope_contract(),
     )
+    record_fixture_solution(root, run_id)
     record_release_impact(
         root,
         run_id,
@@ -119,6 +148,56 @@ def close_clean_review(root: Path, run_id: str, reviewer: str = "verifier-1") ->
         review_id=cycle["review_id"],
         outcome="clean",
         summary="No findings after bounded independent review",
+    )
+
+
+def disposition_review_batch(
+    root: Path,
+    run_id: str,
+    review_id: str,
+    finding_id: str,
+    *,
+    triggers: tuple[str, ...] = (),
+    reviewed_by: str = "orchestrator-1",
+    scope_change: str = "within-contract",
+    complexity_change: str = "bounded",
+    budget_status: str = "on-budget",
+    recommendation: str = "proceed",
+    finding_disposition: str = "repair-in-scope",
+) -> None:
+    for trigger in triggers:
+        record_solution_assessment(
+            root,
+            run_id,
+            trigger=trigger,
+            disposition="adapt",
+            research_status="completed",
+            rationale="The fixture reopens the existing-solution comparison",
+            sources=["https://example.com/canonical-source"],
+        )
+    record_finding_disposition(
+        root,
+        run_id,
+        review_id=review_id,
+        finding_id=finding_id,
+        disposition=finding_disposition,
+        rationale="The defect is inside the accepted criterion and threat boundary",
+        decided_by="orchestrator-1",
+    )
+    record_proportionality_review(
+        root,
+        run_id,
+        review_id=review_id,
+        reviewed_by=reviewed_by,
+        objective_alignment="The bounded repair directly restores AC1",
+        scope_change=scope_change,
+        complexity_change=complexity_change,
+        budget_status=budget_status,
+        triggers=triggers,
+        alternatives=["Narrow the claim", "Defer the repair"],
+        recommendation=recommendation,
+        solution_disposition="adapt",
+        rationale="Reuse the existing completion guard without a new subsystem",
     )
 
 
@@ -145,34 +224,62 @@ def approve_current(root: Path, run_id: str = "test-run") -> None:
 
 
 class LoopTests(unittest.TestCase):
-    def test_schema_12_run_migrates_without_replacing_baseline(self) -> None:
+    def test_schema_12_and_13_runs_migrate_without_replacing_baseline(self) -> None:
+        for source_version in ("1.2", "1.3"):
+            with (
+                self.subTest(source_version=source_version),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                init_repository(root)
+                start_test_run(root)
+                record_check(
+                    root,
+                    "test-run",
+                    name="legacy",
+                    command="python3 -m unittest",
+                    status="passed",
+                    evidence="legacy evidence",
+                    criteria=["AC1"],
+                )
+                path, record = load_run(root, "test-run")
+                baseline = record["baseline"]
+                record["schema_version"] = source_version
+                if source_version == "1.2":
+                    record.pop("review_cycles")
+                    record["checks"][0].pop("candidate")
+                path.write_text(json.dumps(record), encoding="utf-8")
+
+                migrated = migrate_run(root, "test-run")
+
+                self.assertEqual("1.4", migrated["schema_version"])
+                self.assertEqual(baseline, migrated["baseline"])
+                self.assertEqual([], migrated["review_cycles"])
+                if source_version == "1.2":
+                    self.assertIsNone(migrated["checks"][0]["candidate"])
+                self.assertIn("scope_contract", migrated)
+                self.assertIn("solution_assessments", migrated)
+                self.assertTrue(
+                    migrated["telemetry"]["schema_migrations"][-1]["preserved_baseline"]
+                )
+
+    def test_migration_backfills_legacy_resolution_transition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             init_repository(root)
             start_test_run(root)
-            record_check(
-                root,
-                "test-run",
-                name="legacy",
-                command="python3 -m unittest",
-                status="passed",
-                evidence="legacy evidence",
-                criteria=["AC1"],
-            )
             path, record = load_run(root, "test-run")
-            baseline = record["baseline"]
-            record["schema_version"] = "1.2"
-            record.pop("review_cycles")
-            record["checks"][0].pop("candidate")
+            record["review_cycles"] = [
+                {"resolution": {"decision": "emergency-stopped"}, "findings": []}
+            ]
             path.write_text(json.dumps(record), encoding="utf-8")
 
             migrated = migrate_run(root, "test-run")
 
-            self.assertEqual("1.3", migrated["schema_version"])
-            self.assertEqual(baseline, migrated["baseline"])
-            self.assertEqual([], migrated["review_cycles"])
-            self.assertIsNone(migrated["checks"][0]["candidate"])
-            self.assertTrue(migrated["telemetry"]["schema_migrations"][-1]["preserved_baseline"])
+            self.assertEqual(
+                "new-attempt",
+                migrated["review_cycles"][0]["resolution"]["next_transition"],
+            )
 
     def test_three_consecutive_failures_block_without_starting_a_fourth_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -366,9 +473,14 @@ class LoopTests(unittest.TestCase):
             self.assertIn("0 finding batch(es)", report)
             self.assertIn("Contract revision history:", report)
             self.assertIn("Implementation attempt history:", report)
+            self.assertIn("Binding scope contract", report)
+            self.assertIn("Explicitly out of scope", report)
+            self.assertIn("Existing-solution assessments", report)
             self.assertIn("Check-tier time:", report)
             self.assertIn("| check-001 | unit | full |", report)
             self.assertEqual("none", evidence["release_impact"]["level"])
+            self.assertEqual(["Repository deployment"], evidence["scope_contract"]["out_of_scope"])
+            self.assertEqual("adapt", evidence["solution_assessments"][0]["disposition"])
             self.assertEqual("clean", evidence["review_cycles"][0]["outcome"])
             self.assertEqual([], evidence["boundary"]["scope"]["violations"])
             self.assertEqual("reported", finished["state"])
@@ -390,6 +502,16 @@ class LoopTests(unittest.TestCase):
                     "Exercise CLI parsing",
                     "--criterion",
                     "AC1=CLI records evidence",
+                    "--in-scope",
+                    "Change artifact.txt",
+                    "--out-of-scope",
+                    "Deployment",
+                    "--assurance-boundary",
+                    "One local repository",
+                    "--budget-constraint",
+                    "Use existing loop primitives",
+                    "--scope-revision-trigger",
+                    "New dependency",
                     "--write-path",
                     "artifact.txt",
                     "--implementer",
@@ -444,7 +566,9 @@ class LoopTests(unittest.TestCase):
                 acceptance_criteria=parse_criteria(["AC1=New file exists"]),
                 declared_write_set=make_write_set(["new.txt"], []),
                 implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
             )
+            record_fixture_solution(root, record["run_id"])
             (root / "new.txt").write_text("untracked\n", encoding="utf-8")
             record_release_impact(
                 root,
@@ -610,7 +734,9 @@ class LoopTests(unittest.TestCase):
                 acceptance_criteria=parse_criteria(["AC1=Nested change is verified"]),
                 declared_write_set=make_write_set(["deps/child"], []),
                 implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
             )
+            record_fixture_solution(root, record["run_id"])
             child_file.write_text("reviewed nested content\n", encoding="utf-8")
             record_check(
                 root,
@@ -660,7 +786,9 @@ class LoopTests(unittest.TestCase):
                 acceptance_criteria=parse_criteria(["AC1=Embedded change is verified"]),
                 declared_write_set=make_write_set(["vendor/nested"], []),
                 implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
             )
+            record_fixture_solution(root, record["run_id"])
             nested_file.write_text("reviewed nested content\n", encoding="utf-8")
             record_check(
                 root,
@@ -774,6 +902,7 @@ class LoopTests(unittest.TestCase):
                 acceptance_criteria=parse_criteria(["AC1=Symlink baseline is captured"]),
                 declared_write_set=[],
                 implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
             )
 
             entry = next(
@@ -857,6 +986,7 @@ class LoopTests(unittest.TestCase):
                     "unowned-run",
                     acceptance_criteria=parse_criteria(["AC1=Change is complete"]),
                     declared_write_set=[],
+                    scope_contract=test_scope_contract(),
                 )
 
     def test_criterion_waiver_requires_human_provenance(self) -> None:
@@ -919,7 +1049,9 @@ class LoopTests(unittest.TestCase):
                 acceptance_criteria=parse_criteria(["AC1=Artifact is accepted"]),
                 declared_write_set=make_write_set(["artifact.txt"], []),
                 implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
             )
+            record_fixture_solution(root, "impact-run")
             record_check(
                 root,
                 "impact-run",
@@ -1016,6 +1148,35 @@ class LoopTests(unittest.TestCase):
                 criteria=["AC1"],
                 evidence="Bounded finding batch",
             )
+            finding_id = closed["findings"][0]["finding_id"]
+            with self.assertRaisesRegex(ValueError, "finding dispositions"):
+                new_attempt(root, "test-run", "repair finding batch")
+            record_finding_disposition(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                finding_id=finding_id,
+                disposition="repair-in-scope",
+                rationale="The failure is inside AC1",
+                decided_by="orchestrator-1",
+            )
+            with self.assertRaisesRegex(ValueError, "proportionality review"):
+                new_attempt(root, "test-run", "repair finding batch")
+            record_proportionality_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                reviewed_by="orchestrator-1",
+                objective_alignment="The repair directly restores AC1",
+                scope_change="within-contract",
+                complexity_change="bounded",
+                budget_status="on-budget",
+                triggers=[],
+                alternatives=["Narrow the claim"],
+                recommendation="proceed",
+                solution_disposition="adapt",
+                rationale="Reuse the existing completion guard",
+            )
             self.assertEqual(2, new_attempt(root, "test-run", "repair finding batch")["attempt_id"])
 
     def test_finding_batch_blocks_second_review_and_late_repair_transition(self) -> None:
@@ -1034,7 +1195,7 @@ class LoopTests(unittest.TestCase):
                 reproduction="Open a second review without repairing the first batch",
                 minimum_repair="Require the finding-batch transition before another review",
             )
-            close_review(
+            closed = close_review(
                 root,
                 "test-run",
                 review_id=cycle["review_id"],
@@ -1054,6 +1215,12 @@ class LoopTests(unittest.TestCase):
                 verdict="revise",
                 criteria=["AC1"],
                 evidence="The bounded finding batch requires repair",
+            )
+            disposition_review_batch(
+                root,
+                "test-run",
+                cycle["review_id"],
+                closed["findings"][0]["finding_id"],
             )
             with self.assertRaisesRegex(ValueError, "requires a repair attempt"):
                 start_review(root, "test-run", reviewer="verifier-1")
@@ -1085,7 +1252,7 @@ class LoopTests(unittest.TestCase):
                 reproduction="Increment the revision without resolving the batch",
                 minimum_repair="Bind revision transitions to the finding decision",
             )
-            close_review(
+            closed = close_review(
                 root,
                 "test-run",
                 review_id=cycle["review_id"],
@@ -1107,6 +1274,18 @@ class LoopTests(unittest.TestCase):
                 verdict="revise",
                 criteria=["AC1"],
                 evidence="Revise the reviewed contract",
+            )
+            disposition_review_batch(
+                root,
+                "test-run",
+                cycle["review_id"],
+                closed["findings"][0]["finding_id"],
+                triggers=("threat-model-expansion",),
+                reviewed_by="scope-reviewer-1",
+                scope_change="expands-contract",
+                complexity_change="material",
+                recommendation="revise-contract",
+                finding_disposition="revise-contract",
             )
             tracked.write_text("candidate drift\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "changed before the repair attempt"):
@@ -1421,12 +1600,645 @@ class LoopTests(unittest.TestCase):
 
     def test_documentation_only_impact_classifier_is_fail_closed(self) -> None:
         contract = (
-            ROOT
-            / ".agents/skills/execute-engineering-loop/references/verification-efficiency.md"
+            ROOT / ".agents/skills/execute-engineering-loop/references/verification-efficiency.md"
         ).read_text(encoding="utf-8")
         self.assertIn("## Documentation-only impact classifier", contract)
         self.assertIn("Ambiguous changes are behavior-affecting", contract)
         self.assertIn("The final full gate remains mandatory", contract)
+
+    def test_scope_contract_requires_explicit_boundaries(self) -> None:
+        with self.assertRaisesRegex(ValueError, "out-of-scope"):
+            make_scope_contract(
+                in_scope=["One bounded change"],
+                out_of_scope=[],
+                assurance_boundary="One repository",
+                budget_constraints=["No new subsystem"],
+                revision_triggers=["New dependency"],
+            )
+        with self.assertRaisesRegex(ValueError, "budget constraints"):
+            make_scope_contract(
+                in_scope=["One bounded change"],
+                out_of_scope=["Deployment"],
+                assurance_boundary="One repository",
+                budget_constraints=[],
+                revision_triggers=["New dependency"],
+            )
+
+    def test_solution_assessment_is_required_before_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_run(
+                root,
+                "Change the artifact",
+                "123",
+                "solution-run",
+                acceptance_criteria=parse_criteria(["AC1=Artifact is accepted"]),
+                declared_write_set=make_write_set(["artifact.txt"], []),
+                implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
+            )
+            loop_path = root / "harness/loops/engineering-loop.yaml"
+            loop_path.parent.mkdir(parents=True)
+            loop_path.write_bytes((ROOT / "harness/loops/engineering-loop.yaml").read_bytes())
+            with self.assertRaisesRegex(ValueError, "solution assessment"):
+                set_state(root, "solution-run", "plan")
+            with self.assertRaisesRegex(ValueError, "at least one source"):
+                record_solution_assessment(
+                    root,
+                    "solution-run",
+                    trigger="initial",
+                    disposition="adopt",
+                    research_status="completed",
+                    rationale="A maintained dependency appears suitable",
+                    sources=[],
+                )
+            record_solution_assessment(
+                root,
+                "solution-run",
+                trigger="initial",
+                disposition="adapt",
+                research_status="completed",
+                rationale="Reuse the current loop and native Issue forms",
+                sources=["https://docs.github.com/issue-forms"],
+            )
+            self.assertEqual("plan", set_state(root, "solution-run", "plan")["state"])
+
+    def test_blocked_solution_assessment_can_be_resolved_without_losing_history(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_run(
+                root,
+                "Change the artifact",
+                "123",
+                "blocked-solution-run",
+                acceptance_criteria=parse_criteria(["AC1=Artifact is accepted"]),
+                declared_write_set=make_write_set(["artifact.txt"], []),
+                implementers=["implementer-1"],
+                scope_contract=test_scope_contract(),
+            )
+            loop_path = root / "harness/loops/engineering-loop.yaml"
+            loop_path.parent.mkdir(parents=True)
+            loop_path.write_bytes((ROOT / "harness/loops/engineering-loop.yaml").read_bytes())
+            record_solution_assessment(
+                root,
+                "blocked-solution-run",
+                trigger="initial",
+                disposition="defer",
+                research_status="blocked",
+                rationale="Authoritative dependency evidence is unavailable.",
+                sources=[],
+            )
+            with self.assertRaisesRegex(ValueError, "blocked existing-solution research"):
+                set_state(root, "blocked-solution-run", "plan")
+            with self.assertRaisesRegex(ValueError, "only by completed research"):
+                record_solution_assessment(
+                    root,
+                    "blocked-solution-run",
+                    trigger="initial",
+                    disposition="build",
+                    research_status="not-material",
+                    rationale="A blocked evidence gap cannot become immaterial by assertion.",
+                    sources=[],
+                )
+            resolved = record_solution_assessment(
+                root,
+                "blocked-solution-run",
+                trigger="initial",
+                disposition="adapt",
+                research_status="completed",
+                rationale="Owner input resolved the prior evidence gap.",
+                sources=["https://example.com/resolved"],
+            )
+            first, second = resolved["solution_assessments"]
+            self.assertEqual(second["assessment_id"], first["superseded_by"])
+            self.assertEqual(first["assessment_id"], second["supersedes"])
+            self.assertEqual("plan", set_state(root, "blocked-solution-run", "plan")["state"])
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                record_solution_assessment(
+                    root,
+                    "blocked-solution-run",
+                    trigger="initial",
+                    disposition="build",
+                    research_status="not-material",
+                    rationale="A second active assessment is ambiguous.",
+                    sources=[],
+                )
+
+    def test_stale_completed_solution_assessment_can_be_refreshed_once(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            first_record = record_solution_assessment(
+                root,
+                "test-run",
+                trigger="protocol",
+                disposition="adapt",
+                research_status="completed",
+                rationale="The first candidate uses the existing protocol.",
+                sources=["https://example.com/protocol-v1"],
+            )
+            first = first_record["solution_assessments"][-1]
+            new_attempt(root, "test-run", "candidate repair changes the bound identity")
+            refreshed_record = record_solution_assessment(
+                root,
+                "test-run",
+                trigger="protocol",
+                disposition="adapt",
+                research_status="completed",
+                rationale="The repaired candidate was reassessed against the protocol.",
+                sources=["https://example.com/protocol-v2"],
+            )
+            refreshed = refreshed_record["solution_assessments"][-1]
+            self.assertEqual(
+                refreshed["assessment_id"],
+                refreshed_record["solution_assessments"][-2]["superseded_by"],
+            )
+            self.assertEqual(first["assessment_id"], refreshed["supersedes"])
+            self.assertNotEqual(first["candidate"], refreshed["candidate"])
+            with self.assertRaisesRegex(ValueError, "current candidate"):
+                record_solution_assessment(
+                    root,
+                    "test-run",
+                    trigger="protocol",
+                    disposition="adapt",
+                    research_status="completed",
+                    rationale="A duplicate current-candidate assessment is ambiguous.",
+                    sources=["https://example.com/protocol-v3"],
+                )
+
+    def test_complexity_trigger_requires_independent_scope_reviewer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="high",
+                title="Repair proposes a bespoke parser",
+                criterion="AC1",
+                reproduction="The minimum repair crosses a parser boundary",
+                minimum_repair="Reassess build, adopt, adapt, or defer",
+            )
+            closed = close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="One complexity-triggering finding",
+            )
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="revise",
+                criteria=["AC1"],
+                evidence="The parser boundary needs disposition",
+            )
+            record_finding_disposition(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                finding_id=closed["findings"][0]["finding_id"],
+                disposition="simplify",
+                rationale="Use a narrower existing contract",
+                decided_by="orchestrator-1",
+            )
+            missing_assessment_kwargs = {
+                "review_id": cycle["review_id"],
+                "reviewed_by": "scope-reviewer-1",
+                "objective_alignment": "The simplified repair still satisfies AC1",
+                "scope_change": "within-contract",
+                "complexity_change": "reduced",
+                "budget_status": "at-risk",
+                "triggers": ["new-parser"],
+                "alternatives": ["Adopt a maintained parser", "Narrow the claim"],
+                "recommendation": "simplify",
+                "solution_disposition": "adapt",
+                "rationale": "Do not create a general parser",
+            }
+            with self.assertRaisesRegex(ValueError, "completed solution assessments"):
+                record_proportionality_review(root, "test-run", **missing_assessment_kwargs)
+            with self.assertRaisesRegex(ValueError, "completed or blocked research"):
+                record_solution_assessment(
+                    root,
+                    "test-run",
+                    trigger="new-parser",
+                    disposition="build",
+                    research_status="not-material",
+                    rationale="A parser trigger cannot skip the research checkpoint",
+                    sources=[],
+                )
+            record_solution_assessment(
+                root,
+                "test-run",
+                trigger="new-parser",
+                disposition="defer",
+                research_status="blocked",
+                rationale="Parser research is temporarily blocked",
+                sources=[],
+            )
+            with self.assertRaisesRegex(ValueError, "completed solution assessments"):
+                record_proportionality_review(root, "test-run", **missing_assessment_kwargs)
+            record_solution_assessment(
+                root,
+                "test-run",
+                trigger="new-parser",
+                disposition="adapt",
+                research_status="completed",
+                rationale="Reassess the parser boundary before repair",
+                sources=["https://example.com/parser"],
+            )
+            kwargs = {
+                "review_id": cycle["review_id"],
+                "objective_alignment": "The simplified repair still satisfies AC1",
+                "scope_change": "within-contract",
+                "complexity_change": "reduced",
+                "budget_status": "at-risk",
+                "triggers": ["new-parser"],
+                "alternatives": ["Adopt a maintained parser", "Narrow the claim"],
+                "recommendation": "simplify",
+                "solution_disposition": "adapt",
+                "rationale": "Do not create a general parser",
+            }
+            with self.assertRaisesRegex(ValueError, "independent scope reviewer"):
+                record_proportionality_review(
+                    root, "test-run", reviewed_by="implementer-1", **kwargs
+                )
+            with self.assertRaisesRegex(ValueError, "technical reviewer"):
+                record_proportionality_review(root, "test-run", reviewed_by="verifier-1", **kwargs)
+            record_proportionality_review(
+                root, "test-run", reviewed_by="scope-reviewer-1", **kwargs
+            )
+            self.assertEqual(
+                2,
+                new_attempt(root, "test-run", "simplified bounded repair")["attempt_id"],
+            )
+
+    def test_every_finding_disposition_has_an_explicit_transition(self) -> None:
+        cases = {
+            "repair-in-scope": ("proceed", "attempt"),
+            "simplify": ("simplify", "attempt"),
+            "narrow-claim": ("simplify", "attempt"),
+            "defer": ("defer", "resolve"),
+            "accept-risk": ("proceed", "resolve"),
+            "revise-contract": ("revise-contract", "revision"),
+            "emergency-stop": ("escalate-to-owner", "resolve"),
+        }
+        for disposition, (recommendation, transition) in cases.items():
+            with self.subTest(disposition=disposition), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                init_repository(root)
+                start_test_run(root)
+                cycle = start_review(root, "test-run", reviewer="verifier-1")
+                emergency = disposition == "emergency-stop"
+                record_finding(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    severity="critical" if emergency else "medium",
+                    title=f"Exercise {disposition}",
+                    criterion="AC1",
+                    reproduction="The bounded test selects one documented disposition",
+                    minimum_repair="Use the documented transition",
+                    emergency_boundary="destructive-effect" if emergency else None,
+                )
+                closed = close_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    outcome="emergency-stop" if emergency else "batch-ready",
+                    summary="One disposition transition",
+                )
+                record_verdict(
+                    root,
+                    "test-run",
+                    reviewer="verifier-1",
+                    verdict="reject" if emergency else "revise",
+                    criteria=["AC1"],
+                    evidence="Exercise the complete transition table",
+                )
+                record_finding_disposition(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    finding_id=closed["findings"][0]["finding_id"],
+                    disposition=disposition,
+                    rationale="The test binds the selected transition",
+                    decided_by=(
+                        "human:owner" if disposition == "accept-risk" else "orchestrator-1"
+                    ),
+                )
+                record_proportionality_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    reviewed_by="orchestrator-1",
+                    objective_alignment="The transition preserves explicit disposition semantics",
+                    scope_change="within-contract",
+                    complexity_change="bounded",
+                    budget_status="on-budget",
+                    triggers=[],
+                    alternatives=["Repair", "Defer"],
+                    recommendation=recommendation,
+                    solution_disposition="adapt",
+                    rationale="Use only the bounded transition table",
+                )
+                if transition == "attempt":
+                    with self.assertRaisesRegex(ValueError, "require repair or contract revision"):
+                        resolve_finding_batch(
+                            root,
+                            "test-run",
+                            review_id=cycle["review_id"],
+                            resolved_by="orchestrator-1",
+                            rationale="A mutating repair cannot use no-code resolution",
+                        )
+                    self.assertEqual(
+                        2,
+                        new_attempt(root, "test-run", "bounded repair")["attempt_id"],
+                    )
+                elif transition == "revision":
+                    with self.assertRaisesRegex(
+                        ValueError, "implementation attempt|contract revision"
+                    ):
+                        new_attempt(root, "test-run", "incorrect implementation retry")
+                    self.assertEqual(
+                        2,
+                        revise_run(
+                            root,
+                            "test-run",
+                            reason="reviewed contract change",
+                            objective="Revised accepted objective",
+                        )["revision"],
+                    )
+                else:
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "no-code finding batch|implementation attempt|contract revision, deferral, or escalation",
+                    ):
+                        new_attempt(root, "test-run", "incorrect no-code retry")
+                    if disposition == "accept-risk":
+                        result = subprocess.run(
+                            [
+                                sys.executable,
+                                str(ROOT / "tools/loop.py"),
+                                "--root",
+                                str(root),
+                                "resolve-finding-batch",
+                                "--run",
+                                "test-run",
+                                "--review",
+                                cycle["review_id"],
+                                "--by",
+                                "orchestrator-1",
+                                "--rationale",
+                                "No candidate mutation is authorized or required",
+                            ],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        self.assertIn("resolved finding batch", result.stdout)
+                        _, resolved = load_run(root, "test-run")
+                    else:
+                        resolved = resolve_finding_batch(
+                            root,
+                            "test-run",
+                            review_id=cycle["review_id"],
+                            resolved_by="orchestrator-1",
+                            rationale="No candidate mutation is authorized or required",
+                        )
+                    self.assertIsNotNone(resolved["review_cycles"][-1]["resolution"])
+                    if emergency:
+                        with self.assertRaisesRegex(ValueError, "emergency-stopped attempt"):
+                            start_review(root, "test-run", reviewer="verifier-1")
+                        self.assertEqual(
+                            2,
+                            new_attempt(root, "test-run", "repair after emergency stop")[
+                                "attempt_id"
+                            ],
+                        )
+                    else:
+                        self.assertEqual(
+                            "review-002",
+                            start_review(root, "test-run", reviewer="verifier-1")["review_id"],
+                        )
+
+    def test_mixed_emergency_batches_preserve_dispositions_and_next_transition(self) -> None:
+        cases = {
+            "repair-in-scope": "new-attempt",
+            "defer": "new-attempt",
+            "revise-contract": "contract-revision",
+        }
+        for ordinary_disposition, expected in cases.items():
+            with (
+                self.subTest(disposition=ordinary_disposition),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                init_repository(root)
+                start_test_run(root)
+                cycle = start_review(root, "test-run", reviewer="verifier-1")
+                record_finding(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    severity="medium",
+                    title="Ordinary finding",
+                    criterion="AC1",
+                    reproduction="The batch contains a non-emergency disposition.",
+                    minimum_repair="Preserve this disposition alongside the emergency.",
+                )
+                record_finding(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    severity="critical",
+                    title="Emergency finding",
+                    criterion="AC1",
+                    reproduction="The same batch crosses a destructive-effect boundary.",
+                    minimum_repair="Stop and require the deterministic owner-authorized transition.",
+                    emergency_boundary="destructive-effect",
+                )
+                closed = close_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    outcome="emergency-stop",
+                    summary="Mixed ordinary and emergency findings",
+                )
+                record_verdict(
+                    root,
+                    "test-run",
+                    reviewer="verifier-1",
+                    verdict="reject",
+                    criteria=["AC1"],
+                    evidence="The emergency batch requires owner escalation.",
+                )
+                record_finding_disposition(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    finding_id=closed["findings"][0]["finding_id"],
+                    disposition=ordinary_disposition,
+                    rationale="Preserve the ordinary finding's selected disposition.",
+                    decided_by="orchestrator-1",
+                )
+                record_finding_disposition(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    finding_id=closed["findings"][1]["finding_id"],
+                    disposition="emergency-stop",
+                    rationale="The critical boundary requires owner escalation.",
+                    decided_by="orchestrator-1",
+                )
+                record_proportionality_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    reviewed_by="scope-reviewer-1",
+                    objective_alignment="Resolve the mixed batch without discarding either finding.",
+                    scope_change="within-contract",
+                    complexity_change="bounded",
+                    budget_status="on-budget",
+                    triggers=[],
+                    alternatives=["Discard the ordinary finding", "Preserve both dispositions"],
+                    recommendation="escalate-to-owner",
+                    solution_disposition="adapt",
+                    rationale="Use only an existing attempt or contract-revision transition.",
+                )
+                resolved = resolve_finding_batch(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    resolved_by="human:owner",
+                    rationale="Authorize the deterministic transition while preserving the batch.",
+                )
+                resolution = resolved["review_cycles"][-1]["resolution"]
+                self.assertEqual("emergency-stopped", resolution["decision"])
+                self.assertEqual(expected, resolution["next_transition"])
+                self.assertEqual(
+                    {ordinary_disposition, "emergency-stop"},
+                    {
+                        finding["disposition"]["decision"]
+                        for finding in resolved["review_cycles"][-1]["findings"]
+                    },
+                )
+                if expected == "new-attempt":
+                    with self.assertRaisesRegex(ValueError, "requires a new attempt"):
+                        revise_run(
+                            root,
+                            "test-run",
+                            reason="wrong transition",
+                            objective="Wrong contract revision",
+                        )
+                    self.assertEqual(
+                        2, new_attempt(root, "test-run", "contain emergency")["attempt_id"]
+                    )
+                else:
+                    with self.assertRaisesRegex(ValueError, "requires a contract revision"):
+                        new_attempt(root, "test-run", "wrong transition")
+                    self.assertEqual(
+                        2,
+                        revise_run(
+                            root,
+                            "test-run",
+                            reason="authorized contract revision",
+                            objective="Revised objective after emergency",
+                        )["revision"],
+                    )
+
+    def test_scope_expansion_cannot_be_dispositioned_as_proceed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_repository(root)
+            start_test_run(root)
+            cycle = start_review(root, "test-run", reviewer="verifier-1")
+            record_finding(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                severity="medium",
+                title="Threat model would expand",
+                criterion="AC1",
+                reproduction="The proposed repair adds a new hostile actor",
+                minimum_repair="Revise or defer the contract",
+            )
+            closed = close_review(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                outcome="batch-ready",
+                summary="Scope decision required",
+            )
+            record_verdict(
+                root,
+                "test-run",
+                reviewer="verifier-1",
+                verdict="revise",
+                criteria=["AC1"],
+                evidence="The accepted threat model does not include this actor",
+            )
+            record_finding_disposition(
+                root,
+                "test-run",
+                review_id=cycle["review_id"],
+                finding_id=closed["findings"][0]["finding_id"],
+                disposition="revise-contract",
+                rationale="The owner must decide whether to expand the threat model",
+                decided_by="orchestrator-1",
+            )
+            record_solution_assessment(
+                root,
+                "test-run",
+                trigger="threat-model-expansion",
+                disposition="defer",
+                research_status="completed",
+                rationale="Reassess the expanded threat boundary",
+                sources=["https://example.com/threat-model"],
+            )
+            with self.assertRaisesRegex(ValueError, "cannot proceed"):
+                record_proportionality_review(
+                    root,
+                    "test-run",
+                    review_id=cycle["review_id"],
+                    reviewed_by="scope-reviewer-1",
+                    objective_alignment="The finding is adjacent to AC1",
+                    scope_change="expands-contract",
+                    complexity_change="material",
+                    budget_status="exceeded",
+                    triggers=["threat-model-expansion"],
+                    alternatives=["Defer to a new Issue"],
+                    recommendation="proceed",
+                    solution_disposition="build",
+                    rationale="Incorrectly continue the broader design",
+                )
+
+    def test_schema_14_requires_scope_and_governance_records(self) -> None:
+        schema = json.loads((ROOT / "harness/schemas/loop-run.schema.json").read_text())
+        self.assertEqual("1.4", schema["properties"]["schema_version"]["const"])
+        for field in ("scope_contract", "solution_assessments"):
+            self.assertIn(field, schema["required"])
+        review = schema["$defs"]["reviewCycle"]
+        self.assertIn("proportionality", review["required"])
+        self.assertIn("resolution", review["required"])
+        finding = schema["$defs"]["finding"]
+        self.assertIn("disposition", finding["required"])
+        assessment = schema["$defs"]["solutionAssessment"]
+        self.assertIn("supersedes", assessment["required"])
+        self.assertIn("superseded_by", assessment["required"])
+        resolution = schema["$defs"]["findingBatchResolution"]
+        self.assertIn("next_transition", resolution["required"])
+        self.assertEqual(
+            ["none", "new-attempt", "contract-revision"],
+            resolution["properties"]["next_transition"]["enum"],
+        )
 
     def test_schema_encodes_reused_evidence_invariants(self) -> None:
         schema = json.loads((ROOT / "harness/schemas/loop-run.schema.json").read_text())

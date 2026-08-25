@@ -6,11 +6,24 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Added
 
+- Required, separate Issue-form fields for included scope, exclusions, assurance boundary,
+  complexity and budget constraints, and scope-revision triggers.
+- Loop schema 1.4 with revision-bound build/adopt/adapt/defer solution assessments, per-finding
+  repair dispositions, and a candidate-bound proportionality gate before repair. Parser, sandbox,
+  protocol, cryptography, concurrency, filesystem-security, dependency, write-scope, threat-model,
+  budget, and repeated-repair triggers require a reviewer independent of both implementer and
+  technical verifier.
+- Superseding resolution for blocked or candidate-stale solution research and an explicit no-code
+  finding-batch resolution for deferral, human-accepted risk, and emergency stop. Mixed emergency
+  batches retain every disposition and bind exactly one deterministic next attempt or contract
+  revision.
+- A primary-source build-versus-adopt research note and ADR-0012, which adapt native GitHub Issue
+  forms and existing loop primitives without adding an orchestration dependency.
 - Batched stable-candidate independent review cycles with deduplicated findings, explicit critical
   emergency stops, tiered verification timing, immutable expensive-evidence reuse provenance, and
   exactly one executed final full gate per completed attempt.
-- An explicit schema-1.2 to schema-1.3 in-flight loop migration that preserves the original dirty
-  baseline instead of recreating evidence after implementation.
+- An explicit schema-1.2 or schema-1.3 to schema-1.4 in-flight loop migration that preserves the
+  original dirty baseline instead of recreating evidence after implementation.
 
 - Accepted shared-program versus dedicated-application GitHub Project topology, with
   Project #13 as the canonical field/view copy source.

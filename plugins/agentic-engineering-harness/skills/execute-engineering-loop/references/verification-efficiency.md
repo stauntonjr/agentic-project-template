@@ -7,6 +7,10 @@ accepted criteria and proportionate adjacent risks before returning an ordinary 
 Each finding needs a severity, criterion, bounded reproduction, and smallest credible repair.
 Deduplicate findings that share the same failure boundary and repair.
 
+The minimum repair is technical input, not authority to broaden the Issue. After the verifier
+records a matching verdict, the orchestrator dispositions each finding and completes the
+proportionality gate before any candidate mutation.
+
 Do not invalidate the candidate or restart implementation after each ordinary finding. Close the
 review as `batch-ready`, record one repair decision, then start one new attempt. Close as `clean`
 only with zero findings. Interrupt immediately only for a critical active secret exposure,
@@ -62,5 +66,26 @@ unchanged, rerun. Reuse is supplemental and never satisfies the final full gate.
   current candidate; legacy or stale evidence remains history rather than current acceptance.
 - Record review and check duration so the report can expose repeated work and future optimization
   can be evidence-based.
-- An in-flight schema-1.2 run uses the explicit `migrate-run` command to add schema-1.3 review and
+- An in-flight schema-1.2 or schema-1.3 run uses the explicit `migrate-run` command to add schema-1.4 review and
   check metadata while preserving the original baseline; it is not restarted after implementation.
+
+## Scope and proportionality
+
+Every run binds included work, explicit exclusions, assurance boundary, complexity/budget
+constraints, and scope-revision triggers. Before planning, record one current-revision
+build/adopt/adapt/defer assessment. Reopen it when a repair crosses a standardized or
+security-sensitive capability, parser, sandbox, protocol, cryptography, concurrency,
+filesystem-security, dependency, write-scope, threat-model, or budget boundary.
+
+For every finding batch, record objective alignment, scope delta, complexity delta, budget status,
+credible alternatives, solution disposition, and one recommendation: `proceed`, `simplify`,
+`defer`, `revise-contract`, or `escalate-to-owner`. A second failed repair or any listed complexity
+trigger requires a scope reviewer independent of both implementer and technical verifier. Metrics
+inform the decision but never substitute for evidence or become quality targets by themselves.
+
+Every recorded trigger needs a current completed solution assessment. A later completed record
+may supersede blocked or candidate-stale research without deleting it; duplicate same-candidate
+records fail. Use a new attempt for in-scope repair, simplification, or narrowed claims; a new
+revision for `revise-contract`; and the candidate-bound no-code batch-resolution command only for
+deferral, human-accepted risk, or emergency stop. A mixed emergency resolution retains every
+disposition and makes its recorded next attempt or contract revision exclusive.
