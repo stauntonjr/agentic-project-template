@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "plugin": {
     "name": "agentic-engineering-harness",
-    "version": "0.1.0"
+    "version": "0.1.1+codex.20260825205827"
   },
   "manifest": {
     "path": "plugins/agentic-engineering-harness/.codex-plugin/plugin.json",
-    "sha256": "9a4ad8347640f3346bf8ee73593e086c2a5aa93512f2aabbdccd048ffccebf10"
+    "sha256": "395e43ce6892de7b3eea3244cf7ee3949b7f70a71ee96a319115d8d5b78ed87c"
   },
   "source": {
     "repository": "https://github.com/stauntonjr/agentic-project-template",

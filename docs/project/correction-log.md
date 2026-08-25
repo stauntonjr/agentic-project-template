@@ -44,6 +44,31 @@ failure exposes an escaped defect with a deterministic oracle, create a candidat
   command pre-reads membership, rejects duplicates, uses `gh project item-add` only when absent,
   and verifies post-write membership; unit tests assert each boundary.
 
+## GH-PLANNING-008: corrected source remained absent from the active plugin cache
+
+- Date: 2026-08-25.
+- Workflow: create an Assessor follow-up Issue after its Macro Technical Pulse dogfood loop.
+- Provenance: sanitized installed-plugin, canonical-source, and generated-application comparison.
+- Failed approach: reused `gh issue create --project` while an installed plugin cache still exposed
+  version `0.1.0`, then relied on the corrected canonical template as if it controlled the session.
+- Error signature: the CLI attempted deprecated Projects (classic); the active cached planning
+  skill lacked both the explicit prohibition and the supported `add-item` sequence.
+- Mutation check: GitHub rejected the command before creating an Issue; a complete Issue re-read
+  found no partial or duplicate object. The Issue was then created once through the supported flow.
+- Classification: combined execution and distribution failure. The agent skipped a required
+  safety-reference read, and corrected source was not cache-busted or reinstalled.
+- Corrected path:
+  1. Bump the plugin patch version and add a unique local cache identity during installation.
+  2. Regenerate provenance and validate the canonical package.
+  3. Reinstall from the reviewed local marketplace and compare the installed planning skill and
+     safety-reference bytes with the reviewed generated distribution.
+  4. Start a new thread so Codex loads the new plugin version.
+- Verification: Issue #55 gives the plugin a new cache identity, regenerates provenance, and makes
+  the isolated lifecycle probe compare the two exact installed planning files with the reviewed
+  distribution.
+- Prevention: refresh and verify the installed distribution whenever corrected plugin guidance
+  changes. Command interception and general shell policy are explicitly outside this correction.
+
 ## GH-PLANNING-006: successful Project item write was immediately invisible
 
 - Date: 2026-08-24.

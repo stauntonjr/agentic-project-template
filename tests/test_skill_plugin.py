@@ -9,6 +9,7 @@ from pathlib import Path
 from tools.harness_check import Result, validate_optional_skill_plugin
 from tools.skill_plugin import (
     LICENSE_RELATIVE,
+    INSTALLED_VERIFICATION_RELATIVES,
     MANIFEST_RELATIVE,
     MARKETPLACE_RELATIVE,
     PLUGIN_NAME,
@@ -121,6 +122,15 @@ class SkillPluginTests(unittest.TestCase):
         self.assertIn(
             "plugin provenance is stale or does not match canonical skills",
             check(root),
+        )
+
+    def test_runtime_probe_verifies_exact_planning_files(self) -> None:
+        self.assertEqual(
+            (
+                Path("skills/manage-github-planning/SKILL.md"),
+                Path("skills/manage-github-planning/references/safety.md"),
+            ),
+            INSTALLED_VERIFICATION_RELATIVES,
         )
 
     def test_sync_refuses_a_symlinked_license_before_writing(self) -> None:
