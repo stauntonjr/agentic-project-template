@@ -14,6 +14,10 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
+- Owner reset: Issue #51 is the only active template-program objective. The original core is
+  implemented and feature-frozen; Issues #5, #16, #19, #20, and #21 are deferred until one ordinary
+  greenfield application satisfies `docs/project/mvp-reset.md`. Do not resume Issue #16 or add
+  harness machinery to make the probe pass.
 - Latest implemented harness changes: Issue #14 enforces the three-failure stop, reviewed handoff
   resume, and a sanitized six-class recovery matrix. Issue #15 adds a read-only Kortex provenance
   and governed-learning evaluation. Issue #2 validates layered domain routing on S3NTINEL without
@@ -27,7 +31,7 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
   stable-candidate finding batch before repair, checks carry tier/duration/evidence-origin data,
   expensive retained evidence requires immutable provenance, and reported completion requires
   exactly one executed passing full gate for the final current attempt.
-- Issue #49 is the current integration candidate for ADR-0012 and loop schema 1.4. It separates
+- Issue #49 integrated ADR-0012 and loop schema 1.4. It separates
   Issue scope from exclusions, binds assurance and budget boundaries, requires a current
   build/adopt/adapt/defer assessment before planning, and inserts finding disposition plus a
   proportionality decision before repair. Independent scope review is conditional on explicit
