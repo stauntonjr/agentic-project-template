@@ -13,6 +13,7 @@ from tools.harness_check import (
     REQUIRED_PATHS,
     Result,
     check,
+    validate_capabilities,
     validate_model_stress,
     validate_planning,
 )
@@ -51,6 +52,51 @@ def active_generic_copy(directory: str) -> Path:
 
 
 class HarnessCheckTests(unittest.TestCase):
+    def test_capability_catalog_is_a_required_harness_path(self) -> None:
+        self.assertIn("harness/capabilities.json", REQUIRED_PATHS)
+
+    def test_capability_catalog_rejects_duplicate_alias_and_claimed_responsibility(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            catalog_path = target / "harness/capabilities.json"
+            catalog_path.parent.mkdir(parents=True)
+            catalog = load_json(ROOT / "harness/capabilities.json")
+            catalog["capabilities"][1]["aliases"].append(catalog["capabilities"][0]["aliases"][0])
+            catalog["capabilities"][1]["claimed_responsibilities"].append(
+                catalog["capabilities"][0]["claimed_responsibilities"][0]
+            )
+            write_json(catalog_path, catalog)
+
+            result = Result()
+            validate_capabilities(target, result)
+
+            self.assertIn("duplicate capability id or alias: architecture-map", result.errors)
+            self.assertTrue(
+                any(
+                    "claimed responsibility architecture.python.ast-inventory overlaps" in error
+                    for error in result.errors
+                )
+            )
+
+    def test_inactive_capability_cannot_ship_implementation_or_checks(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            catalog_path = target / "harness/capabilities.json"
+            catalog_path.parent.mkdir(parents=True)
+            catalog = load_json(ROOT / "harness/capabilities.json")
+            catalog["capabilities"][0]["inactive_contract"]["implementation_paths"] = [
+                "tools/architecture.py"
+            ]
+            write_json(catalog_path, catalog)
+
+            result = Result()
+            validate_capabilities(target, result)
+
+            self.assertIn(
+                "python-architecture-analysis: inactive capability must have empty implementation_paths",
+                result.errors,
+            )
+
     def test_subscription_control_runtime_is_a_required_harness_path(self) -> None:
         self.assertIn("harness/runtime/codex_subscription_proxy.py", REQUIRED_PATHS)
         self.assertIn("harness/runtime/model_stress_runner.py", REQUIRED_PATHS)

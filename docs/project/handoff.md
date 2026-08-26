@@ -14,10 +14,17 @@ This is a concise orientation index for a fresh human or agent. It is not a tran
 
 - Harness version: 0.5.0.
 - Project status: template; project intake not yet accepted.
-- Owner reset: Issue #51 is the only active template-program objective. The original core is
-  implemented and feature-frozen; Issues #5, #16, #19, #20, and #21 are deferred until one ordinary
-  greenfield application satisfies `docs/project/mvp-reset.md`. Do not resume Issue #16 or add
-  harness machinery to make the probe pass.
+- Issue #51's ordinary greenfield proof is accepted after the bounded Issue #53 repair. The
+  data-only capability catalog is implemented on local branch `issue-22-capability-catalog`, and
+  the separate `scifact-rag` repository now has a working local CLI vertical slice at `8e28dc0`.
+  It activates only the composition root and CLI capabilities, ingests 5,183 SciFact documents,
+  reports BEIR retrieval metrics over 300 queries, and exercises live cited/insufficient NVFP4
+  answers. The next adopted application remains Procurement Intelligence Lab. Issues #5, #16,
+  #19, #20, and #21 remain deferred; no live Issue #22 roadmap or remote repository was mutated.
+- The capability catalog at `harness/capabilities.json` owns optional responsibilities even while
+  inactive. `AGENTS.md` requires a pre-plan catalog disposition, forbids parallel replacement, and
+  reserves initial activation or supersession for explicit human approval. The catalog adds no
+  capability implementation or dependency.
 - Issue #53 is the sole bounded blocker found by that proof: new-project generation no longer copies
   the template-maintenance `tests/` suite into applications. Portable harness checks remain in the
   authoritative `make smoke` path; the raw template unittest stage runs only in template mode,

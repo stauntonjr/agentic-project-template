@@ -88,6 +88,7 @@ REQUIRED_PATHS = (
     "tools/model_stress_runner.py",
     "harness/runtime/codex_subscription_proxy.py",
     "harness/runtime/model_stress_runner.py",
+    "harness/capabilities.json",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",
@@ -149,6 +150,8 @@ COMMAND_KEYS = {
     "package_smoke",
 }
 QUALITY_CHECKS = COMMAND_KEYS - {"primary_check", "bootstrap"}
+CAPABILITY_STATUSES = {"inactive", "candidate", "active", "retired"}
+CAPABILITY_DISPOSITIONS = {"use-active", "propose-activation", "not-applicable"}
 
 
 @dataclass
@@ -375,6 +378,86 @@ def validate_project(root: Path, result: Result) -> dict[str, Any]:
         except (OSError, ValueError) as exc:
             result.errors.append(str(exc))
     return project
+
+
+def validate_capabilities(root: Path, result: Result) -> None:
+    catalog = load_json(root / "harness/capabilities.json")
+    result.require(catalog.get("schema_version") == "1.0", "capability catalog schema must be 1.0")
+    policy = catalog.get("policy", {})
+    result.require(
+        policy.get("default_status") == "inactive",
+        "capability catalog default status must be inactive",
+    )
+    result.require(
+        policy.get("activation_authority") == "human-owner",
+        "capability activation authority must be human-owner",
+    )
+    result.require(
+        set(policy.get("planning_dispositions", [])) == CAPABILITY_DISPOSITIONS,
+        "capability planning dispositions are invalid",
+    )
+    result.require(bool(policy.get("duplicate_rule")), "capability duplicate rule is missing")
+
+    capabilities = catalog.get("capabilities", [])
+    result.require(isinstance(capabilities, list) and bool(capabilities), "no capabilities found")
+    seen_names: dict[str, str] = {}
+    seen_responsibilities: dict[str, str] = {}
+    for capability in capabilities if isinstance(capabilities, list) else []:
+        capability_id = capability.get("id", "")
+        result.require(
+            isinstance(capability_id, str) and bool(SKILL_NAME.fullmatch(capability_id)),
+            f"invalid capability id: {capability_id}",
+        )
+        for name in [capability_id, *capability.get("aliases", [])]:
+            result.require(
+                isinstance(name, str) and bool(SKILL_NAME.fullmatch(name)),
+                f"{capability_id}: invalid capability id or alias: {name}",
+            )
+            owner = seen_names.get(name)
+            result.require(owner is None, f"duplicate capability id or alias: {name}")
+            if owner is None:
+                seen_names[name] = capability_id
+
+        status = capability.get("status")
+        result.require(status in CAPABILITY_STATUSES, f"{capability_id}: invalid status")
+        for key in (
+            "purpose",
+            "source_projects",
+            "consider_when",
+            "activate_when",
+            "claimed_responsibilities",
+            "activation_requires",
+            "inactive_contract",
+        ):
+            result.require(bool(capability.get(key)), f"{capability_id}: missing {key}")
+
+        for source in capability.get("source_projects", []):
+            for key in ("name", "repository", "observed_commit", "paths"):
+                result.require(bool(source.get(key)), f"{capability_id}: source missing {key}")
+
+        for responsibility in capability.get("claimed_responsibilities", []):
+            result.require(
+                isinstance(responsibility, str) and bool(responsibility.strip()),
+                f"{capability_id}: invalid claimed responsibility",
+            )
+            owner = seen_responsibilities.get(responsibility)
+            result.require(
+                owner is None,
+                f"claimed responsibility {responsibility} overlaps {owner} and {capability_id}",
+            )
+            if owner is None:
+                seen_responsibilities[responsibility] = capability_id
+
+        if status == "inactive":
+            inactive = capability.get("inactive_contract", {})
+            for key in ("runtime_dependencies", "ci_checks", "implementation_paths"):
+                result.require(
+                    inactive.get(key) == [],
+                    f"{capability_id}: inactive capability must have empty {key}",
+                )
+    result.checked.append(
+        f"{len(capabilities) if isinstance(capabilities, list) else 0} capability skeletons"
+    )
 
 
 def validate_loop(root: Path, result: Result) -> None:
@@ -762,6 +845,7 @@ def check(root: Path) -> Result:
         result.require((root / relative).is_file(), f"missing required file: {relative}")
     try:
         validate_project(root, result)
+        validate_capabilities(root, result)
         validate_loop(root, result)
         validate_roles(root, result)
         validate_skills(root, result)

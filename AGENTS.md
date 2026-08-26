@@ -31,6 +31,19 @@ practice, interoperability, or buy-versus-build materially affects the work. Nev
 that avoiding a dependency is preferable to adapting a maintained solution; ask the owner when
 dependency, license, portability, or trust constraints are materially unresolved.
 
+## Capability reuse gate
+
+Before planning a non-trivial capability, inspect `harness/capabilities.json` by ID, alias, and
+claimed responsibility. Disposition every relevant entry as `use-active`, `propose-activation`, or
+`not-applicable` in the plan or loop evidence.
+
+An inactive entry still owns its claimed responsibilities. Do not create a parallel tool, service,
+workflow, or policy for those responsibilities. Reuse an active capability, propose activation of
+the inactive skeleton, or ask the human owner to explicitly supersede it. Initial activation and
+supersession require human approval. Activation must replace the empty inactive contract with
+project-specific implementation paths, dependencies, and focused checks; inactive capabilities add
+none of those surfaces.
+
 ## Authority and sources of truth
 
 - Accepted ADRs define durable architecture decisions.

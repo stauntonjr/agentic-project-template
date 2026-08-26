@@ -16,6 +16,10 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Added
 
+- A dependency-free inactive-capability catalog derived from S3NTINEL, Kortex, Procurement
+  Intelligence Lab, and Macro Technical Pulse. Agents must check its IDs, aliases, and claimed
+  responsibilities before planning; initial activation requires human approval, and inactive
+  skeletons add no implementation, runtime dependency, or CI check.
 - Required, separate Issue-form fields for included scope, exclusions, assurance boundary,
   complexity and budget constraints, and scope-revision triggers.
 - Loop schema 1.4 with revision-bound build/adopt/adapt/defer solution assessments, per-finding
