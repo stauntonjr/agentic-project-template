@@ -15,6 +15,7 @@
     {"pattern": "harness/loops/**", "ownership": "upstream-owned"},
     {"pattern": "harness/runtime/**", "ownership": "upstream-owned"},
     {"pattern": "harness/capabilities.json", "ownership": "upstream-owned"},
+    {"pattern": "harness/generation.json", "ownership": "upstream-owned"},
     {"pattern": "harness/roles/**", "ownership": "upstream-owned"},
     {"pattern": "harness/schemas/**", "ownership": "upstream-owned"},
     {"pattern": "harness/profiles/**", "ownership": "upstream-owned"},

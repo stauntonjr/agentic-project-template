@@ -1,4 +1,4 @@
-.PHONY: check test compile actions-supply-chain project-check smoke planning-audit challenge-validate challenges recovery-check harness-version product-version harness-lock harness-eval-validate model-stress-check model-stress-runner-check pi-runtime-check plugin-check plugin-sync
+.PHONY: check test compile actions-supply-chain project-check smoke template-smoke application-smoke planning-audit challenge-validate challenges recovery-check harness-version product-version harness-lock harness-eval-validate model-stress-check model-stress-runner-check pi-runtime-check plugin-check plugin-sync
 
 check:
 	python3 tools/harness_check.py
@@ -7,7 +7,7 @@ test:
 	@python3 -c 'import json, subprocess, sys; project = json.load(open("harness/project.yaml", encoding="utf-8")); sys.exit(subprocess.call([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]) if project.get("template_mode") else 0)'
 
 compile:
-	python3 -m compileall -q tools tests
+	python3 -m compileall -q tools
 
 actions-supply-chain:
 	python3 tools/check_actions_supply_chain.py
@@ -15,7 +15,12 @@ actions-supply-chain:
 project-check:
 	python3 tools/run_quality.py
 
-smoke: check actions-supply-chain compile test project-check challenge-validate recovery-check model-stress-check model-stress-runner-check
+smoke:
+	@python3 -c 'import json, subprocess; project = json.load(open("harness/project.yaml", encoding="utf-8")); target = "template-smoke" if project.get("template_mode") else "application-smoke"; subprocess.run(["make", target], check=True)'
+
+template-smoke: check actions-supply-chain compile test project-check challenge-validate recovery-check model-stress-check model-stress-runner-check
+
+application-smoke: check compile project-check
 
 planning-audit:
 	python3 tools/github_planning.py audit --offline

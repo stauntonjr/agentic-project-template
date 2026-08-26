@@ -6,6 +6,11 @@ All notable changes to the harness are recorded here. The harness version and a 
 
 ### Changed
 
+- Replaced broad greenfield copying with a validated `greenfield-core` manifest capped at 90
+  copied files. The current generated repository is 91 files including intake, retains capability
+  awareness and both Codex/Pi adapters, and excludes source-template maintenance subsystems.
+- Reduced generated README and handoff guidance to current project boundaries and made the generic
+  no-code quality contract explicit instead of requiring an absent or empty test suite.
 - Stopped new-project intake from copying the template-maintenance root `tests/` suite into derived
   applications. The raw template unittest stage now runs only in template mode; generated
   repositories retain the portable executable harness checks and run application tests through

@@ -45,7 +45,9 @@ through MiniLM/pgvector retrieval to cited NVFP4 answers or `insufficient eviden
 focused unit tests and one pgvector integration test. HTTP, MCP, web, durable-memory,
 product-challenge, architecture-analysis, complexity-review, and role-parallelism remain inactive.
 
-The proof also measures template friction: generation produced 214 files and roughly 26,000 lines
-before application code. The template-maintenance tests are no longer copied, so the former
-256-test failure is gone; the remaining scaffold volume is evidence for a later simplification
-slice, not a reason to delay the working prototype.
+The proof also exposed template friction: the former generator copied 214 files and roughly 26,000
+lines before application code. Greenfield generation now follows the explicit
+`harness/generation.json` core profile: 90 copied files plus one generated intake record. The lean
+repository passes its dependency-free validator and `make smoke`. Template tests, plugin mirrors,
+historical reports, model stress, telemetry, recovery, challenges/evaluations, and template CI stay
+in the source template rather than burdening applications.

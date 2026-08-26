@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.common import load_json
+from tools.common import load_json, write_json
 from tools.project_intake import (
     adoption_output_paths,
     adoption_quality_evidence,
@@ -232,28 +232,43 @@ class ProjectIntakeTests(unittest.TestCase):
                 profile_root=ROOT / "harness/profiles",
             )
 
-    def test_copy_excludes_generated_dependency_trees(self) -> None:
+    def test_copy_uses_greenfield_manifest_and_excludes_template_payload(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "source"
             target = Path(directory) / "target"
-            source.mkdir()
-            (source / "keep.txt").write_text("source\n", encoding="utf-8")
+            (source / "harness").mkdir(parents=True)
+            (source / ".agents/skills/core").mkdir(parents=True)
+            (source / "AGENTS.md").write_text("agent contract\n", encoding="utf-8")
+            write_json(
+                source / "harness/generation.json",
+                {
+                    "schema_version": "1.0",
+                    "profile": "greenfield-core",
+                    "max_copied_files": 3,
+                    "exact_paths": ["AGENTS.md", "harness/generation.json"],
+                    "prefixes": [".agents/skills/"],
+                },
+            )
+            (source / ".agents/skills/core/SKILL.md").write_text(
+                "repository-local skill\n", encoding="utf-8"
+            )
             (source / "tests").mkdir()
             (source / "tests/test_template.py").write_text(
                 "template maintenance\n", encoding="utf-8"
             )
-            (source / "fixtures/tests").mkdir(parents=True)
-            (source / "fixtures/tests/keep.txt").write_text(
-                "nested application fixture\n", encoding="utf-8"
+            (source / "plugins/template-distribution").mkdir(parents=True)
+            (source / "plugins/template-distribution/plugin.json").write_text(
+                "template distribution\n", encoding="utf-8"
             )
             (source / ".venv/lib").mkdir(parents=True)
             (source / ".venv/lib/dependency.py").write_text("generated\n", encoding="utf-8")
             (source / "node_modules/package").mkdir(parents=True)
             (source / "node_modules/package/index.js").write_text("generated\n", encoding="utf-8")
             copy_template(source, target)
-            self.assertTrue((target / "keep.txt").is_file())
+            self.assertTrue((target / "AGENTS.md").is_file())
+            self.assertTrue((target / ".agents/skills/core/SKILL.md").is_file())
             self.assertFalse((target / "tests").exists())
-            self.assertTrue((target / "fixtures/tests/keep.txt").is_file())
+            self.assertFalse((target / "plugins").exists())
             self.assertFalse((target / ".venv").exists())
             self.assertFalse((target / "node_modules").exists())
 
@@ -344,6 +359,38 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertTrue((target / ".pi/settings.json").is_file())
             self.assertTrue((target / "harness/adapters/pi.json").is_file())
             self.assertFalse((target / "tests").exists())
+            copied_files = [
+                path
+                for path in target.rglob("*")
+                if path.is_file() and ".git" not in path.parts and ".harness" not in path.parts
+            ]
+            self.assertLessEqual(len(copied_files), 100)
+            for excluded in (
+                ".agents/plugins",
+                ".github/workflows",
+                "docs/reports",
+                "harness/challenges",
+                "harness/evals",
+                "harness/fixtures",
+                "harness/model-stress.json",
+                "harness/recovery",
+                "harness/runtime",
+                "harness/telemetry.json",
+                "plugins",
+            ):
+                self.assertFalse((target / excluded).exists(), excluded)
+            for retained in (
+                ".agents/skills/execute-engineering-loop/SKILL.md",
+                ".codex/agents/harness-verifier.toml",
+                ".pi/extensions/context-readiness.ts",
+                "harness/capabilities.json",
+                "harness/roles/verifier.md",
+                "tools/loop.py",
+            ):
+                self.assertTrue((target / retained).is_file(), retained)
+            lock = load_json(target / "harness.lock")
+            self.assertTrue(lock["files"])
+            self.assertTrue(all((target / relative).is_file() for relative in lock["files"]))
             (target / "tests").mkdir()
             (target / "tests/test_application.py").write_text(
                 "raise RuntimeError('template test stage executed application tests')\n",

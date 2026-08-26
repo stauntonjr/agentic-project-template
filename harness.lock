@@ -216,7 +216,7 @@
       "ownership": "merge-required"
     },
     "CHANGELOG.md": {
-      "sha256": "dfdd8bd9d5633790544d8fd55eb03650908fb24c043b42c91cec94509b07146e",
+      "sha256": "143cda6a57e1f449ec7ebf02e38b21a335096afb6ed8c9d2137ce30d84327144",
       "ownership": "merge-required"
     },
     "CONTRIBUTING.md": {
@@ -228,11 +228,11 @@
       "ownership": "merge-required"
     },
     "Makefile": {
-      "sha256": "4cc87fa4605dfbbd6d5ec0e9317308d0743f247425b68971829aa20fc79eef6f",
+      "sha256": "3c5721893a3f6f10059ceccd6942677c534c91edd3d670c0bb84c15d5657a3e5",
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "1f46e6eb35fe9b3cb7bdee0ce9e7afddbf3200c0fe9178201253f3bfd43c9332",
+      "sha256": "e4af1b17d8a851c0ea058dece6011a240362c022d33a3d935eca1dedf8f1a5e2",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -288,7 +288,7 @@
       "ownership": "project-owned"
     },
     "docs/project/capability-matrix.md": {
-      "sha256": "6ff742d2826096f68f34a9ec20ca66d4f8b7d6c7a395774e1da9ede94a6906a8",
+      "sha256": "b5d7b5e54a5f6bd5985532acf04e802189797707e7e0e3fb5da3483a4c2c09ee",
       "ownership": "project-owned"
     },
     "docs/project/charter.md": {
@@ -308,7 +308,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "5acabf1c9e264ba4d9fefd41fe3d4e45736b205d246dc95cfdef53f279d72769",
+      "sha256": "fcb6f1a8fb2f801fab30a8130c7e5eda4d4db85d93aa6e572394672b3f53fc81",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
@@ -444,7 +444,7 @@
       "ownership": "upstream-owned"
     },
     "harness/fixtures/intake.answers.json": {
-      "sha256": "e342541ad783f54665ee38eecdfd693cf57a39edfe11c7c24652a98e3078b109",
+      "sha256": "a55fbf72bd05bfdde337d2b2ec614a280d03f068bba169ba7a2ffc441578727b",
       "ownership": "upstream-owned"
     },
     "harness/fixtures/kortex-governed-learning-evaluation.json": {
@@ -461,6 +461,10 @@
     },
     "harness/fixtures/s3ntinel-routing-evaluation.json": {
       "sha256": "a0d6c7b3127d2d75fd8d837b3c63bc8d06c6cfbd8ea253468a0c75e0d0a0bdde",
+      "ownership": "upstream-owned"
+    },
+    "harness/generation.json": {
+      "sha256": "81f0fb8e54acfc07d03e9056cfbcac625d279b61618ee7486a9a802dc83d35a1",
       "ownership": "upstream-owned"
     },
     "harness/loops/engineering-loop.yaml": {
@@ -492,7 +496,7 @@
       "ownership": "project-owned"
     },
     "harness/ownership.json": {
-      "sha256": "c17afcf922a8fe2963d9af0238241d940d786e0754adf30426e72d7794d05e42",
+      "sha256": "13566ed76b585a1d4f3e78a5cbeb6899799b4d7217a3e57d92611987c6638a28",
       "ownership": "upstream-owned"
     },
     "harness/preferences.example.json": {
@@ -788,7 +792,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_harness_check.py": {
-      "sha256": "965e187b3f5d11d8be6425484cc44e7401713e9457fd110f1c1579f54816bcc6",
+      "sha256": "d80be8ec54e0a77a78098b779348912f4f6459c3cfc842c1ef1ef99531d979b6",
       "ownership": "upstream-owned"
     },
     "tests/test_harness_upgrade.py": {
@@ -828,7 +832,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_project_intake.py": {
-      "sha256": "00a7b65e3e945244978cc454003dfa01af9c76ba38f0f762c2b71d5edd8c7cc4",
+      "sha256": "cba755902be532fd3e679dc429f436c77617bb2e23254c82918bcca70aacbeed",
       "ownership": "upstream-owned"
     },
     "tests/test_recovery_scenarios.py": {
@@ -864,7 +868,7 @@
       "ownership": "merge-required"
     },
     "tools/harness_check.py": {
-      "sha256": "0ea891e54096d4445b10c9bdaad87633251135d99e7ac97525cfb655833651ef",
+      "sha256": "275c78e20552cf2ee49efc6e5d4afcd5a207b6c59ff2b906d3dbeb9df76c34c0",
       "ownership": "upstream-owned"
     },
     "tools/harness_upgrade.py": {
@@ -900,7 +904,7 @@
       "ownership": "upstream-owned"
     },
     "tools/project_intake.py": {
-      "sha256": "a46a3917de3a6d0b752eec5fab30e9a3ab96bf5862ef2e7d464d8a578025ee69",
+      "sha256": "1529e9417fb978ab1de9e404199ba018a952f99c8f0396ca20f99cf1eb70690b",
       "ownership": "upstream-owned"
     },
     "tools/python_package_smoke.py": {

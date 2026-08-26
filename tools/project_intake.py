@@ -40,6 +40,7 @@ GENERATED_PARTS = {
     "node_modules",
 }
 GENERATED_NAMES = {".coverage"}
+GENERATION_PROFILE = "harness/generation.json"
 QUESTION_FIELDS: tuple[tuple[str, str, bool], ...] = (
     ("project.name", "Project name", False),
     ("project.summary", "What does it do, for whom, and why", False),
@@ -374,25 +375,92 @@ Generated from `harness/project.yaml` and {intake_source}.
 
 def copy_template(source: Path, target: Path) -> None:
     safe_target_path(target, "harness/project.yaml")
+    manifest = load_json(source / GENERATION_PROFILE)
+    if manifest.get("schema_version") != "1.0" or manifest.get("profile") != "greenfield-core":
+        raise ValueError("unsupported greenfield generation profile")
+    exact_paths = manifest.get("exact_paths")
+    prefixes = manifest.get("prefixes")
+    maximum = manifest.get("max_copied_files")
+    if not isinstance(exact_paths, list) or not isinstance(prefixes, list):
+        raise ValueError("generation profile paths and prefixes must be lists")
+    if (
+        not isinstance(maximum, int)
+        or isinstance(maximum, bool)
+        or not 1 <= maximum <= 100
+    ):
+        raise ValueError("generation profile max_copied_files must be between 1 and 100")
+    exact: set[str] = set()
+    for value in exact_paths:
+        path = Path(value) if isinstance(value, str) else Path()
+        if (
+            not isinstance(value, str)
+            or not value
+            or path.is_absolute()
+            or ".." in path.parts
+            or value.endswith("/")
+        ):
+            raise ValueError(f"invalid exact generation path: {value}")
+        exact.add(path.as_posix())
+    normalized_prefixes: set[str] = set()
+    for value in prefixes:
+        path = Path(value) if isinstance(value, str) else Path()
+        if (
+            not isinstance(value, str)
+            or not value.endswith("/")
+            or path.is_absolute()
+            or ".." in path.parts
+        ):
+            raise ValueError(f"invalid generation prefix: {value}")
+        normalized_prefixes.add(path.as_posix().rstrip("/") + "/")
+    if len(exact_paths) != len(exact) or len(prefixes) != len(normalized_prefixes):
+        raise ValueError("generation profile paths and prefixes must be unique")
 
-    generated_ignore = shutil.ignore_patterns(
-        *GENERATED_PARTS,
-        *GENERATED_NAMES,
-        "*.egg-info",
-        "*.pyc",
+    missing = sorted(relative for relative in exact if not (source / relative).is_file())
+    missing.extend(
+        sorted(prefix for prefix in normalized_prefixes if not (source / prefix).is_dir())
     )
+    if missing:
+        raise ValueError("generation profile references missing paths: " + ", ".join(missing))
 
-    def ignore_template_only_paths(directory: str, names: list[str]) -> set[str]:
-        ignored = set(generated_ignore(directory, names))
-        if Path(directory) == source:
-            ignored.add("tests")
-        return ignored
+    selected: list[tuple[Path, str]] = []
+    for source_path in sorted(source.rglob("*")):
+        relative = source_path.relative_to(source)
+        if any(
+            part in GENERATED_PARTS or part.endswith(".egg-info") for part in relative.parts
+        ):
+            continue
+        if source_path.name in GENERATED_NAMES or source_path.suffix == ".pyc":
+            continue
+        relative_text = relative.as_posix()
+        included = relative_text in exact or any(
+            relative_text.startswith(prefix) for prefix in normalized_prefixes
+        )
+        if not included:
+            continue
+        if source_path.is_symlink():
+            raise ValueError(f"template source contains a symlink: {relative}")
+        if source_path.is_file():
+            selected.append((source_path, relative_text))
+    if len(selected) > maximum:
+        raise ValueError(
+            f"generation profile selects {len(selected)} files, exceeding maximum {maximum}"
+        )
 
-    shutil.copytree(
-        source,
-        target,
-        ignore=ignore_template_only_paths,
-    )
+    target.mkdir(parents=True, exist_ok=False)
+    for source_path, relative_text in selected:
+        target_path = safe_target_path(target, relative_text)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, target_path)
+
+    lock_path = target / "harness.lock"
+    if lock_path.is_file():
+        lock = load_json(lock_path)
+        lock["files"] = {
+            relative: entry
+            for relative, entry in lock.get("files", {}).items()
+            if (target / relative).is_file()
+        }
+        write_json(lock_path, lock)
 
 
 def ownership_for(path: str, policy: dict[str, Any]) -> str:

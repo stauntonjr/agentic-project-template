@@ -14,6 +14,7 @@ from tools.harness_check import (
     Result,
     check,
     validate_capabilities,
+    validate_generation_profile,
     validate_model_stress,
     validate_planning,
 )
@@ -95,6 +96,22 @@ class HarnessCheckTests(unittest.TestCase):
             self.assertIn(
                 "python-architecture-analysis: inactive capability must have empty implementation_paths",
                 result.errors,
+            )
+
+    def test_generation_profile_rejects_template_only_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            path = target / "harness/generation.json"
+            path.parent.mkdir(parents=True)
+            profile = load_json(ROOT / "harness/generation.json")
+            profile["prefixes"].append("plugins/")
+            write_json(path, profile)
+
+            result = Result()
+            validate_generation_profile(target, result)
+
+            self.assertIn(
+                "generation profile includes template-only path: plugins/", result.errors
             )
 
     def test_subscription_control_runtime_is_a_required_harness_path(self) -> None:

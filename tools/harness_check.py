@@ -17,17 +17,6 @@ if str(ROOT) in sys.path:
     sys.path.remove(str(ROOT))
 sys.path.insert(0, str(ROOT))
 
-from harness.runtime.actions_supply_chain import check_workflows  # noqa: E402
-from harness.runtime.model_stress import (  # noqa: E402
-    validate_contract as validate_model_stress_contract,
-)
-from harness.runtime.model_stress_runner import (  # noqa: E402
-    CORPUS_TASK_CLASSES,
-)
-from harness.runtime.model_stress_runner import (  # noqa: E402
-    load_task as load_model_stress_task,
-)
-
 try:
     from .common import load_json, repository_root
     from .harness_upgrade import (
@@ -38,10 +27,7 @@ try:
         validate_ownership_policy,
     )
     from .product_version import product_version_status
-    from .recovery_scenarios import fixture_paths, validate_fixture
-    from .run_challenges import validate_all as validate_all_challenges
     from .run_quality import command_argv
-    from .skill_plugin import check as check_skill_plugin
 except ImportError:  # Direct script execution.
     from common import load_json, repository_root
     from harness_upgrade import (
@@ -52,10 +38,7 @@ except ImportError:  # Direct script execution.
         validate_ownership_policy,
     )
     from product_version import product_version_status
-    from recovery_scenarios import fixture_paths, validate_fixture
-    from run_challenges import validate_all as validate_all_challenges
     from run_quality import command_argv
-    from skill_plugin import check as check_skill_plugin
 
 try:
     from . import github_planning as planning_module
@@ -67,7 +50,51 @@ validate_planning_contract = getattr(planning_module, "validate_contract", None)
 load_project_planning_contract = getattr(planning_module, "load_config", None)
 
 
-REQUIRED_PATHS = (
+APPLICATION_REQUIRED_PATHS = (
+    ".editorconfig",
+    ".gitattributes",
+    ".gitignore",
+    "AGENTS.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "tools/common.py",
+    "tools/github_planning.py",
+    "tools/harness_check.py",
+    "tools/harness_upgrade.py",
+    "tools/loop.py",
+    "tools/product_version.py",
+    "tools/project_intake.py",
+    "tools/python_package_smoke.py",
+    "tools/run_quality.py",
+    "harness/__init__.py",
+    "harness/adapters/codex.json",
+    "harness/adapters/pi.json",
+    "harness/capabilities.json",
+    "harness/generation.json",
+    "harness/project.yaml",
+    "harness/loops/engineering-loop.yaml",
+    "harness/schemas/project.schema.json",
+    "harness/schemas/intake.schema.json",
+    "harness/schemas/loop-run.schema.json",
+    "harness/schemas/loop-report.schema.json",
+    "harness/schemas/lock.schema.json",
+    "harness/schemas/ownership.schema.json",
+    "harness/schemas/preferences.schema.json",
+    "harness/schemas/provider-adapter.schema.json",
+    "harness/version.json",
+    "harness/ownership.json",
+    "harness/preferences.example.json",
+    "harness.lock",
+    ".github/planning.json",
+    ".pi/settings.json",
+    "docs/project/capability-matrix.md",
+    "docs/project/charter.md",
+    "docs/project/engineering-baseline.md",
+    "docs/project/handoff.md",
+)
+
+TEMPLATE_REQUIRED_PATHS = (
     ".editorconfig",
     ".gitattributes",
     "CHANGELOG.md",
@@ -89,6 +116,7 @@ REQUIRED_PATHS = (
     "harness/runtime/codex_subscription_proxy.py",
     "harness/runtime/model_stress_runner.py",
     "harness/capabilities.json",
+    "harness/generation.json",
     "harness/project.yaml",
     "harness/loops/engineering-loop.yaml",
     "harness/schemas/project.schema.json",
@@ -130,6 +158,7 @@ REQUIRED_PATHS = (
     "docs/project/handoff.md",
     "docs/project/recovery-matrix.md",
 )
+REQUIRED_PATHS = tuple(dict.fromkeys((*APPLICATION_REQUIRED_PATHS, *TEMPLATE_REQUIRED_PATHS)))
 ROLE_IDS = {"orchestrator", "explorer", "implementer", "verifier", "release-steward"}
 ROLE_FILES = ROLE_IDS | {"human-owner"}
 TERMINAL_STATES = {"reported", "blocked", "abandoned"}
@@ -460,6 +489,86 @@ def validate_capabilities(root: Path, result: Result) -> None:
     )
 
 
+def validate_generation_profile(root: Path, result: Result) -> None:
+    profile = load_json(root / "harness/generation.json")
+    result.require(profile.get("schema_version") == "1.0", "generation schema must be 1.0")
+    result.require(profile.get("profile") == "greenfield-core", "unknown generation profile")
+    maximum = profile.get("max_copied_files")
+    result.require(
+        isinstance(maximum, int) and not isinstance(maximum, bool) and 1 <= maximum <= 100,
+        "greenfield generation maximum must be between 1 and 100 files",
+    )
+    exact = profile.get("exact_paths", [])
+    prefixes = profile.get("prefixes", [])
+    exact_values = exact if isinstance(exact, list) else []
+    prefix_values = prefixes if isinstance(prefixes, list) else []
+    result.require(
+        isinstance(exact, list) and len(exact_values) == len(set(exact_values)),
+        "generation exact paths must be a unique list",
+    )
+    result.require(
+        isinstance(prefixes, list) and len(prefix_values) == len(set(prefix_values)),
+        "generation prefixes must be a unique list",
+    )
+    for value in exact_values:
+        try:
+            path = safe_path(root, value)
+        except (TypeError, ValueError) as exc:
+            result.errors.append(f"generation exact path: {exc}")
+        else:
+            result.require(path.is_file(), f"generation exact path is missing: {value}")
+    for value in prefix_values:
+        valid = isinstance(value, str) and value.endswith("/")
+        result.require(valid, f"invalid generation prefix: {value}")
+        if valid:
+            try:
+                path = safe_path(root, value.rstrip("/"))
+            except (TypeError, ValueError) as exc:
+                result.errors.append(f"generation prefix: {exc}")
+            else:
+                result.require(path.is_dir(), f"generation prefix is missing: {value}")
+    required_exact = {
+        "AGENTS.md",
+        "harness/capabilities.json",
+        "harness/loops/engineering-loop.yaml",
+        "tools/harness_check.py",
+        "tools/project_intake.py",
+        "tools/run_quality.py",
+    }
+    required_prefixes = {".agents/skills/", ".codex/", ".pi/", "harness/roles/"}
+    result.require(
+        required_exact.issubset(set(exact_values)), "generation profile omits core files"
+    )
+    result.require(
+        required_prefixes.issubset(set(prefix_values)),
+        "generation profile omits core agent paths",
+    )
+    forbidden = (
+        ".agents/plugins/",
+        ".github/workflows/",
+        "docs/reports/",
+        "harness/challenges/",
+        "harness/evals/",
+        "harness/fixtures/",
+        "harness/model-stress/",
+        "harness/recovery/",
+        "harness/runtime/",
+        "plugins/",
+        "tests/",
+    )
+    selected = [*exact_values, *prefix_values]
+    for excluded in forbidden:
+        result.require(
+            not any(
+                isinstance(value, str)
+                and (value == excluded.rstrip("/") or value.startswith(excluded))
+                for value in selected
+            ),
+            f"generation profile includes template-only path: {excluded}",
+        )
+    result.checked.append("greenfield generation profile")
+
+
 def validate_loop(root: Path, result: Result) -> None:
     loop = load_json(root / "harness/loops/engineering-loop.yaml")
     result.checked.append("engineering loop")
@@ -544,6 +653,10 @@ def validate_optional_skill_plugin(root: Path, result: Result) -> None:
         "skill plugin must be an ordinary directory",
     )
     if marketplace_ok and plugin_ok:
+        try:
+            from .skill_plugin import check as check_skill_plugin
+        except ImportError:
+            from skill_plugin import check as check_skill_plugin
         for error in check_skill_plugin(root):
             result.errors.append(error)
         result.checked.append("installable skill plugin mirror")
@@ -713,20 +826,30 @@ def validate_planning(root: Path, result: Result) -> None:
     result.checked.append("GitHub desired state")
 
 
-def validate_json_assets(root: Path, result: Result) -> None:
-    for base in ("harness/schemas", "harness/profiles", "harness/fixtures"):
+def validate_json_assets(root: Path, result: Result, *, template_mode: bool) -> None:
+    bases = ["harness/schemas", "harness/profiles"]
+    if template_mode:
+        bases.append("harness/fixtures")
+    for base in bases:
         for path in sorted((root / base).glob("*.json")):
             load_json(path)
-    load_json(root / "harness/challenges/CHALLENGE_TEMPLATE.json")
-    _, challenge_errors = validate_all_challenges(root)
-    result.errors.extend(challenge_errors)
-    for path in fixture_paths(root):
-        result.errors.extend(validate_fixture(load_json(path), path))
-    for path in sorted((root / "harness/migrations").glob("*.json")):
-        for error in validate_manifest(load_json(path)):
-            result.errors.append(f"{path.relative_to(root)}: {error}")
+    if template_mode:
+        try:
+            from .recovery_scenarios import fixture_paths, validate_fixture
+            from .run_challenges import validate_all as validate_all_challenges
+        except ImportError:
+            from recovery_scenarios import fixture_paths, validate_fixture
+            from run_challenges import validate_all as validate_all_challenges
+        load_json(root / "harness/challenges/CHALLENGE_TEMPLATE.json")
+        _, challenge_errors = validate_all_challenges(root)
+        result.errors.extend(challenge_errors)
+        for path in fixture_paths(root):
+            result.errors.extend(validate_fixture(load_json(path), path))
+        for path in sorted((root / "harness/migrations").glob("*.json")):
+            for error in validate_manifest(load_json(path)):
+                result.errors.append(f"{path.relative_to(root)}: {error}")
+        load_json(root / "harness/evals/scenarios.json")
     load_json(root / "harness/preferences.example.json")
-    load_json(root / "harness/evals/scenarios.json")
     version = load_json(root / "harness/version.json")
     project = load_json(root / "harness/project.yaml")
     ownership = load_json(root / "harness/ownership.json")
@@ -747,7 +870,7 @@ def validate_json_assets(root: Path, result: Result) -> None:
         version.get("upstream_repository") == lock.get("upstream", {}).get("repository"),
         "harness/version.json and harness.lock upstream repository differ",
     )
-    if project.get("template_mode", False):
+    if template_mode:
         for relative, entry in lock.get("files", {}).items():
             result.require(
                 sha256(root / relative) == entry.get("sha256"),
@@ -793,6 +916,12 @@ def validate_telemetry(root: Path, result: Result) -> None:
 
 
 def validate_model_stress(root: Path, result: Result) -> None:
+    from harness.runtime.model_stress import (
+        validate_contract as validate_model_stress_contract,
+    )
+    from harness.runtime.model_stress_runner import CORPUS_TASK_CLASSES
+    from harness.runtime.model_stress_runner import load_task as load_model_stress_task
+
     contract = load_json(root / "harness/model-stress.json")
     for error in validate_model_stress_contract(contract):
         result.errors.append(f"model-stress contract: {error}")
@@ -818,7 +947,7 @@ def validate_model_stress(root: Path, result: Result) -> None:
     result.checked.append("3-class held-out model-stress corpus")
 
 
-def validate_engineering_tooling(root: Path, result: Result) -> None:
+def validate_engineering_tooling(root: Path, result: Result, *, template_mode: bool) -> None:
     for path in sorted((root / "harness/profiles").glob("*.json")):
         profile = load_json(path)
         result.require(profile.get("id") == path.stem, f"{path.name}: profile id mismatch")
@@ -829,23 +958,37 @@ def validate_engineering_tooling(root: Path, result: Result) -> None:
             bool(profile.get("tooling") or profile.get("tooling_capabilities")),
             f"{path.name}: no tooling contract",
         )
-    dependabot = (root / ".github/dependabot.yml").read_text(encoding="utf-8")
-    result.require(
-        'package-ecosystem: "github-actions"' in dependabot,
-        "Dependabot must update GitHub Actions",
-    )
-    for error in check_workflows(root):
-        result.errors.append(error)
-    result.checked.append("engineering and GitHub tooling")
+    if template_mode:
+        from harness.runtime.actions_supply_chain import check_workflows
+
+        dependabot = (root / ".github/dependabot.yml").read_text(encoding="utf-8")
+        result.require(
+            'package-ecosystem: "github-actions"' in dependabot,
+            "Dependabot must update GitHub Actions",
+        )
+        for error in check_workflows(root):
+            result.errors.append(error)
+        result.checked.append("engineering and GitHub tooling")
+    else:
+        result.checked.append("engineering profiles")
 
 
 def check(root: Path) -> Result:
     result = Result()
-    for relative in REQUIRED_PATHS:
+    project_path = root / "harness/project.yaml"
+    template_mode = False
+    if project_path.is_file():
+        try:
+            template_mode = bool(load_json(project_path).get("template_mode", False))
+        except (ValueError, OSError):
+            pass
+    required_paths = REQUIRED_PATHS if template_mode else APPLICATION_REQUIRED_PATHS
+    for relative in required_paths:
         result.require((root / relative).is_file(), f"missing required file: {relative}")
     try:
         validate_project(root, result)
         validate_capabilities(root, result)
+        validate_generation_profile(root, result)
         validate_loop(root, result)
         validate_roles(root, result)
         validate_skills(root, result)
@@ -854,10 +997,11 @@ def check(root: Path) -> Result:
         validate_provider_adapters(root, result)
         validate_pi_adapter(root, result)
         validate_planning(root, result)
-        validate_json_assets(root, result)
-        validate_telemetry(root, result)
-        validate_model_stress(root, result)
-        validate_engineering_tooling(root, result)
+        validate_json_assets(root, result, template_mode=template_mode)
+        if template_mode:
+            validate_telemetry(root, result)
+            validate_model_stress(root, result)
+        validate_engineering_tooling(root, result, template_mode=template_mode)
     except (ValueError, OSError) as exc:
         result.errors.append(str(exc))
     return result
