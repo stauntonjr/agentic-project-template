@@ -9,12 +9,22 @@ capability activation, risk acceptance, external writes, and release authority.
 
 ## Create a greenfield project
 
-After creating a repository from this template, run:
+Use this repository as the generator and choose a new target directory that does not already
+contain the template or another harness:
 
 ```bash
-python3 tools/project_intake.py --interactive --mode new --apply
-make smoke
+python3 tools/project_intake.py \
+  --interactive \
+  --mode new \
+  --target /path/to/new-project \
+  --apply
+make -C /path/to/new-project smoke
 ```
+
+Template-mode greenfield generation requires an explicit `--target`. Running `new --apply` in
+place is rejected before mutation because it would retain the template-maintenance files and
+bypass the lean generation profile. Initialize and publish the generated target as the new
+project repository after its smoke check passes.
 
 For a dependency-free local proof:
 

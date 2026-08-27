@@ -442,6 +442,38 @@ class ProjectIntakeTests(unittest.TestCase):
                 template_test_stage.stdout + template_test_stage.stderr,
             )
 
+    def test_cli_rejects_template_mode_in_place_new_apply_before_mutation(self) -> None:
+        project_path = ROOT / "harness/project.yaml"
+        handoff_path = ROOT / "docs/project/handoff.md"
+        before = {
+            project_path: project_path.read_bytes(),
+            handoff_path: handoff_path.read_bytes(),
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "tools/project_intake.py"),
+                "--interactive",
+                "--mode",
+                "new",
+                "--apply",
+            ],
+            cwd=ROOT,
+            check=False,
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=subprocess_environment(),
+        )
+
+        if not load_json(project_path).get("template_mode", False):
+            self.skipTest("in-place rejection applies only to template-mode repositories")
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("requires an explicit --target", result.stderr)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
     def test_python_fixture_creates_executable_profile_contract(self) -> None:
         if not load_json(ROOT / "harness/project.yaml").get("template_mode", False):
             self.skipTest("cross-repository bootstrap is template-only")

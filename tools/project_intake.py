@@ -877,6 +877,18 @@ def main() -> int:
     source = repository_root(Path(__file__).parent)
     target = Path(os.path.abspath(args.target)) if args.target else source
     source_project = load_json(source / "harness/project.yaml")
+    if (
+        args.apply
+        and args.mode == "new"
+        and args.target is None
+        and source_project.get("template_mode", False)
+    ):
+        print(
+            "error: template-mode greenfield generation requires an explicit --target; "
+            "in-place new --apply would bypass the lean generation profile",
+            file=sys.stderr,
+        )
+        return 2
     if target != source and not source_project.get("template_mode", False):
         print(
             "error: cross-repository intake must run from the template-mode repository; "

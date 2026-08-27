@@ -232,7 +232,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "e4af1b17d8a851c0ea058dece6011a240362c022d33a3d935eca1dedf8f1a5e2",
+      "sha256": "be37df72e10f14910500f434491b30aaa1564e601e1e094edf87940784279eb5",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -832,7 +832,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_project_intake.py": {
-      "sha256": "e3bc96b1e3bbbf7ddec3f1d0769c67c3179b7f49cc53622a1b5858f489045383",
+      "sha256": "3ba0b0da5618016d8daa420307426312c6c5e4b5573a8b81f4dbaf5178dcc64e",
       "ownership": "upstream-owned"
     },
     "tests/test_recovery_scenarios.py": {
@@ -904,7 +904,7 @@
       "ownership": "upstream-owned"
     },
     "tools/project_intake.py": {
-      "sha256": "b2d4686e4dd519b958521e59920d56fdf2dcb8fcb70166971fabc050d41eff43",
+      "sha256": "faa16c0199c7252726e7ef9460b40c98dddddfd44ad2df64698d7fdeefde246f",
       "ownership": "upstream-owned"
     },
     "tools/python_package_smoke.py": {
