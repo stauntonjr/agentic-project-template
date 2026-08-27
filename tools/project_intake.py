@@ -1019,9 +1019,7 @@ def main() -> int:
         render_charter(rendered_project, intake_reference),
         encoding="utf-8",
     )
-    if adoption_outputs is None and (
-        target != source or not rendered_project.get("template_mode", False)
-    ):
+    if adoption_outputs is None and not target_exists:
         handoff_target = safe_target_path(target, "docs/project/handoff.md")
         capabilities = load_json(safe_target_path(target, "harness/capabilities.json"))
         handoff_target.write_text(

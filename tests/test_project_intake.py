@@ -366,6 +366,30 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertIn("- Active capabilities: none.", handoff)
             self.assertNotIn("Current template state", handoff)
             self.assertNotIn("scifact-rag", handoff.lower())
+            handoff_path = target / "docs/project/handoff.md"
+            handoff_path.write_text(handoff + "\nPROJECT-OWNED-HANDOFF-MARKER\n", encoding="utf-8")
+            expected_handoff = handoff_path.read_bytes()
+            for mode in ("refresh", "gap-only"):
+                with self.subTest(mode=mode):
+                    refresh = subprocess.run(
+                        [
+                            sys.executable,
+                            str(target / "tools/project_intake.py"),
+                            "--answers",
+                            str(ROOT / "harness/fixtures/intake.answers.json"),
+                            "--mode",
+                            mode,
+                            "--apply",
+                        ],
+                        cwd=target,
+                        check=False,
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env=subprocess_environment(),
+                    )
+                    self.assertEqual(0, refresh.returncode, refresh.stdout + refresh.stderr)
+                    self.assertEqual(expected_handoff, handoff_path.read_bytes())
             copied_files = [
                 path
                 for path in target.rglob("*")
