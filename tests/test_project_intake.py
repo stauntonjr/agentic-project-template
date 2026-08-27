@@ -359,6 +359,13 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertTrue((target / ".pi/settings.json").is_file())
             self.assertTrue((target / "harness/adapters/pi.json").is_file())
             self.assertFalse((target / "tests").exists())
+            handoff = (target / "docs/project/handoff.md").read_text(encoding="utf-8")
+            self.assertIn("- Project: Example Agent Project.", handoff)
+            self.assertIn("- Lifecycle: new.", handoff)
+            self.assertIn("- Status: active.", handoff)
+            self.assertIn("- Active capabilities: none.", handoff)
+            self.assertNotIn("Current template state", handoff)
+            self.assertNotIn("scifact-rag", handoff.lower())
             copied_files = [
                 path
                 for path in target.rglob("*")

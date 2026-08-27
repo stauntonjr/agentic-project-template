@@ -373,6 +373,89 @@ Generated from `harness/project.yaml` and {intake_source}.
 """
 
 
+def render_handoff(
+    project: dict[str, Any], intake: dict[str, Any], capabilities: dict[str, Any]
+) -> str:
+    project_contract = project["project"]
+    engineering = project["engineering"]
+    catalog = capabilities.get("capabilities", [])
+    active = sorted(
+        str(capability["id"])
+        for capability in catalog
+        if isinstance(capability, dict) and capability.get("status") == "active"
+    )
+    inactive_count = sum(
+        1
+        for capability in catalog
+        if isinstance(capability, dict) and capability.get("status") == "inactive"
+    )
+
+    def bullets(values: Any, *, empty: str = "None") -> str:
+        if not values:
+            return f"- {empty}"
+        if not isinstance(values, list):
+            values = [values]
+        return "\n".join(f"- {value}" for value in values)
+
+    next_step = (
+        "Resolve the open intake questions before planning implementation."
+        if project.get("open_questions")
+        else "Select the smallest accepted product slice and start its engineering loop."
+    )
+    active_summary = ", ".join(f"`{capability}`" for capability in active) or "none"
+
+    return f"""# Project handoff
+
+This is the short orientation index for a fresh human or agent. Durable decisions belong in ADRs,
+implemented behavior in code and schemas, and accepted work in Issues.
+
+## Read first
+
+1. `AGENTS.md`.
+2. `harness/project.yaml`.
+3. `harness/capabilities.json`.
+4. `harness/intake.json`.
+5. The governing Issue and linked ADRs.
+
+## Current project state
+
+- Project: {project_contract["name"]}.
+- Repository: {project_contract["repository"]}.
+- Lifecycle: {project_contract["lifecycle"]}.
+- Status: {project_contract["status"]}.
+- Harness version: {project["harness_version"]}.
+- Intake context readiness: {intake["context_readiness"]}.
+
+## Current objective
+
+{project_contract["summary"]}
+
+Desired outcomes:
+
+{bullets(project["intent"].get("outcomes"), empty="TBD")}
+
+## Capability state
+
+- Active capabilities: {active_summary}.
+- Inactive catalog entries: {inactive_count}.
+- Inactive capabilities remain visible and own their claimed responsibilities. Propose activation
+  instead of creating a parallel implementation; initial activation requires human approval.
+
+## Verification boundary
+
+- Primary check: `{engineering["command_contract"]["primary_check"]}`.
+- Product status and checks are authoritative only at their recorded evidence boundary.
+
+## Open questions
+
+{bullets(project.get("open_questions"))}
+
+## Next useful step
+
+{next_step}
+"""
+
+
 def copy_template(source: Path, target: Path) -> None:
     safe_target_path(target, "harness/project.yaml")
     manifest = load_json(source / GENERATION_PROFILE)
@@ -936,6 +1019,15 @@ def main() -> int:
         render_charter(rendered_project, intake_reference),
         encoding="utf-8",
     )
+    if adoption_outputs is None and (
+        target != source or not rendered_project.get("template_mode", False)
+    ):
+        handoff_target = safe_target_path(target, "docs/project/handoff.md")
+        capabilities = load_json(safe_target_path(target, "harness/capabilities.json"))
+        handoff_target.write_text(
+            render_handoff(rendered_project, intake, capabilities),
+            encoding="utf-8",
+        )
     if adoption_outputs is not None:
         adoption_report = adoption_outputs["adoption_report"]
         adoption_report.parent.mkdir(parents=True, exist_ok=True)

@@ -832,7 +832,7 @@
       "ownership": "upstream-owned"
     },
     "tests/test_project_intake.py": {
-      "sha256": "cba755902be532fd3e679dc429f436c77617bb2e23254c82918bcca70aacbeed",
+      "sha256": "48c882fc95102874329a5fba5cb6c7f4ea0c9dfebecac481bccc0d4dba21f009",
       "ownership": "upstream-owned"
     },
     "tests/test_recovery_scenarios.py": {
@@ -904,7 +904,7 @@
       "ownership": "upstream-owned"
     },
     "tools/project_intake.py": {
-      "sha256": "1529e9417fb978ab1de9e404199ba018a952f99c8f0396ca20f99cf1eb70690b",
+      "sha256": "e02be049d26188c56d8eaea5603a69238ba1afd6127215d6bbb20ae15b39658f",
       "ownership": "upstream-owned"
     },
     "tools/python_package_smoke.py": {
