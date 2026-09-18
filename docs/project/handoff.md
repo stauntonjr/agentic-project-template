@@ -19,14 +19,17 @@ roadmap.
 - Current generation proof: 90 copied files plus one generated intake record, 91 total.
 - Generated smoke status: passing with dependency-free harness validation and Python compilation.
 - Adoption behavior: separate and ownership-driven; existing application files remain authoritative.
-- Publication: local branch only; no remote planning or repository state was changed.
+- Program planning: [roadmap](roadmap.md); transferred template-effectiveness work is tracked in
+  [Issue #59](https://github.com/stauntonjr/agentic-project-template/issues/59).
 
 ## Product priority
 
-The first application proof is the separate local `scifact-rag` repository. It provides a working
-CLI path over the SciFact corpus using PostgreSQL/pgvector, MiniLM embeddings, and a DGX-hosted
-NVFP4 answer model. Building and evaluating useful applications takes priority over expanding the
-harness or creating a model-effectiveness evaluation framework.
+The SciFact RAG DGX-local prototype is complete, including evaluated retrieval/generation and
+accepted CLI, HTTP, MCP, and web interfaces. Its retained acceptance reports provide application
+proof, not a causal estimate of the template's benefit. The former SciFact Phase 7 is now owned by
+this program's [roadmap](roadmap.md) and [Issue #59](https://github.com/stauntonjr/agentic-project-template/issues/59).
+First synthesize the case-study evidence, then design a bounded matched comparison. No model calls
+or new evaluation framework are authorized by the handoff.
 
 ## Capability boundary
 
@@ -36,29 +39,22 @@ implementation, dependency, or CI check. Agents must use the catalog before plan
 create a duplicate implementation. Initial activation or supersession requires explicit human
 approval.
 
-The SciFact proof activates only:
-
-- application composition root;
-- CLI interface.
-
-API, MCP, web UI, durable memory, governed reflection, semantic evidence, validation challenges,
-AST/LOC analysis, complexity analysis, point-in-time provenance, and role-separated analysis remain
-visible but inactive.
+SciFact's application-specific catalog activates composition, CLI, HTTP, MCP, web presentation,
+and product validation. These are downstream activations: this template's 13 skeletons remain
+inactive defaults for newly generated projects. The handoff does not activate any skeleton here.
 
 ## Runtime boundary
 
 The repository contains both Codex and Pi adapters. They are optional project-local instructions,
-not globally active skills. The Pi adapter remains available, while weaker-model effectiveness
-work is deferred until the template succeeds on real applications.
+not globally active skills. The Pi adapter remains available; smaller-model effectiveness is a
+prospective step in Issue #59 after a matched protocol is accepted, not an automatic continuation.
 
 ## Next useful work
 
-1. Use the lean generated core for the next bounded application slice.
-2. Evaluate whether each retained artifact helped that slice; remove or defer anything that did not.
-3. Activate an existing catalog skeleton only when the application supplies a concrete need and a
-   human approves it.
-4. Keep verification proportional: focused product checks first, broader harness maintenance only
-   when the changed boundary requires it.
+1. Complete Issue #59's evidence retrospective and comparison design using the program roadmap.
+2. Reuse #20 for Pi isolation, #21 for live scoring, and #56 for lifecycle enforcement; do not
+   duplicate their responsibilities or treat them as automatic scope for this evaluation.
+3. Retain useful application work as the priority; activate capabilities only for demonstrated need.
 
 ## Refresh rule
 
