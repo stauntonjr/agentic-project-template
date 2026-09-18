@@ -296,15 +296,19 @@
       "ownership": "project-owned"
     },
     "docs/project/correction-log.md": {
-      "sha256": "f828bad1e0269db964f41a2ee7db2ad0b1996ff4c0cf4c6dd65db70c57b77408",
+      "sha256": "dcff3ae33bfcd78db8292c22c7f74ffe7823f06a45dd2710b5fce1b0f440d7f3",
       "ownership": "project-owned"
     },
     "docs/project/engineering-baseline.md": {
       "sha256": "085f5a746279ec112886894802bc920ca69837ec4bec30106165ff87a433b29f",
       "ownership": "project-owned"
     },
+    "docs/project/github-access-recovery.md": {
+      "sha256": "b0071224c7ab6a2989aab7d936f8af7951a4b859bdd4e392953c4e71d0506a78",
+      "ownership": "project-owned"
+    },
     "docs/project/github-planning.md": {
-      "sha256": "999fe53fab90d28e9d7c49e240bbcfab53dc0817e8be712f7b50f900b7ee29d5",
+      "sha256": "b843c76497af6b818644c181c75a9cbadd232bef5b6c66fe4af5069ef5d67e3d",
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
