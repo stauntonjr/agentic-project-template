@@ -232,7 +232,7 @@
       "ownership": "merge-required"
     },
     "README.md": {
-      "sha256": "be37df72e10f14910500f434491b30aaa1564e601e1e094edf87940784279eb5",
+      "sha256": "281b79ab1cbe184abf965f8adc00edf13f041f244b8579f1a7163c556d54a3f8",
       "ownership": "merge-required"
     },
     "SECURITY.md": {
@@ -308,7 +308,7 @@
       "ownership": "project-owned"
     },
     "docs/project/handoff.md": {
-      "sha256": "fcb6f1a8fb2f801fab30a8130c7e5eda4d4db85d93aa6e572394672b3f53fc81",
+      "sha256": "4d647445612e9048110f080e623c069d3ff656f64baa60d05736e5b1104a137f",
       "ownership": "project-owned"
     },
     "docs/project/model-stress.md": {
@@ -329,6 +329,10 @@
     },
     "docs/project/recovery-matrix.md": {
       "sha256": "d4585d1d7eb6939609eb7a8b14a04e8d5a383cd7677d28f1119c2a9e3754cc44",
+      "ownership": "project-owned"
+    },
+    "docs/project/roadmap.md": {
+      "sha256": "a794b4b95eaf2e29f8b7100fcfc9d4ad4a5ca8dacad9b765c8a4924b1eb66dc0",
       "ownership": "project-owned"
     },
     "docs/project/skill-plugin.md": {

@@ -136,11 +136,14 @@ the template and its applications are useful.
 
 ## First proof
 
-The separate local `scifact-rag` project demonstrates the intended priority: a CLI-first SciFact
-RAG vertical slice using PostgreSQL/pgvector, MiniLM embeddings, and a DGX-hosted NVFP4 model. It
-activates only the composition-root and CLI skeletons. API, MCP, web UI, durable memory, validation
-challenges, code analysis, and model-effectiveness evaluation remain inactive until evidence makes
-them useful.
+The [SciFact RAG prototype](https://github.com/stauntonjr/scifact-rag) has completed its DGX-local
+scope: evaluated retrieval and generation plus accepted CLI, HTTP, MCP, and web interfaces.
+Its downstream capability activations do not change this template's inactive defaults.
+
+The [program roadmap](docs/project/roadmap.md) and
+[Issue #59](https://github.com/stauntonjr/agentic-project-template/issues/59) now own the transferred
+template/Pi effectiveness evaluation. Completion of the application is case-study evidence;
+a prospective matched comparison is needed to assess the template's effect.
 
 The template and that application are MIT licensed. Third-party datasets, models, and services keep
 their own terms.
